@@ -1,0 +1,29 @@
+# ── Root safety net (subprojects also have their own .gitignore) ──
+
+# Secrets — never commit
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.template
+!**/.env.example
+
+# Dependencies
+**/node_modules/
+
+# Build / cache artifacts
+**/dist/
+**/build/
+**/.next/
+**/.medusa/
+**/.cache/
+**/*.tsbuildinfo
+
+# Data dumps (migration exports — may contain customer PII)
+migration/data/
+
+# OS / editor
+.DS_Store
+*.log
+
+# Claude Code local settings
+.claude/settings.local.json
