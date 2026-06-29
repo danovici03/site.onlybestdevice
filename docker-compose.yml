@@ -1,0 +1,105 @@
+# Stack pentru Dokploy: backend Medusa (imagine ghcr) + Postgres + Redis.
+#
+# În Dokploy:
+#   1. Creezi un serviciu de tip "Compose" legat de acest repo (sau lipești acest fișier).
+#   2. Pui variabilele din `dokploy.env.example` în tab-ul "Environment".
+#   3. Deploy. La pornire rulează automat migrațiile (vezi docker-entrypoint.sh).
+#   4. În tab-ul "Domains" adaugi domeniul → service `backend`, port `9000`.
+#
+# Postgres și Redis NU sunt expuse în afară — comunică intern prin rețeaua `default`.
+# Doar `backend` e pe `dokploy-network` ca să-l poată rula Traefik.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-medusa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-onlybestdevice}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-medusa} -d ${POSTGRES_DB:-onlybestdevice}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: ghcr.io/danovici03/site.onlybestdevice-backend:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # ── Construit din POSTGRES_* de mai sus (nu-l setezi manual) ──
+      DATABASE_URL: postgres://${POSTGRES_USER:-medusa}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-onlybestdevice}
+      REDIS_URL: redis://redis:6379
+
+      # ── Obligatorii (setate în Dokploy → Environment) ──
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      COOKIE_SECRET: ${COOKIE_SECRET:?set COOKIE_SECRET}
+      STORE_CORS: ${STORE_CORS:?set STORE_CORS}
+      ADMIN_CORS: ${ADMIN_CORS:?set ADMIN_CORS}
+      AUTH_CORS: ${AUTH_CORS:?set AUTH_CORS}
+      MEDUSA_BACKEND_URL: ${MEDUSA_BACKEND_URL:?set MEDUSA_BACKEND_URL}
+
+      # ── Migrații + admin bootstrap (entrypoint) ──
+      RUN_MIGRATIONS: "true"
+      CREATE_ADMIN_EMAIL: ${CREATE_ADMIN_EMAIL:-}
+      CREATE_ADMIN_PASSWORD: ${CREATE_ADMIN_PASSWORD:-}
+
+      # ── Object storage S3 (Hetzner/R2/AWS) — gol = fișiere locale în volume ──
+      S3_FILE_URL: ${S3_FILE_URL:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_REGION: ${S3_REGION:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+
+      # ── Stripe (opțional) ──
+      STRIPE_API_KEY: ${STRIPE_API_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+
+      # ── Resend email (opțional) ──
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM: ${RESEND_FROM:-}
+      RESEND_REPLY_TO: ${RESEND_REPLY_TO:-}
+    volumes:
+      # Doar dacă NU folosești S3 — păstrează fișierele urcate la restart.
+      - backend_static:/app/static
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    networks:
+      - default
+      - dokploy-network
+
+volumes:
+  pgdata:
+  redisdata:
+  backend_static:
+
+networks:
+  # Rețea internă implicită pentru backend ↔ postgres ↔ redis.
+  default:
+  # Rețeaua Traefik a Dokploy (creată automat de Dokploy).
+  dokploy-network:
+    external: true

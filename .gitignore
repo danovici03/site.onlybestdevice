@@ -6,6 +6,9 @@
 **/.env.*.local
 !**/.env.template
 !**/.env.example
+# Dokploy env (filled version) — keep only the .example template
+dokploy.env
+!dokploy.env.example
 
 # Dependencies
 **/node_modules/
