@@ -30,3 +30,7 @@ migration/data/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Database dumps / backups
+*.dump
+/backups/
