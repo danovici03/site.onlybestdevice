@@ -47,7 +47,10 @@ services:
         condition: service_healthy
     environment:
       # ── Construit din POSTGRES_* de mai sus (nu-l setezi manual) ──
-      DATABASE_URL: postgres://${POSTGRES_USER:-medusa}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-onlybestdevice}
+      # sslmode=disable: Postgres din stack nu suportă SSL, iar Medusa forțează
+      # SSL în producție dacă URL-ul nu conține localhost/127.0.0.1/sslmode=disable
+      # (vezi @medusajs/utils load-module-database-config getDefaultDriverOptions).
+      DATABASE_URL: postgres://${POSTGRES_USER:-medusa}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-onlybestdevice}?sslmode=disable
       REDIS_URL: redis://redis:6379
 
       # ── Obligatorii (setate în Dokploy → Environment) ──
