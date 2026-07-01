@@ -261,8 +261,8 @@ const SideMenu = ({
                 </div>
               )}
               <p className="text-xs text-brand-dark/50 mt-2">
-                © {new Date().getFullYear()} Arredo Vita. Tutti i diritti
-                riservati.
+                © {new Date().getFullYear()} onlybestdevice. Toate drepturile
+                rezervate.
               </p>
             </div>
           </div>

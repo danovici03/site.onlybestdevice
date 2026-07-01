@@ -9,7 +9,7 @@ type Props = {
 
 export default function ManagePreferencesLink({
   className,
-  children = "Gestisci preferenze cookie",
+  children = "Gestionează preferințele cookie",
 }: Props) {
   const { openPreferences } = useConsent()
   return (

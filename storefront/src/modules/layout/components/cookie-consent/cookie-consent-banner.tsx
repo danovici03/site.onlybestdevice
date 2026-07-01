@@ -23,8 +23,8 @@ export default function CookieConsentBanner() {
       >
         <div className="flex items-start gap-3">
           <p className="flex-1 text-[13px] leading-snug text-brand-dark/80">
-            Utilizziamo cookie tecnici e, con il tuo consenso, cookie analitici
-            e di marketing.{" "}
+            Folosim cookie-uri tehnice și, cu acordul tău, cookie-uri de analiză
+            și de marketing.{" "}
             <LocalizedClientLink
               href="/cookie"
               className="underline font-bold hover:text-brand-accent"
@@ -48,21 +48,21 @@ export default function CookieConsentBanner() {
             onClick={rejectAll}
             className="flex-1 min-w-[80px] px-3 py-2 rounded-full text-xs font-bold border border-brand-dark/15 text-brand-dark hover:border-brand-dark hover:bg-brand-light transition-colors"
           >
-            Necessari
+            Doar necesare
           </button>
           <button
             type="button"
             onClick={openPreferences}
             className="flex-1 min-w-[80px] px-3 py-2 rounded-full text-xs font-bold border border-brand-dark/15 text-brand-dark hover:border-brand-dark hover:bg-brand-light transition-colors"
           >
-            Personalizza
+            Personalizează
           </button>
           <button
             type="button"
             onClick={acceptAll}
             className="flex-1 min-w-[80px] px-3 py-2 rounded-full text-xs font-bold bg-brand-dark text-white hover:bg-brand-accent transition-colors"
           >
-            Accetta tutti
+            Acceptă toate
           </button>
         </div>
       </div>

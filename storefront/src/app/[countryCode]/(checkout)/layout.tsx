@@ -18,7 +18,7 @@ export default function CheckoutLayout({
           >
             <ChevronDown className="rotate-90" size={16} />
             <span className="mt-px hidden small:block txt-compact-plus text-brand-dark/60 hover:text-brand-dark">
-              Torna al carrello
+              Înapoi la coș
             </span>
             <span className="mt-px block small:hidden txt-compact-plus text-brand-dark/60 hover:text-brand-dark">
               Înapoi

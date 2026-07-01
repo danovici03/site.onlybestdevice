@@ -60,7 +60,7 @@ export default function WhatsAppWidget() {
           <div className="relative bg-white rounded-2xl shadow-[0_8px_30px_-8px_rgba(0,0,0,0.15)] border border-brand-dark/10 p-4 pr-9">
             <button
               onClick={dismissBubble}
-              aria-label="Închide messaggio"
+              aria-label="Închide mesajul"
               className="absolute top-2.5 right-2.5 p-1 rounded-full hover:bg-brand-light transition-colors"
             >
               <X size={14} weight="bold" className="text-brand-dark/40" />

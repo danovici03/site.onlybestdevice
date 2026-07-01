@@ -18,7 +18,7 @@ const ERROR_TO_LABEL: Record<string, string> = {
   password_old_invalid:
     "Parola actuală nu este corectă.",
   password_unauthenticated:
-    "Sessione scaduta. Effettua di nuovo l'accesso.",
+    "Sesiune expirată. Autentifică-te din nou.",
   password_update_failed: t.common.error,
 }
 

@@ -5,32 +5,32 @@ import { Resend } from "resend"
 import { COMPANY } from "@lib/util/company-info"
 
 const ContactSchema = z.object({
-  nome: z.string().min(2, "Inserisci il tuo nome").max(100),
-  email: z.string().email("Email non valida").max(150),
+  nome: z.string().min(2, "Introdu numele tău").max(100),
+  email: z.string().email("Email invalid").max(150),
   telefono: z.string().max(40).optional().or(z.literal("")),
   oggetto: z.enum(
     ["ordine", "spedizione", "resi", "garanzia", "informazioni", "altro"],
-    { message: "Seleziona un oggetto" }
+    { message: "Selectează un subiect" }
   ),
   numeroOrdine: z.string().max(60).optional().or(z.literal("")),
   messaggio: z
     .string()
-    .min(10, "Il messaggio deve contenere almeno 10 caratteri")
+    .min(10, "Mesajul trebuie să conțină cel puțin 10 caractere")
     .max(5000),
   consensoPrivacy: z
     .union([z.literal("on"), z.literal("true"), z.literal(true)])
     .transform(() => true),
-  // honeypot — deve restare vuoto. Bot tipicamente lo riempiono.
+  // honeypot — trebuie să rămână gol. Boții îl completează de obicei.
   website: z.string().max(0).optional().or(z.literal("")),
 })
 
 const SUBJECT_LABELS: Record<string, string> = {
-  ordine: "Domanda su un ordine",
-  spedizione: "Spedizione",
-  resi: "Reso / Recesso",
-  garanzia: "Garanzia",
-  informazioni: "Richiesta di informazioni",
-  altro: "Altro",
+  ordine: "Întrebare despre o comandă",
+  spedizione: "Livrare",
+  resi: "Retur / Drept de retragere",
+  garanzia: "Garanție",
+  informazioni: "Solicitare de informații",
+  altro: "Altul",
 }
 
 export type ContactState = {
@@ -58,14 +58,14 @@ export async function sendContactMessage(
   if (!parsed.success) {
     return {
       ok: false,
-      message: "Verifica i campi evidenziati.",
+      message: "Verifică câmpurile evidențiate.",
       fieldErrors: parsed.error.flatten().fieldErrors as any,
     }
   }
 
   // Honeypot triggered — silently succeed to avoid signaling bots.
   if (parsed.data.website && parsed.data.website.length > 0) {
-    return { ok: true, message: "Messaggio ricevuto." }
+    return { ok: true, message: "Mesaj primit." }
   }
 
   const apiKey = process.env.RESEND_API_KEY
@@ -74,19 +74,19 @@ export async function sendContactMessage(
 
   if (!apiKey) {
     console.error(
-      "[contact] RESEND_API_KEY mancante — il messaggio non sarà inviato."
+      "[contact] RESEND_API_KEY lipsește — mesajul nu va fi trimis."
     )
     return {
       ok: false,
       message:
-        "Il servizio di invio è temporaneamente non disponibile. Scrivici direttamente a " +
+        "Serviciul de trimitere este temporar indisponibil. Scrie-ne direct la " +
         COMPANY.email,
     }
   }
 
   const data = parsed.data
   const subjectLabel = SUBJECT_LABELS[data.oggetto] ?? data.oggetto
-  const subject = `[Contatto sito] ${subjectLabel} — ${data.nome}`
+  const subject = `[Contact site] ${subjectLabel} — ${data.nome}`
 
   const html = renderEmailHtml({
     nome: data.nome,
@@ -98,15 +98,15 @@ export async function sendContactMessage(
   })
 
   const text = [
-    `Nuovo messaggio dal modulo di contatto di ${COMPANY.marchio}`,
+    `Mesaj nou din formularul de contact al ${COMPANY.marchio}`,
     "",
-    `Nome: ${data.nome}`,
+    `Nume: ${data.nome}`,
     `Email: ${data.email}`,
-    `Telefono: ${data.telefono || "—"}`,
-    `Oggetto: ${subjectLabel}`,
-    `Numero ordine: ${data.numeroOrdine || "—"}`,
+    `Telefon: ${data.telefono || "—"}`,
+    `Subiect: ${subjectLabel}`,
+    `Număr comandă: ${data.numeroOrdine || "—"}`,
     "",
-    "Messaggio:",
+    "Mesaj:",
     data.messaggio,
   ].join("\n")
 
@@ -125,7 +125,7 @@ export async function sendContactMessage(
       return {
         ok: false,
         message:
-          "Si è verificato un problema nell'invio. Riprova oppure scrivici a " +
+          "A apărut o problemă la trimitere. Încearcă din nou sau scrie-ne la " +
           COMPANY.email,
       }
     }
@@ -134,7 +134,7 @@ export async function sendContactMessage(
     return {
       ok: false,
       message:
-        "Si è verificato un problema nell'invio. Riprova oppure scrivici a " +
+        "A apărut o problemă la trimitere. Încearcă din nou sau scrie-ne la " +
         COMPANY.email,
     }
   }
@@ -142,7 +142,7 @@ export async function sendContactMessage(
   return {
     ok: true,
     message:
-      "Messaggio inviato. Ti risponderemo entro 24–48 ore lavorative.",
+      "Mesaj trimis. Îți răspundem în 24–48 de ore lucrătoare.",
   }
 }
 
@@ -171,22 +171,22 @@ function renderEmailHtml(d: {
   return `<!doctype html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f6f5f3;padding:24px;">
   <div style="max-width:600px;margin:auto;background:#fff;border-radius:16px;padding:32px;">
-    <h2 style="margin:0 0 16px 0;color:#111;">Nuovo messaggio dal sito</h2>
-    <p style="color:#555;margin:0 0 24px 0;">Modulo di contatto — ${escapeHtml(
+    <h2 style="margin:0 0 16px 0;color:#111;">Mesaj nou de pe site</h2>
+    <p style="color:#555;margin:0 0 24px 0;">Formular de contact — ${escapeHtml(
       COMPANY.marchio
     )}</p>
     <table style="width:100%;border-collapse:collapse;background:#f9f9f8;border-radius:12px;overflow:hidden;">
-      ${row("Nome", d.nome)}
+      ${row("Nume", d.nome)}
       ${row("Email", d.email)}
-      ${row("Telefono", d.telefono)}
-      ${row("Oggetto", d.oggetto)}
-      ${row("N. ordine", d.numeroOrdine)}
+      ${row("Telefon", d.telefono)}
+      ${row("Subiect", d.oggetto)}
+      ${row("Nr. comandă", d.numeroOrdine)}
     </table>
-    <h3 style="margin:24px 0 8px 0;color:#111;">Messaggio</h3>
+    <h3 style="margin:24px 0 8px 0;color:#111;">Mesaj</h3>
     <div style="white-space:pre-wrap;color:#222;line-height:1.6;background:#f9f9f8;padding:16px;border-radius:12px;">${escapeHtml(
       d.messaggio
     )}</div>
-    <p style="margin-top:24px;font-size:12px;color:#888;">Rispondi direttamente a questa email per scrivere a ${escapeHtml(
+    <p style="margin-top:24px;font-size:12px;color:#888;">Răspunde direct la acest email pentru a-i scrie lui ${escapeHtml(
       d.nome
     )} (${escapeHtml(d.email)}).</p>
   </div>

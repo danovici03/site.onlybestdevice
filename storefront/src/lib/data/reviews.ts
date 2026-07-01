@@ -115,14 +115,14 @@ export async function submitProductReview(
   const body = (formData.get("body") as string) || ""
   const variantId = (formData.get("variant_id") as string | null) || null
 
-  if (!productId) return { ok: false, message: "Prodotto mancante" }
+  if (!productId) return { ok: false, message: "Produs lipsă" }
   if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
-    return { ok: false, message: "Seleziona una valutazione da 1 a 5 stelle" }
+    return { ok: false, message: "Selectează o notă de la 1 la 5 stele" }
   }
   if (body.trim().length < 10) {
     return {
       ok: false,
-      message: "Scrivi almeno 10 caratteri per descrivere la tua esperienza",
+      message: "Scrie cel puțin 10 caractere pentru a-ți descrie experiența",
     }
   }
 
@@ -130,7 +130,7 @@ export async function submitProductReview(
   if (!Object.keys(authHeaders).length) {
     return {
       ok: false,
-      message: "Devi accedere al tuo account per pubblicare una recensione",
+      message: "Trebuie să te autentifici în cont pentru a publica o recenzie",
     }
   }
 
@@ -151,20 +151,20 @@ export async function submitProductReview(
       ok: true,
       message:
         review.status === "approved"
-          ? "Grazie! La tua recensione è online."
-          : "Grazie! La tua recensione sarà pubblicata dopo la moderazione.",
+          ? "Mulțumim! Recenzia ta este publicată."
+          : "Mulțumim! Recenzia ta va fi publicată după moderare.",
       status: review.status,
     }
   } catch (e: any) {
     const msg =
       typeof e?.message === "string"
         ? e.message
-        : "Non è stato possibile pubblicare la recensione"
+        : "Recenzia nu a putut fi publicată"
     // Try to surface backend's user-friendly message if present
     const cleaned = msg
       .replace(/^Error:\s*/, "")
       .replace(/^\d+\s+/, "")
       .trim()
-    return { ok: false, message: cleaned || "Errore durante l'invio" }
+    return { ok: false, message: cleaned || "Eroare la trimitere" }
   }
 }

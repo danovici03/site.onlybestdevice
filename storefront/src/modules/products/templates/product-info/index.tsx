@@ -83,18 +83,18 @@ const ProductInfo = ({ product, reviewStats }: ProductInfoProps) => {
           />
           <div className="flex flex-col gap-1">
             <span className="text-xs uppercase tracking-[0.18em] font-bold text-brand-accent">
-              {OUTLET_BADGE_LABEL} · Ex esposizione
+              {OUTLET_BADGE_LABEL} · Preț redus
             </span>
             <p className="text-sm text-brand-dark/70 leading-relaxed">
               {OUTLET_DESCRIPTION}
             </p>
             <p className="text-xs text-brand-dark/50 leading-relaxed mt-1">
-              Maggiori dettagli all&apos;
+              Mai multe detalii la{" "}
               <LocalizedClientLink
                 href="/termeni#prodotti-outlet"
                 className="underline hover:text-brand-accent"
               >
-                art. 8 dei Termini e Condizioni
+                art. 8 din Termeni și Condiții
               </LocalizedClientLink>
               .
             </p>

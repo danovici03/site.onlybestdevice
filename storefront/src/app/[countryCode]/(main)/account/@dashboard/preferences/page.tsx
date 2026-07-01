@@ -5,9 +5,9 @@ import Preferences from "@modules/account/components/preferences"
 import { retrieveCustomer } from "@lib/data/customer"
 
 export const metadata: Metadata = {
-  title: "Preferenze",
+  title: "Preferințe",
   description:
-    "Scegli come e quando ricevere comunicazioni da Arredovita.",
+    "Alege cum și când primești comunicări de la onlybestdevice.",
 }
 
 export default async function PreferencesPage() {

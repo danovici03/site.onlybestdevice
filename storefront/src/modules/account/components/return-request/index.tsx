@@ -223,7 +223,7 @@ const ReturnRequestForm = ({
             rows={4}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Dettagli aggiuntivi sulla richiesta…"
+            placeholder="Detalii suplimentare despre solicitare…"
             className="w-full rounded-2xl border border-brand-dark/[0.15] bg-white px-4 py-3 text-sm focus:border-brand-dark focus:outline-none resize-none"
             data-testid="return-note"
           />

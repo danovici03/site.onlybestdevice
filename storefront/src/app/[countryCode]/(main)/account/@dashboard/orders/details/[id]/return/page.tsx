@@ -15,7 +15,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const order = await retrieveOrder(id).catch(() => null)
   if (!order) notFound()
   return {
-    title: `Richiedi reso — Ordine #${order.display_id}`,
+    title: `Solicită retur — Comanda #${order.display_id}`,
   }
 }
 

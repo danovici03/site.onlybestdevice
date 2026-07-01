@@ -60,7 +60,7 @@ const ReviewItem = ({ review }: { review: ReviewDTO }) => {
       {review.admin_response && (
         <div className="mt-4 pl-4 border-l-2 border-brand-accent/40 bg-brand-accent/5 rounded-r-lg py-3 pr-4">
           <div className="text-xs uppercase tracking-[0.15em] font-bold text-brand-accent mb-1">
-            Risposta di Arredo Vita
+            Răspuns de la onlybestdevice
           </div>
           <p className="text-sm text-brand-dark/80 leading-relaxed whitespace-pre-line">
             {review.admin_response}

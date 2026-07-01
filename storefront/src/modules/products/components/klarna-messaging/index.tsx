@@ -28,11 +28,11 @@ type SupportedCountry = NonNullable<
 type KlarnaMessagingProps = {
   /** Price in major currency units (e.g. 159.97 EUR). */
   amount: number
-  /** ISO 4217 currency code; case-insensitive. Defaults to EUR. */
+  /** ISO 4217 currency code; case-insensitive. Defaults to RON. */
   currency?: string
-  /** ISO 3166-1 alpha-2 country code; case-insensitive. Defaults to IT. */
+  /** ISO 3166-1 alpha-2 country code; case-insensitive. Defaults to RO. */
   countryCode?: string
-  /** Locale forwarded to Stripe Elements. Defaults to "it". */
+  /** Locale forwarded to Stripe Elements. Defaults to "ro". */
   locale?: string
 }
 
@@ -41,9 +41,9 @@ const MAX_AMOUNT = 10_000_000
 
 const KlarnaMessaging = ({
   amount,
-  currency = "EUR",
-  countryCode = "IT",
-  locale = "it",
+  currency = "RON",
+  countryCode = "RO",
+  locale = "ro",
 }: KlarnaMessagingProps) => {
   const ref = useRef<HTMLDivElement | null>(null)
   const elementsRef = useRef<StripeElements | null>(null)

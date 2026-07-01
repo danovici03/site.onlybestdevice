@@ -13,8 +13,8 @@ const SignInPrompt = () => {
             Ai deja cont?
           </p>
           <p className="text-sm text-brand-dark/60 mt-0.5">
-            Accedi per un&apos;esperienza più rapida e per accedere ai tuoi
-            ordini.
+            Autentifică-te pentru o experiență mai rapidă și pentru a-ți vedea
+            comenzile.
           </p>
         </div>
       </div>
@@ -24,7 +24,7 @@ const SignInPrompt = () => {
           data-testid="sign-in-button"
           className="w-full sm:w-auto px-6 py-3 rounded-full border border-brand-dark text-brand-dark font-bold text-sm hover:bg-brand-dark hover:text-white transition-colors"
         >
-          Accedi
+          Autentifică-te
         </button>
       </LocalizedClientLink>
     </div>

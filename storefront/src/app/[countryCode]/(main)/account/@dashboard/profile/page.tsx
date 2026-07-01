@@ -12,8 +12,8 @@ import { retrieveCustomer } from "@lib/data/customer"
 import { account as t } from "@lib/i18n/account.it"
 
 export const metadata: Metadata = {
-  title: "Profilo",
-  description: "Visualizza e modifica i tuoi dati personali su Arredovita.",
+  title: "Profil",
+  description: "Vezi și modifică datele tale personale pe onlybestdevice.",
 }
 
 export default async function Profile() {

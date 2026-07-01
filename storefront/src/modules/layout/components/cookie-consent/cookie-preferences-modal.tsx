@@ -18,20 +18,20 @@ type Category = {
 const CATEGORIES: Category[] = [
   {
     key: "necessary",
-    title: "Cookie necessari",
+    title: "Cookie-uri necesare",
     description:
       "Esențiale pentru funcționarea site-ului: coș, autentificare, preferințe de regiune și securitate. Nu pot fi dezactivate.",
     alwaysOn: true,
   },
   {
     key: "analytics",
-    title: "Cookie analitici",
+    title: "Cookie-uri de analiză",
     description:
       "Colectează informații agregate despre utilizarea site-ului ca să îmbunătățim experiența. Nicio informație nu te identifică.",
   },
   {
     key: "marketing",
-    title: "Cookie di marketing",
+    title: "Cookie-uri de marketing",
     description:
       "Permit afișarea de reclame relevante pe alte site-uri în funcție de interesele tale. Se instalează doar după consimțământul tău explicit.",
   },
@@ -88,10 +88,10 @@ export default function CookiePreferencesModal() {
               <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-4">
                 <div>
                   <Dialog.Title className="font-serif text-2xl sm:text-3xl text-brand-dark leading-tight">
-                    Preferenze cookie
+                    Preferințe cookie
                   </Dialog.Title>
                   <p className="text-sm text-brand-dark/60 mt-2">
-                    Scegli quali categorie attivare. Maggiori dettagli nella{" "}
+                    Alege ce categorii să activezi. Mai multe detalii în{" "}
                     <LocalizedClientLink
                       href="/cookie"
                       className="underline font-bold hover:text-brand-accent"
@@ -132,7 +132,7 @@ export default function CookiePreferencesModal() {
                           role="switch"
                           aria-checked={isOn}
                           aria-label={`${cat.title} ${
-                            isOn ? "attivati" : "disattivati"
+                            isOn ? "activat" : "dezactivat"
                           }`}
                           className={clx(
                             "shrink-0 relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
@@ -173,7 +173,7 @@ export default function CookiePreferencesModal() {
                   className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-bold bg-brand-dark text-white hover:bg-brand-accent transition-colors order-1 sm:order-2"
                 >
                   <Check size={16} weight="bold" />
-                  Accetta tutti
+                  Acceptă toate
                 </button>
               </div>
             </Dialog.Panel>

@@ -52,7 +52,7 @@ const getRating = (product: HttpTypes.StoreProduct): number | null => {
 
 const getColorOption = (product: HttpTypes.StoreProduct) => {
   const opt = (product.options ?? []).find((o) =>
-    /color|colore|finitura|tessuto|materiale/i.test(o.title ?? "")
+    /colou?r|culoare/i.test(o.title ?? "")
   )
   return opt
 }

@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="riepilogo-ordine-${order.display_id}.pdf"`,
+      "Content-Disposition": `attachment; filename="rezumat-comanda-${order.display_id}.pdf"`,
       "Cache-Control": "private, no-store",
     },
   })

@@ -14,7 +14,7 @@ type ProductHelpProps = {
 
 export default function ProductHelp({ productTitle }: ProductHelpProps) {
   const waMessage = encodeURIComponent(
-    `Ciao! Vorrei informazioni sul prodotto "${productTitle}". Potete aiutarmi?`
+    `Bună! Aș dori informații despre produsul "${productTitle}". Mă puteți ajuta?`
   )
   const waUrl = `https://wa.me/${WA_NUMBER}?text=${waMessage}`
   const telUrl = `tel:${COMPANY.telefono.replace(/\s/g, "")}`
@@ -48,9 +48,9 @@ export default function ProductHelp({ productTitle }: ProductHelpProps) {
             >
               <WhatsappLogo size={28} weight="fill" className="shrink-0" />
               <div className="flex-1 min-w-0">
-                <span className="block font-bold">Scrivici su WhatsApp</span>
+                <span className="block font-bold">Scrie-ne pe WhatsApp</span>
                 <span className="block text-sm text-white/80">
-                  Risposta rapida
+                  Răspuns rapid
                 </span>
               </div>
               <ArrowUpRight
@@ -67,7 +67,7 @@ export default function ProductHelp({ productTitle }: ProductHelpProps) {
               <Phone size={24} className="shrink-0 text-brand-dark" />
               <div className="flex-1 min-w-0">
                 <span className="block font-bold text-brand-dark">
-                  Chiamaci
+                  Sună-ne
                 </span>
                 <span className="block text-sm text-brand-dark/60">
                   {COMPANY.telefono}
@@ -81,7 +81,7 @@ export default function ProductHelp({ productTitle }: ProductHelpProps) {
             </a>
 
             <p className="text-sm text-brand-dark/50 mt-1 text-center lg:text-left">
-              Oppure scrivici a{" "}
+              Sau scrie-ne la{" "}
               <a
                 href={`mailto:${COMPANY.email}`}
                 className="underline hover:text-brand-accent transition-colors"

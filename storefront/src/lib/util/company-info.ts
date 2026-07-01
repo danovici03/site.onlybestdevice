@@ -8,35 +8,35 @@
  *   rea           -> Nr. Reg. Comerțului (J..)
  *   amministratoreUnico -> Administrator
  *
- * TODO: completați datele legale reale (CUI, Reg. Com., capital social, sediu).
+ * TODO rămase: capital social real, administrator, strada + codul poștal al sediului.
  */
 
 export const COMPANY = {
-  // Identitate juridică (TODO: date reale)
-  ragioneSociale: "onlybestdevice S.R.L.",
+  // Identitate juridică
+  ragioneSociale: "ONLY BEST DEVICE S.R.L.",
   marchio: "onlybestdevice",
   formaGiuridica: "Societate cu răspundere limitată",
-  piva: "RO00000000",
-  codiceFiscale: "RO00000000",
-  rea: "J00/0000/2026",
-  capitaleSociale: "200 RON",
-  amministratoreUnico: "TODO",
+  piva: "43546040",
+  codiceFiscale: "43546040",
+  rea: "J06/26/2021",
+  capitaleSociale: "200 RON", // TODO: capital social real
+  amministratoreUnico: "TODO", // TODO: nume administrator
 
-  // Sediu social (TODO: adresă reală)
+  // Sediu social (TODO: stradă + cod poștal reale)
   sedeLegale: {
     via: "Str. Exemplu nr. 1",
-    cap: "010101",
-    citta: "București",
-    provincia: "B",
+    cap: "420000",
+    citta: "Bistrița",
+    provincia: "BN",
     paese: "România",
   },
 
-  // Punct de lucru / contact clienți
+  // Punct de lucru / contact clienți (TODO: stradă + cod poștal reale)
   sedeOperativa: {
     via: "Str. Exemplu nr. 1",
-    cap: "010101",
-    citta: "București",
-    provincia: "B",
+    cap: "420000",
+    citta: "Bistrița",
+    provincia: "BN",
     paese: "România",
   },
 
@@ -82,7 +82,7 @@ export function indirizzoOperativo(): string {
   return format(COMPANY.sedeOperativa)
 }
 
-/** @deprecated Usa `indirizzoLegale()` o `indirizzoOperativo()` — questa funzione punta alla sede legale per retro-compatibilità. */
+/** @deprecated Folosește `indirizzoLegale()` sau `indirizzoOperativo()` — această funcție trimite la sediul social pentru retro-compatibilitate. */
 export function indirizzoCompleto(): string {
   return indirizzoLegale()
 }

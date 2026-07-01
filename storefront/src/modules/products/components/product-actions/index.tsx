@@ -355,11 +355,11 @@ export default function ProductActions({
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-accent" />
               </span>
               <span className="text-brand-dark/80">
-                Affrettati, restano solo{" "}
+                Grăbește-te, au mai rămas doar{" "}
                 <span className="font-bold text-brand-dark">
-                  {lowStockCount} {lowStockCount === 1 ? "pezzo" : "pezzi"}
+                  {lowStockCount} {lowStockCount === 1 ? "bucată" : "bucăți"}
                 </span>{" "}
-                in magazzino.
+                în stoc.
               </span>
             </div>
             <div

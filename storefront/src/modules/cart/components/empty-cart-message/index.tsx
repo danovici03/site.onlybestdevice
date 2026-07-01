@@ -17,8 +17,8 @@ const EmptyCartMessage = () => {
         Coșul tău este gol
       </h1>
       <p className="text-brand-dark/60 mt-3 max-w-md">
-        Non hai ancora aggiunto nessun produs. Lasciati ispirare dalle nostre
-        collezioni e trova il pezzo perfetto per la tua casa.
+        Nu ai adăugat încă niciun produs. Descoperă gama noastră și găsește
+        device-ul perfect pentru tine.
       </p>
       <LocalizedClientLink href="/store" className="mt-8">
         <button

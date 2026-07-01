@@ -76,17 +76,17 @@ const StoreTemplate = async ({
       <div className="flex flex-col gap-4 lg:gap-6 lg:flex-row lg:items-end lg:justify-between mb-5 lg:mb-10">
         <header className="flex flex-col gap-2 sm:gap-4 max-w-2xl">
           <span className="hidden lg:inline text-xs uppercase tracking-[0.2em] font-bold text-brand-dark/50">
-            Catalogo
+            Catalog
           </span>
           <h1
             className="font-serif text-3xl sm:text-5xl lg:text-6xl text-brand-dark leading-[1.05]"
             data-testid="store-page-title"
           >
-            Tutto l'arredamento
+            Toate produsele
           </h1>
           <p className="text-brand-dark/60 font-medium text-sm sm:text-base leading-relaxed line-clamp-2 sm:line-clamp-none">
-            Esplora la collezione completa firmata Arredo Vita — pezzi
-            selezionati per ogni stanza della tua casa.
+            Explorează întreaga gamă onlybestdevice — device-uri alese cu grijă
+            pentru tine.
           </p>
         </header>
 

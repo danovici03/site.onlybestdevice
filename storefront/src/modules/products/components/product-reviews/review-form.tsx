@@ -145,10 +145,9 @@ const ReviewForm = ({ productId, variantId }: Props) => {
       )}
 
       <p className="text-xs text-brand-dark/50 leading-relaxed">
-        Pubblicando, accetti che il tuo nome (es. &quot;Matteo R.&quot;) e la
-        recensione siano visibili sulla pagina del prodotto. Le recensioni da
-        acquisti verificati vengono pubblicate immediatamente; le altre dopo
-        moderazione.
+        Prin publicare, ești de acord ca numele tău (ex. &quot;Andrei R.&quot;)
+        și recenzia să fie vizibile pe pagina produsului. Recenziile din
+        achiziții verificate sunt publicate imediat; celelalte după moderare.
       </p>
 
       <SubmitButton

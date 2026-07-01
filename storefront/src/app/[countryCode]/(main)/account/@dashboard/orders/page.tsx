@@ -8,8 +8,8 @@ import { account as t } from "@lib/i18n/account.it"
 import { clx } from "@medusajs/ui"
 
 export const metadata: Metadata = {
-  title: "I miei ordini",
-  description: "Panoramica dei tuoi ordini su Arredovita.",
+  title: "Comenzile mele",
+  description: "Prezentare generală a comenzilor tale pe onlybestdevice.",
 }
 
 const PAGE_SIZE = 12

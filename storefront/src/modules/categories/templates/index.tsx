@@ -68,7 +68,7 @@ export default function CategoryTemplate({
           href="/store"
           className="hover:text-brand-dark transition-colors"
         >
-          Catalogo
+          Catalog
         </LocalizedClientLink>
         {parents.map((parent) => (
           <span key={parent.id} className="flex items-center gap-2">

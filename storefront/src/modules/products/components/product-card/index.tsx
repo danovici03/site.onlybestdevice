@@ -18,10 +18,12 @@ const getBadge = (product: HttpTypes.StoreProduct): string | null => {
   if (isOutletProduct(product)) return OUTLET_BADGE_LABEL
   if (isShowroomProduct(product)) return SHOWROOM_BADGE_LABEL
   const tags = (product.tags ?? []).map((t) => t.value?.toLowerCase() ?? "")
-  if (tags.includes("new") || tags.includes("nuovo")) return "Nuovo"
+  if (tags.includes("new") || tags.includes("nuovo") || tags.includes("nou"))
+    return "Nou"
   if (tags.includes("bestseller") || tags.includes("best-seller"))
     return "Best seller"
-  if (tags.includes("sale") || tags.includes("saldo")) return "Saldo"
+  if (tags.includes("sale") || tags.includes("saldo") || tags.includes("reducere"))
+    return "Reducere"
   return null
 }
 
@@ -38,7 +40,7 @@ const getRating = (product: HttpTypes.StoreProduct): number | null => {
 
 const getColorOption = (product: HttpTypes.StoreProduct) => {
   return (product.options ?? []).find((o) =>
-    /color|colore|finitura|tessuto|materiale/i.test(o.title ?? "")
+    /colou?r|culoare/i.test(o.title ?? "")
   )
 }
 

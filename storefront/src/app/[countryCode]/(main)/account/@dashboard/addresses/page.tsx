@@ -7,8 +7,8 @@ import { retrieveCustomer } from "@lib/data/customer"
 import { account as t } from "@lib/i18n/account.it"
 
 export const metadata: Metadata = {
-  title: "Indirizzi",
-  description: "Gestisci i tuoi indirizzi di spedizione su Arredovita.",
+  title: "Adrese",
+  description: "Gestionează adresele tale de livrare pe onlybestdevice.",
 }
 
 export default async function Addresses(props: {

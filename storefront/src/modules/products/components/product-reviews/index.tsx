@@ -112,9 +112,9 @@ const LoginPrompt = ({ loginHref }: { loginHref: string }) => (
       Doar pentru clienții înregistrați
     </h3>
     <p className="text-sm text-brand-dark/60 leading-relaxed">
-      Per garantire l&apos;autenticità delle recensioni, solo i clienti con un
-      account possono pubblicare la loro opinione. Accedi o crea un account in
-      pochi secondi.
+      Pentru a garanta autenticitatea recenziilor, doar clienții cu cont pot
+      publica părerea lor. Autentifică-te sau creează-ți un cont în câteva
+      secunde.
     </p>
     <LocalizedClientLink
       href="/account"
@@ -167,9 +167,9 @@ const PolicyCard = () => (
     <p className="font-bold text-brand-dark/80 mb-1">
       Cum gestionăm recenziile
     </p>
-    Le recensioni sono pubblicate solo dopo l&apos;acquisto verificato o un
-    controllo manuale. Non eliminiamo o modifichiamo le recensioni negative se
-    rispettano le nostre linee guida.
+    Recenziile sunt publicate doar după o achiziție verificată sau o verificare
+    manuală. Nu ștergem și nu modificăm recenziile negative dacă respectă
+    regulile noastre.
   </div>
 )
 

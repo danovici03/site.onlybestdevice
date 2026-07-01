@@ -73,8 +73,8 @@ export default function FaqClient({ categories }: Props) {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cerca tra le domande frequenti…"
-          aria-label="Cerca nelle FAQ"
+          placeholder="Caută printre întrebările frecvente…"
+          aria-label="Caută în întrebările frecvente"
           className="w-full pl-12 pr-4 py-4 rounded-full border border-brand-dark/15 bg-white text-brand-dark placeholder:text-brand-dark/40 focus:outline-none focus:border-brand-dark transition-colors"
         />
       </div>
@@ -156,7 +156,7 @@ function FaqList({
   if (items.length === 0) {
     return (
       <p className="text-brand-dark/60 italic">
-        Stiamo lavorando per popolare questa sezione.
+        Lucrăm la completarea acestei secțiuni.
       </p>
     )
   }

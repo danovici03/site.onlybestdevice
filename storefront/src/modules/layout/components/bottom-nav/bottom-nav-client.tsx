@@ -43,7 +43,7 @@ export default function BottomNavClient({ cartIndicator }: Props) {
     { href: "/", label: "Home", icon: House },
     {
       href: "/store",
-      label: "Catalogo",
+      label: "Catalog",
       icon: Storefront,
       matchPrefixes: ["/store", "/categories", "/collections", "/products"],
     },

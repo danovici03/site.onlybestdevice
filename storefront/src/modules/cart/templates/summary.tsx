@@ -77,13 +77,13 @@ const Summary = ({ cart }: SummaryProps) => {
           },
           {
             Icon: ArrowUUpLeft,
-            title: "Reso entro 14 giorni",
-            note: "Restituzione gratuita, rimborso completo",
+            title: "Retur în 14 zile",
+            note: "Returnare gratuită, rambursare completă",
           },
           {
             Icon: ShieldCheck,
-            title: "Garanzia 2 anni",
-            note: "Inclusa con ogni acquisto",
+            title: "Garanție 2 ani",
+            note: "Inclusă la fiecare comandă",
           },
         ].map(({ Icon, title, note }) => (
           <li

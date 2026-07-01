@@ -62,10 +62,10 @@ const OrderDetail = ({ order }: { order: HttpTypes.StoreOrder }) => {
       : convertToLocale({
           amount,
           currency_code: order.currency_code,
-          locale: "it-IT",
+          locale: "ro-RO",
         })
 
-  const placedOn = new Date(order.created_at).toLocaleDateString("it-IT", DATE_FMT)
+  const placedOn = new Date(order.created_at).toLocaleDateString("ro-RO", DATE_FMT)
   const canReturn = isReturnable(order)
   const paymentLabel = (order.payment_collections?.[0]?.payments?.[0] as any)
     ?.provider_id

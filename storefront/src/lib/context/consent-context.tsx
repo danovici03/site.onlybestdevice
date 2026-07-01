@@ -64,7 +64,7 @@ type ConsentContextValue = {
   decided: boolean
   /** Current choices (defaults to necessary-only before a decision is made). */
   choices: ConsentChoices
-  /** True if a preference modal is being requested (e.g. user clicked "Gestisci preferenze"). */
+  /** True if a preference modal is being requested (e.g. user clicked "Gestionează preferințele"). */
   preferencesOpen: boolean
   /** Open the preferences modal manually (footer link, in-policy CTA). */
   openPreferences: () => void

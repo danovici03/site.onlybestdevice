@@ -25,7 +25,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
 
   const firstThumb = order.items?.find((i) => i.thumbnail)?.thumbnail
   const placedOn = new Date(order.created_at).toLocaleDateString(
-    "it-IT",
+    "ro-RO",
     DATE_FORMAT,
   )
 
@@ -67,7 +67,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
             {convertToLocale({
               amount: order.total,
               currency_code: order.currency_code,
-              locale: "it-IT",
+              locale: "ro-RO",
             })}
           </p>
           <span className="text-xs text-brand-accent group-hover:underline">

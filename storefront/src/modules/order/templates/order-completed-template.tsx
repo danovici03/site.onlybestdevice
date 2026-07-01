@@ -68,7 +68,7 @@ export default async function OrderCompletedTemplate({
   const isOnboarding = cookies.get("_medusa_onboarding")?.value === "true"
 
   const placedOn = new Date(order.created_at).toLocaleDateString(
-    "it-IT",
+    "ro-RO",
     DATE_FMT
   )
 
@@ -78,14 +78,14 @@ export default async function OrderCompletedTemplate({
       : convertToLocale({
           amount,
           currency_code: order.currency_code,
-          locale: "it-IT",
+          locale: "ro-RO",
         })
 
   const shippingMethod = order.shipping_methods?.[0]
   const payment = order.payment_collections?.[0]?.payments?.[0]
   const paymentTitle = paymentLabelFor(payment?.provider_id)
   const paidAt = payment?.created_at
-    ? new Date(payment.created_at).toLocaleString("it-IT", {
+    ? new Date(payment.created_at).toLocaleString("ro-RO", {
         day: "2-digit",
         month: "long",
         year: "numeric",

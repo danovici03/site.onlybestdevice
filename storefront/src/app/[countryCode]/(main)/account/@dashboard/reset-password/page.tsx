@@ -3,7 +3,7 @@ import { Metadata } from "next"
 import ResetPasswordForm from "@modules/account/components/reset-password"
 
 export const metadata: Metadata = {
-  title: "Reimposta password",
+  title: "Resetează parola",
 }
 
 type SearchParams = Promise<{ token?: string; email?: string }>

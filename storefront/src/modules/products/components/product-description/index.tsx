@@ -57,7 +57,7 @@ const ProductDescription = ({ text }: ProductDescriptionProps) => {
           aria-expanded={expanded}
           className="self-start inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.18em] font-bold text-brand-dark hover:text-brand-accent transition-colors"
         >
-          <span>{expanded ? "Mostra meno" : "Citește mai mult"}</span>
+          <span>{expanded ? "Arată mai puțin" : "Citește mai mult"}</span>
           <CaretDown
             size={12}
             weight="bold"

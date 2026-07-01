@@ -30,8 +30,8 @@ const CartTemplate = ({
                 Coșul tău
               </h1>
               <p className="text-brand-dark/60">
-                {itemCount} {itemCount === 1 ? "produs" : "produse"} pronti
-                per la consegna.
+                {itemCount} {itemCount === 1 ? "produs" : "produse"} gata de
+                livrare.
               </p>
             </div>
 

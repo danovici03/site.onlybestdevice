@@ -21,14 +21,14 @@ const COLORS = {
 }
 
 const COMPANY = {
-  brand: "Arredovita",
-  legalName: "Premium Transport S.r.l.",
-  vat: "P.IVA 03264470216",
-  rea: "REA BZ-245628",
-  sedeLegale: "Sede legale: Bolzano (BZ)",
-  sedeOperativa: "Sede operativa: Carpenedolo (BS)",
-  email: "info@arredovita.it",
-  website: "arredovita.it",
+  brand: "onlybestdevice",
+  legalName: "ONLY BEST DEVICE S.R.L.",
+  vat: "CUI 43546040",
+  rea: "Reg. Com. J06/26/2021",
+  sedeLegale: "Sediu social: Bistrița (BN)",
+  sedeOperativa: "Punct de lucru: Bistrița (BN)",
+  email: "contact@onlybestdevice.ro",
+  website: "onlybestdevice.ro",
 }
 
 const styles = StyleSheet.create({
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
 const formatMoney = (amount: number | null | undefined, currency: string) => {
   if (amount == null) return "—"
   try {
-    return new Intl.NumberFormat("it-IT", {
+    return new Intl.NumberFormat("ro-RO", {
       style: "currency",
       currency,
     }).format(amount)
@@ -157,7 +157,7 @@ const formatMoney = (amount: number | null | undefined, currency: string) => {
 }
 
 const formatDate = (iso: string | Date) =>
-  new Date(iso).toLocaleDateString("it-IT", {
+  new Date(iso).toLocaleDateString("ro-RO", {
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -210,13 +210,13 @@ export const InvoiceDocument = ({
   const money = (n: number | null | undefined) => formatMoney(n, currency)
 
   return (
-    <Document title={`Riepilogo ordine #${order.display_id}`}>
+    <Document title={`Rezumat comandă #${order.display_id}`}>
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.brandLockup}>
-              ARREDO VITA<Text style={styles.brandAccent}>.</Text>
+              onlybestdevice<Text style={styles.brandAccent}>.</Text>
             </Text>
           </View>
           <View style={styles.companyMeta}>
@@ -231,21 +231,21 @@ export const InvoiceDocument = ({
 
         {/* Doc title + meta */}
         <View style={styles.docTitleRow}>
-          <Text style={styles.docTitle}>Riepilogo ordine</Text>
+          <Text style={styles.docTitle}>Rezumat comandă</Text>
           <View style={styles.docMeta}>
             <Text>
-              Numero ordine:{" "}
+              Număr comandă:{" "}
               <Text style={styles.docMetaValue}>#{order.display_id}</Text>
             </Text>
             <Text>
-              Data ordine:{" "}
+              Data comenzii:{" "}
               <Text style={styles.docMetaValue}>
                 {formatDate(order.created_at)}
               </Text>
             </Text>
             {order.email ? (
               <Text>
-                Cliente:{" "}
+                Client:{" "}
                 <Text style={styles.docMetaValue}>{order.email}</Text>
               </Text>
             ) : null}
@@ -255,11 +255,11 @@ export const InvoiceDocument = ({
         {/* Addresses */}
         <View style={styles.blocksRow}>
           <AddressBlock
-            label="Indirizzo di fatturazione"
+            label="Adresă de facturare"
             address={order.billing_address}
           />
           <AddressBlock
-            label="Indirizzo di spedizione"
+            label="Adresă de livrare"
             address={order.shipping_address}
           />
         </View>
@@ -267,10 +267,10 @@ export const InvoiceDocument = ({
         {/* Items table */}
         <View style={styles.table}>
           <View style={styles.th}>
-            <Text style={styles.cellProduct}>Prodotto</Text>
-            <Text style={styles.cellQty}>Q.tà</Text>
-            <Text style={styles.cellUnit}>Prezzo unit.</Text>
-            <Text style={styles.cellTotal}>Totale</Text>
+            <Text style={styles.cellProduct}>Produs</Text>
+            <Text style={styles.cellQty}>Cant.</Text>
+            <Text style={styles.cellUnit}>Preț unit.</Text>
+            <Text style={styles.cellTotal}>Total</Text>
           </View>
           {(order.items ?? []).map((item) => (
             <View key={item.id} style={styles.tr}>
@@ -290,27 +290,27 @@ export const InvoiceDocument = ({
         {/* Totals */}
         <View style={styles.totalsBox}>
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Subtotale</Text>
+            <Text style={styles.totalLabel}>Subtotal</Text>
             <Text style={styles.totalValue}>{money(order.subtotal)}</Text>
           </View>
           {order.discount_total > 0 && (
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Sconto</Text>
+              <Text style={styles.totalLabel}>Reducere</Text>
               <Text style={styles.totalValue}>
                 - {money(order.discount_total)}
               </Text>
             </View>
           )}
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Spedizione</Text>
+            <Text style={styles.totalLabel}>Livrare</Text>
             <Text style={styles.totalValue}>{money(order.shipping_total)}</Text>
           </View>
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>IVA</Text>
+            <Text style={styles.totalLabel}>TVA</Text>
             <Text style={styles.totalValue}>{money(order.tax_total)}</Text>
           </View>
           <View style={styles.totalGrand}>
-            <Text>Totale</Text>
+            <Text>Total</Text>
             <Text>{money(order.total)}</Text>
           </View>
         </View>
@@ -322,9 +322,8 @@ export const InvoiceDocument = ({
             {COMPANY.website}
           </Text>
           <Text style={styles.footerDisclaimer}>
-            Documento di riepilogo dell&apos;acquisto, non valido ai fini
-            fiscali. La fattura elettronica, se richiesta, viene inviata
-            separatamente tramite il Sistema di Interscambio.
+            Document de rezumat al comenzii, fără valoare fiscală. Factura
+            fiscală, dacă este solicitată, se emite și se trimite separat.
           </Text>
         </View>
       </Page>
