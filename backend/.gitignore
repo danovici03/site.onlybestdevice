@@ -24,3 +24,5 @@ build
 !.yarn/versions
 
 .medusa
+# raport generat de extract-product-specs
+specs-report.csv

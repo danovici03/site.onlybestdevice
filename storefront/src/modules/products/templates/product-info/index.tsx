@@ -10,7 +10,6 @@ import {
 } from "@lib/util/showroom"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import ProductDescription from "@modules/products/components/product-description"
 import ProductRating from "@modules/products/components/product-rating"
 import type { ReviewStatsDTO } from "@lib/data/reviews"
 import { Storefront, Tag } from "@phosphor-icons/react/dist/ssr"
@@ -120,9 +119,6 @@ const ProductInfo = ({ product, reviewStats }: ProductInfoProps) => {
             </p>
           </div>
         </div>
-      )}
-      {product.description && (
-        <ProductDescription text={product.description} />
       )}
     </div>
   )
