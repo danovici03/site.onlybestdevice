@@ -49,9 +49,10 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
         <div className="flex [touch-action:pan-y_pinch-zoom]">
           {slides.map((slide, index) => (
             <div key={index} className="flex-none w-full min-w-0">
-              {/* Înalt, dar nu full-screen: lasă o secțiune din conținutul de
-                  mai jos vizibilă „peste fold", ca să fie clar că pagina continuă. */}
-              <div className="relative h-[60svh] min-h-[26rem] sm:h-[80svh] sm:min-h-[34rem] w-full isolate">
+              {/* Full-screen pe orice device: 100svh minus bara de sus, ca
+                  slide-ul să se termine fix la marginea de jos a ecranului.
+                  svh (nu vh) ca să nu sară la apariția barelor de browser mobil. */}
+              <div className="relative h-[calc(100svh-var(--topbar-h))] min-h-[30rem] w-full isolate">
                 <Image
                   loader={isUnsplash(slide.image) ? unsplashLoader : undefined}
                   src={slide.image}
@@ -79,7 +80,9 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
                   }`}
                   aria-hidden={index !== selectedIndex}
                 >
-                  <div className="w-full max-w-[1920px] mx-auto px-6 sm:px-12 lg:px-20 pb-24 sm:pb-28">
+                  {/* Sub lg e vizibilă BottomNav-ul fix (~4.5rem + safe area),
+                      deci titlul/CTA au nevoie de spațiu suplimentar dedesubt. */}
+                  <div className="w-full max-w-[1920px] mx-auto px-6 sm:px-12 lg:px-20 pb-[calc(8rem+env(safe-area-inset-bottom))] lg:pb-28">
                     <h2 className="font-sans font-black uppercase text-4xl sm:text-6xl lg:text-7xl text-white leading-[1.05] tracking-tight mb-6 sm:mb-8 max-w-4xl">
                       {slide.titleLine1}
                       {slide.titleLine2 && (
@@ -128,7 +131,7 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
           </button>
 
           {/* Indicatori (dots) */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3 pointer-events-none z-30">
+          <div className="absolute bottom-[calc(6rem+env(safe-area-inset-bottom))] lg:bottom-8 left-1/2 -translate-x-1/2 flex gap-3 pointer-events-none z-30">
             {slides.map((_, index) => (
               <div
                 key={index}

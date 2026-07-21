@@ -8,8 +8,9 @@ import {
   getPhoneColorSwatches,
   getPhoneSpec,
 } from "@lib/util/phone-group"
+import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
-import { Star } from "@phosphor-icons/react/dist/ssr"
+import { Star, Truck } from "@phosphor-icons/react/dist/ssr"
 import Image from "next/image"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -93,6 +94,22 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
   const thumb = product.thumbnail ?? product.images?.[0]?.url
   const isSale = cheapestPrice?.price_type === "sale"
   const inStock = isInStock(product)
+
+  // Cât economisește clientul față de prețul de listă (doar când e reducere).
+  const savedAmount =
+    cheapestPrice &&
+    typeof cheapestPrice.original_price_number === "number" &&
+    typeof cheapestPrice.calculated_price_number === "number"
+      ? cheapestPrice.original_price_number -
+        cheapestPrice.calculated_price_number
+      : 0
+  const savedLabel =
+    savedAmount > 0
+      ? convertToLocale({
+          amount: savedAmount,
+          currency_code: cheapestPrice!.currency_code,
+        })
+      : null
 
   return (
     <LocalizedClientLink
@@ -197,26 +214,42 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
               )}
             </div>
           ) : null}
-          {cheapestPrice && (
-            <div className="mt-auto flex items-baseline gap-2 pt-2">
-              <span
-                className={`text-lg font-bold ${
-                  isSale ? "text-brand-accent" : "text-brand-dark"
-                }`}
-                data-testid="price"
-              >
-                {cheapestPrice.calculated_price}
-              </span>
-              {isSale && (
+          <div className="mt-auto flex flex-col gap-1 pt-2">
+            {cheapestPrice && (
+              <div className="flex items-baseline gap-2">
                 <span
-                  className="text-xs font-medium text-brand-dark/40 line-through"
-                  data-testid="original-price"
+                  className={`text-lg font-bold ${
+                    isSale ? "text-brand-accent" : "text-brand-dark"
+                  }`}
+                  data-testid="price"
                 >
-                  {cheapestPrice.original_price}
+                  {cheapestPrice.calculated_price}
                 </span>
-              )}
-            </div>
-          )}
+                {isSale && (
+                  <span
+                    className="text-xs font-medium text-brand-dark/40 line-through"
+                    data-testid="original-price"
+                  >
+                    {cheapestPrice.original_price}
+                  </span>
+                )}
+              </div>
+            )}
+            {savedLabel && (
+              <span
+                className="inline-flex w-fit items-center rounded-full bg-brand-accent/10 px-2 py-0.5 text-[11px] font-bold text-brand-accent"
+                data-testid="savings"
+              >
+                Economisești {savedLabel}
+              </span>
+            )}
+            {inStock && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-brand-dark/55">
+                <Truck size={13} weight="bold" className="shrink-0" />
+                Livrare estimativă 24/48 h
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </LocalizedClientLink>

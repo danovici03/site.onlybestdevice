@@ -51,7 +51,7 @@ const TopBar = () => {
   const { Icon, text } = messages[index]
 
   return (
-    <div className="bg-brand-dark text-white/90 text-[11px] sm:text-xs py-2.5 px-4 sm:px-8 flex items-center justify-between font-medium">
+    <div className="h-[var(--topbar-h)] bg-brand-dark text-white/90 text-[11px] sm:text-xs px-4 sm:px-8 flex items-center justify-between font-medium">
       <div className="hidden md:flex items-center gap-5">
         <a
           href={COMPANY.social.facebook}

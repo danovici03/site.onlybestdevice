@@ -2,6 +2,12 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+:root {
+  /* Înălțimea barei de sus (TopBar). Sursă unică — hero-ul o scade din 100svh
+     ca să se termine exact la marginea de jos a ecranului. */
+  --topbar-h: 2.5rem;
+}
+
 @layer utilities {
   /* Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {
