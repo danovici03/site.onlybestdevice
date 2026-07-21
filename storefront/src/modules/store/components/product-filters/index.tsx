@@ -13,9 +13,19 @@ import {
   type SelectedFilters,
 } from "@lib/util/product-filters"
 import { clx } from "@medusajs/ui"
-import { Funnel, X } from "@phosphor-icons/react/dist/ssr"
+import { CaretDown, CaretUp, Funnel, X } from "@phosphor-icons/react/dist/ssr"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
+
+/**
+ * Câte valori arătăm inițial per fațetă (restul intră sub „Vezi mai multe”).
+ * Fațetele lipsă de aici se afișează integral — stocarea și RAM-ul au oricum
+ * puține valori și sunt sortate crescător, deci n-are sens să le tăiem.
+ */
+const COLLAPSE_AFTER: Partial<Record<FilterKey, number>> = {
+  brand: 6,
+  color: 8,
+}
 
 type ProductFiltersProps = {
   facets: Facets
@@ -210,6 +220,7 @@ const ProductFilters = ({ facets, selected, resultCount }: ProductFiltersProps) 
                   title={FILTER_LABELS[key]}
                   values={facets[key]}
                   isColor={key === "color"}
+                  collapseAfter={COLLAPSE_AFTER[key]}
                   selectedValues={draft[key]}
                   onToggle={(v) => toggleDraft(key, v)}
                 />
@@ -243,6 +254,7 @@ type FacetSectionProps = {
   title: string
   values: FacetValue[]
   isColor: boolean
+  collapseAfter?: number
   selectedValues: string[]
   onToggle: (value: string) => void
 }
@@ -251,11 +263,27 @@ const FacetSection = ({
   title,
   values,
   isColor,
+  collapseAfter,
   selectedValues,
   onToggle,
 }: FacetSectionProps) => {
+  const [expanded, setExpanded] = useState(false)
+
   const isSelected = (v: string) =>
     selectedValues.some((x) => x.toLowerCase() === v.toLowerCase())
+
+  // Când e restrânsă, arătăm primele N (cele mai populare) plus valorile deja
+  // bifate care ar cădea dincolo de limită — altfel selecția ar dispărea vizual.
+  const collapsible = collapseAfter != null && values.length > collapseAfter + 1
+  const visible = useMemo(() => {
+    if (!collapsible || expanded) return values
+    const head = values.slice(0, collapseAfter)
+    const tail = values.slice(collapseAfter).filter((v) => isSelected(v.value))
+    return [...head, ...tail]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values, collapsible, expanded, collapseAfter, selectedValues])
+
+  const hidden = values.length - visible.length
 
   return (
     <section className="border-b border-brand-dark/10 py-4 first:pt-0 last:border-b-0">
@@ -263,7 +291,7 @@ const FacetSection = ({
         {title}
       </h3>
       <div className="flex flex-wrap gap-2">
-        {values.map((v) => {
+        {visible.map((v) => {
           const active = isSelected(v.value)
           if (isColor) {
             return (
@@ -308,6 +336,27 @@ const FacetSection = ({
           )
         })}
       </div>
+
+      {collapsible && (expanded || hidden > 0) && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-brand-dark/60 underline-offset-2 transition-colors hover:text-brand-accent hover:underline"
+        >
+          {expanded ? (
+            <>
+              <CaretUp size={12} weight="bold" />
+              Vezi mai puțin
+            </>
+          ) : (
+            <>
+              <CaretDown size={12} weight="bold" />
+              Vezi încă {hidden}
+            </>
+          )}
+        </button>
+      )}
     </section>
   )
 }
