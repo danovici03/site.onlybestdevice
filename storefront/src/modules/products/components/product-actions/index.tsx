@@ -22,7 +22,7 @@ import {
 } from "@phosphor-icons/react/dist/ssr"
 import { COMPANY } from "@lib/util/company-info"
 import { isOutletProduct } from "@lib/util/outlet"
-import KlarnaMessaging from "@modules/products/components/klarna-messaging"
+import Installments from "@modules/products/components/installments"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import ProductUpgrades, {
   UpgradeSelection,
@@ -459,6 +459,13 @@ export default function ProductActions({
           {isBuyingNow ? "Se redirecționează…" : "Cumpără acum"}
         </button>
 
+        {selectedPrice?.calculated_price_number ? (
+          <Installments
+            amount={selectedPrice.calculated_price_number}
+            currency={selectedPrice.currency_code}
+          />
+        ) : null}
+
         <a
           href={`https://wa.me/${COMPANY.whatsapp.replace(/[^\d]/g, "")}?text=${encodeURIComponent(`Bună! Aș dori informații despre produsul "${product.title}".`)}`}
           target="_blank"
@@ -469,13 +476,6 @@ export default function ProductActions({
           <span className="font-bold text-brand-dark">Ai întrebări?</span>
           <span className="text-brand-dark/50">Scrie-ne pe WhatsApp</span>
         </a>
-
-        {selectedPrice?.calculated_price_number ? (
-          <KlarnaMessaging
-            amount={selectedPrice.calculated_price_number}
-            currency={selectedPrice.currency_code ?? "eur"}
-          />
-        ) : null}
 
         {addError && (
           <p
