@@ -9,8 +9,13 @@ import {
   getPhoneSpec,
 } from "@lib/util/phone-group"
 import { convertToLocale } from "@lib/util/money"
+import {
+  formatLei,
+  lowestOffer,
+  supportsInstallments,
+} from "@lib/util/installments"
 import { HttpTypes } from "@medusajs/types"
-import { Star, Truck } from "@phosphor-icons/react/dist/ssr"
+import { CreditCard, Star, Truck } from "@phosphor-icons/react/dist/ssr"
 import Image from "next/image"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -111,6 +116,15 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
         })
       : null
 
+  // Rata minimă (cel mai lung termen). Se ascunde sub pragul de finanțare, deci
+  // accesoriile ieftine nu promit rate. Vezi `installments.ts`.
+  const installment =
+    cheapestPrice &&
+    typeof cheapestPrice.calculated_price_number === "number" &&
+    supportsInstallments(cheapestPrice.currency_code)
+      ? lowestOffer(cheapestPrice.calculated_price_number)
+      : null
+
   return (
     <LocalizedClientLink
       href={`/products/${product.handle}`}
@@ -147,7 +161,7 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
             </span>
           )}
         </div>
-        <div className="flex flex-1 flex-col gap-1.5 px-1 pt-3">
+        <div className="flex flex-1 flex-col gap-1 sm:gap-1.5 px-1 pt-2.5 sm:pt-3">
           <span
             className={`inline-flex items-center gap-1.5 text-[11px] font-bold ${
               inStock ? "text-emerald-600" : "text-brand-dark/40"
@@ -161,7 +175,7 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
             {inStock ? "În stoc" : "Stoc epuizat"}
           </span>
           <h3
-            className="font-bold text-brand-dark leading-tight line-clamp-2 group-hover:text-brand-accent transition-colors"
+            className="text-sm sm:text-base font-bold text-brand-dark leading-tight line-clamp-2 group-hover:text-brand-accent transition-colors"
             data-testid="product-title"
           >
             {product.title}
@@ -178,7 +192,7 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
                   key={s.color}
                   title={s.color}
                   aria-label={s.color}
-                  className={`h-5 w-5 rounded-full shrink-0 ${
+                  className={`h-4 w-4 sm:h-5 sm:w-5 rounded-full shrink-0 ${
                     s.isCurrent
                       ? "ring-2 ring-offset-1 ring-brand-dark/60 border border-white"
                       : "border border-brand-dark/15"
@@ -214,11 +228,39 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
               )}
             </div>
           ) : null}
+
+          {/* Livrare + rate, sub culori. Rămân aici (nu în blocul de jos) ca să
+              nu concureze vizual cu prețul, care e ancora cardului. */}
+          {(inStock || installment) && (
+            <div className="mt-1.5 flex flex-col gap-1">
+              {inStock && (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-brand-dark/55">
+                  <Truck size={13} weight="bold" className="shrink-0" />
+                  {/* Pe mobil cardul e îngust — scurtăm eticheta, nu o tăiem. */}
+                  <span className="truncate">
+                    Livrare
+                    <span className="hidden sm:inline"> estimativă</span> 24/48 h
+                  </span>
+                </span>
+              )}
+              {installment && (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-brand-dark/55">
+                  <CreditCard size={13} weight="bold" className="shrink-0" />
+                  Rate de la{" "}
+                  <span className="font-bold text-brand-dark">
+                    {formatLei(installment.monthly)}
+                  </span>
+                  /lună
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="mt-auto flex flex-col gap-1 pt-2">
             {cheapestPrice && (
               <div className="flex items-baseline gap-2">
                 <span
-                  className={`text-lg font-bold ${
+                  className={`text-base sm:text-lg font-bold ${
                     isSale ? "text-brand-accent" : "text-brand-dark"
                   }`}
                   data-testid="price"
@@ -241,12 +283,6 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
                 data-testid="savings"
               >
                 Economisești {savedLabel}
-              </span>
-            )}
-            {inStock && (
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-brand-dark/55">
-                <Truck size={13} weight="bold" className="shrink-0" />
-                Livrare estimativă 24/48 h
               </span>
             )}
           </div>

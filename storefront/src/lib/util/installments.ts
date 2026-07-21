@@ -109,5 +109,20 @@ export function bestOffer(
   return offers.reduce((a, b) => (b.monthly < a.monthly ? b : a))
 }
 
+/**
+ * Cea mai mică rată lunară posibilă pentru sumă, indiferent de termen — adică
+ * la cel mai lung termen disponibil. Pentru cardul din listări, unde afișăm o
+ * singură cifră „de la”.
+ */
+export function lowestOffer(amount: number): InstallmentOffer | null {
+  const terms = availableTerms(amount)
+  if (!terms.length) return null
+  return bestOffer(amount, terms[terms.length - 1])
+}
+
+/** Ratele se afișează doar pentru RON. */
+export const supportsInstallments = (currency?: string | null): boolean =>
+  !currency || currency.toLowerCase() === INSTALLMENT_CURRENCY
+
 export const formatLei = (n: number): string =>
   `${n.toLocaleString("ro-RO")} lei`
