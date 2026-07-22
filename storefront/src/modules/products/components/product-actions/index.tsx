@@ -21,7 +21,6 @@ import {
   XLogo,
 } from "@phosphor-icons/react/dist/ssr"
 import { COMPANY } from "@lib/util/company-info"
-import { isOutletProduct } from "@lib/util/outlet"
 import {
   formatLei,
   lowestOffer,
@@ -185,7 +184,13 @@ export default function ProductActions({
       params.delete("v_id")
     }
 
-    router.replace(pathname + "?" + params.toString())
+    // Păstrăm hash-ul (ex. #reviews) — altfel replace-ul îl șterge și
+    // ancora nu mai funcționează la încărcarea paginii. scroll: false ca să
+    // nu sară pagina la ancoră la fiecare schimbare de variantă.
+    const qs = params.toString()
+    router.replace(pathname + (qs ? "?" + qs : "") + window.location.hash, {
+      scroll: false,
+    })
   }, [selectedVariant, isValidVariant])
 
   const inStock = useMemo(() => {
@@ -456,8 +461,8 @@ export default function ProductActions({
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row items-stretch gap-3">
-          <div className="flex items-center justify-between bg-brand-light rounded-full px-2 py-2 sm:py-0 sm:w-36">
+        <div className="flex items-stretch gap-3">
+          <div className="flex items-center bg-brand-light rounded-full px-2 shrink-0">
             <button
               type="button"
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -500,11 +505,6 @@ export default function ProductActions({
               <ShoppingBag size={18} weight="bold" />
             )}
             <span>{ctaLabel}</span>
-            {selectedPrice && inStock && isValidVariant && (
-              <span className="opacity-70">
-                · {selectedPrice.calculated_price}
-              </span>
-            )}
           </button>
         </div>
 
@@ -542,41 +542,41 @@ export default function ProductActions({
           </p>
         )}
 
-        <ul className="flex flex-col gap-2 text-sm">
+        <ul className="grid grid-cols-2 gap-2 text-sm">
           {[
             {
               Icon: MapPin,
-              title: "Verificare la livrare",
-              note: "Deschizi coletul înainte de a plăti",
+              title: "Verificare colet",
+              note: "Plătești după ce verifici",
             },
             {
               Icon: Recycle,
               title: "Livrare rapidă",
-              note: "Curier în 1–3 zile lucrătoare",
+              note: "Curier în 1–3 zile",
             },
             {
               Icon: ArrowUUpLeft,
-              title: "Retur în 14 zile",
-              note: "Returnare gratuită, rambursare completă",
+              title: "Retur 14 zile",
+              note: "Gratuit, bani înapoi",
             },
             {
               Icon: ShieldCheck,
-              title: isOutletProduct(product)
-                ? "Garanție 12 luni"
-                : "Garanție 24 de luni",
-              note: isOutletProduct(product)
-                ? "Conform legislației în vigoare"
-                : "Inclusă la fiecare achiziție",
+              title: "Garanție 24 luni",
+              note: "Inclusă în preț",
             },
             {
               Icon: Storefront,
               title: "Ridicare personală",
-              note: "Gata în 1–2 zile lucrătoare",
+              note: "Gata în 1–2 zile",
             },
-          ].map(({ Icon, title, note }) => (
+          ].map(({ Icon, title, note }, i, arr) => (
             <li
               key={title}
-              className="flex items-center gap-3 px-4 py-3 rounded-full bg-brand-light"
+              className={clx(
+                "flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-brand-light",
+                // Cu număr impar de beneficii, ultimul ocupă tot rândul.
+                i === arr.length - 1 && arr.length % 2 === 1 && "col-span-2"
+              )}
             >
               <Icon
                 size={18}
@@ -584,7 +584,7 @@ export default function ProductActions({
                 className="text-brand-dark shrink-0"
               />
               <span className="flex-1 min-w-0">
-                <span className="block font-bold text-brand-dark leading-tight">
+                <span className="block text-[13px] font-bold text-brand-dark leading-tight">
                   {title}
                 </span>
                 <span className="block text-xs text-brand-dark/60 leading-tight mt-0.5 truncate">

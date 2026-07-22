@@ -80,26 +80,28 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
         </div>
 
         <div className="mt-20 lg:mt-28">
-          <ProductTabs product={product} />
+          <ProductTabs
+            product={product}
+            reviewCount={reviewStats?.total}
+            reviews={
+              <Suspense
+                fallback={
+                  <div className="h-48 rounded-3xl bg-brand-light animate-pulse" />
+                }
+              >
+                <ProductReviews
+                  productId={product.id}
+                  countryCode={countryCode}
+                  sort={reviewSort}
+                  page={reviewPage}
+                />
+              </Suspense>
+            }
+          />
         </div>
       </section>
 
       <ProductCompare product={product} />
-
-      <Suspense
-        fallback={
-          <div className="content-container my-16 lg:my-24">
-            <div className="h-64 rounded-[2rem] bg-brand-light animate-pulse" />
-          </div>
-        }
-      >
-        <ProductReviews
-          productId={product.id}
-          countryCode={countryCode}
-          sort={reviewSort}
-          page={reviewPage}
-        />
-      </Suspense>
 
       <section
         className="content-container my-16 lg:my-24"

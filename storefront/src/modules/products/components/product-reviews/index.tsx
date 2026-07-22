@@ -51,27 +51,19 @@ const ProductReviews = async ({
 
   const loginHref = `/${countryCode}/account?redirect=/${countryCode}#reviews`
 
+  // Randat ca panou în acordeonul „Detalii produs" (product-tabs) — titlul și
+  // ancora #reviews stau pe <details>, aici doar conținutul.
   return (
-    <section
-      id="reviews"
-      className="content-container my-12 lg:my-24 scroll-mt-28"
-      data-testid="product-reviews"
-    >
-      <header className="flex items-end justify-between mb-6 lg:mb-8 flex-wrap gap-3">
-        <h2 className="font-serif text-2xl lg:text-4xl text-brand-dark">
-          Recenziile clienților
-        </h2>
-        {data.stats.total > 0 && (
-          <ReviewSortControl current={normalizedSort} />
-        )}
-      </header>
-
+    <div data-testid="product-reviews">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         <div className="lg:col-span-7 flex flex-col gap-6 lg:gap-8">
           <ReviewSummary stats={data.stats} />
 
           {data.stats.total > 0 && (
             <div className="flex flex-col">
+              <div className="flex justify-end mb-2">
+                <ReviewSortControl current={normalizedSort} />
+              </div>
               {data.reviews.map((r) => (
                 <ReviewItem key={r.id} review={r} />
               ))}
@@ -99,7 +91,7 @@ const ProductReviews = async ({
           </div>
         </aside>
       </div>
-    </section>
+    </div>
   )
 }
 
@@ -201,11 +193,11 @@ const Pagination = ({
           className="px-4 py-2 rounded-full border border-brand-dark/10 hover:border-brand-accent text-sm transition-colors"
           scroll={false}
         >
-          Precedente
+          Anterioare
         </Link>
       )}
       <span className="px-4 py-2 text-sm text-brand-dark/60">
-        Pagina {page} di {totalPages}
+        Pagina {page} din {totalPages}
       </span>
       {page < totalPages && (
         <Link
@@ -213,7 +205,7 @@ const Pagination = ({
           className="px-4 py-2 rounded-full border border-brand-dark/10 hover:border-brand-accent text-sm transition-colors"
           scroll={false}
         >
-          Successiva
+          Următoarele
         </Link>
       )}
     </nav>

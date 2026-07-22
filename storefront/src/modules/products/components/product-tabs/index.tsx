@@ -6,8 +6,13 @@ import {
   Truck,
 } from "@phosphor-icons/react/dist/ssr"
 
+import OpenOnHash from "./open-on-hash"
+
 type ProductTabsProps = {
   product: HttpTypes.StoreProduct
+  /** Panoul de recenzii (server component cu date async), randat ca tab. */
+  reviews?: React.ReactNode
+  reviewCount?: number
 }
 
 // Deschiderea unui panou îl închide pe celelalte (comportamentul vechi de
@@ -15,28 +20,42 @@ type ProductTabsProps = {
 // deschise — degradare acceptabilă.
 const ACCORDION_GROUP = "product-details"
 
-const ProductTabs = ({ product }: ProductTabsProps) => {
+const ProductTabs = ({ product, reviews, reviewCount }: ProductTabsProps) => {
   const paragraphs = toParagraphs(product.description)
 
   return (
-    <section className="bg-brand-light rounded-[2.5rem] p-6 sm:p-8 lg:p-12">
-      <h2 className="font-serif text-3xl lg:text-4xl text-brand-dark mb-8">
+    <section className="bg-brand-light rounded-3xl sm:rounded-[2.5rem] p-2.5 sm:p-8 lg:p-12">
+      <h2 className="font-serif text-3xl lg:text-4xl text-brand-dark px-3.5 pt-3.5 mb-5 sm:px-0 sm:pt-0 sm:mb-8">
         Detalii produs
       </h2>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2 sm:gap-3">
+        <AccordionItem title="Specificații" defaultOpen>
+          <SpecsPanel product={product} />
+        </AccordionItem>
         {paragraphs.length > 0 && (
-          <AccordionItem title="Descriere" defaultOpen>
+          <AccordionItem title="Descriere">
             <DescriptionPanel paragraphs={paragraphs} />
           </AccordionItem>
         )}
-        <AccordionItem title="Specificații" defaultOpen={!paragraphs.length}>
-          <SpecsPanel product={product} />
-        </AccordionItem>
         <AccordionItem title="Livrare & Retur">
           <ShippingPanel />
         </AccordionItem>
+        {reviews && (
+          <AccordionItem
+            title={
+              reviewCount
+                ? `Recenziile clienților (${reviewCount})`
+                : "Recenziile clienților"
+            }
+            id="reviews"
+          >
+            {reviews}
+          </AccordionItem>
+        )}
       </div>
+
+      <OpenOnHash />
     </section>
   )
 }
@@ -44,19 +63,24 @@ const ProductTabs = ({ product }: ProductTabsProps) => {
 const AccordionItem = ({
   title,
   defaultOpen,
+  id,
   children,
 }: {
   title: string
   defaultOpen?: boolean
+  id?: string
   children: React.ReactNode
 }) => (
   <details
     name={ACCORDION_GROUP}
     open={defaultOpen}
-    className="group bg-white rounded-[2rem] overflow-hidden"
+    id={id}
+    className="group bg-white rounded-[1.25rem] sm:rounded-[2rem] overflow-hidden scroll-mt-28"
   >
-    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 lg:px-10 lg:py-7 [&::-webkit-details-marker]:hidden">
-      <span className="font-bold text-brand-dark text-lg">{title}</span>
+    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5 lg:px-10 lg:py-7 [&::-webkit-details-marker]:hidden">
+      <span className="font-bold text-brand-dark text-base sm:text-lg">
+        {title}
+      </span>
       <CaretDown
         size={18}
         weight="bold"
@@ -64,7 +88,7 @@ const AccordionItem = ({
         className="shrink-0 text-brand-dark/40 transition-transform duration-200 group-open:rotate-180"
       />
     </summary>
-    <div className="px-6 pb-6 lg:px-10 lg:pb-9">{children}</div>
+    <div className="px-4 pb-5 sm:px-6 sm:pb-6 lg:px-10 lg:pb-9">{children}</div>
   </details>
 )
 
