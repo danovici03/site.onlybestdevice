@@ -120,11 +120,11 @@ export default function FaqClient({ categories }: Props) {
           </div>
         ) : (
           <div className="text-center py-12 text-brand-dark/60">
-            <p className="text-lg mb-2">Nessuna domanda corrisponde a “{query}”.</p>
+            <p className="text-lg mb-2">Nicio întrebare nu corespunde cu „{query}”.</p>
             <p className="text-sm">
-              Prova con un altro termine o{" "}
+              Încearcă alt termen sau{" "}
               <a href="/contact" className="text-brand-accent hover:underline">
-                contattaci direttamente
+                contactează-ne direct
               </a>
               .
             </p>
@@ -140,7 +140,7 @@ export default function FaqClient({ categories }: Props) {
           <FaqList items={activeCategory.items} idPrefix={activeCategory.slug} />
         </div>
       ) : (
-        <p className="text-brand-dark/60">Nessuna FAQ disponibile.</p>
+        <p className="text-brand-dark/60">Nicio întrebare disponibilă deocamdată.</p>
       )}
     </div>
   )

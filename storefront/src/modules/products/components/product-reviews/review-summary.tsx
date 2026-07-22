@@ -10,7 +10,7 @@ const Stars = ({ value }: { value: number }) => {
   return (
     <div
       className="flex items-center gap-0.5 lg:gap-1 text-brand-accent"
-      aria-label={`Valutazione media ${clamped.toFixed(1)} su 5`}
+      aria-label={`Notă medie ${clamped.toFixed(1)} din 5`}
     >
       {Array.from({ length: 5 }).map((_, i) => {
         const diff = clamped - i
@@ -58,7 +58,7 @@ const ReviewSummary = ({ stats }: Props) => {
           </span>
           <Stars value={stats.average} />
           <span className="text-xs lg:text-sm text-brand-dark/60">
-            {total} {total === 1 ? "opinione" : "opinioni"}
+            {total} {total === 1 ? "recenzie" : "recenzii"}
           </span>
         </div>
 

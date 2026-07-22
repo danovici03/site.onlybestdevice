@@ -4,7 +4,7 @@ import type { ReviewDTO } from "@lib/data/reviews"
 const Stars = ({ value }: { value: number }) => (
   <div
     className="flex items-center gap-0.5 text-brand-accent"
-    aria-label={`${value} su 5 stelle`}
+    aria-label={`${value} din 5 stele`}
   >
     {Array.from({ length: 5 }).map((_, i) => (
       <Star

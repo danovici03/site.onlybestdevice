@@ -102,7 +102,7 @@ export default async function ReturnsPage() {
                     DATE_FMT,
                   )}{" "}
                   · {request.items.length}{" "}
-                  {request.items.length === 1 ? "articolo" : "articoli"}
+                  {request.items.length === 1 ? "articol" : "articole"}
                 </p>
                 {request.note && (
                   <p className="text-xs text-brand-dark/60 mt-2 italic line-clamp-2">

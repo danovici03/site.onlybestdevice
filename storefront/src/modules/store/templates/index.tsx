@@ -144,8 +144,8 @@ const StoreTemplate = async ({
                         }`}
                       >
                         {childCount > 0
-                          ? `${childCount} ${childCount === 1 ? "tipologia" : "tipologie"}`
-                          : `${productCount} ${productCount === 1 ? "prodotto" : "prodotti"}`}
+                          ? `${childCount} ${childCount === 1 ? "tipologie" : "tipologii"}`
+                          : `${productCount} ${productCount === 1 ? "produs" : "produse"}`}
                       </span>
                     </div>
                   </LocalizedClientLink>

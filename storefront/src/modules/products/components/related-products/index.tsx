@@ -53,7 +53,7 @@ export default async function RelatedProducts({
             Completează cu
           </span>
           <h2 className="font-serif text-3xl sm:text-4xl text-brand-dark">
-            Potrebbe interessarti anche
+            S-ar putea să-ți placă și
           </h2>
         </div>
       </div>

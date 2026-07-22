@@ -48,7 +48,7 @@ export default function MobileSortFab({ sortBy }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label={`Ordina prodotti, attuale: ${activeLabel}`}
+        aria-label={`Sortează produsele, curent: ${activeLabel}`}
         aria-hidden={!visible}
         tabIndex={visible ? 0 : -1}
         className={clx(

@@ -5,7 +5,7 @@ import StoreTemplate from "@modules/store/templates"
 import { parseSelectedFilters } from "@lib/util/product-filters"
 
 export const metadata: Metadata = {
-  title: "Negozio",
+  title: "Magazin",
   description: "Explorează toate produsele noastre.",
 }
 
