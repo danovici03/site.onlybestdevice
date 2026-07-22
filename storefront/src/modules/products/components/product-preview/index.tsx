@@ -1,7 +1,6 @@
 import { Text } from "@medusajs/ui"
 import { listProducts } from "@lib/data/products"
 import { getProductPrice } from "@lib/util/get-product-price"
-import { OUTLET_BADGE_LABEL, isOutletProduct } from "@lib/util/outlet"
 import {
   SHOWROOM_BADGE_LABEL,
   isShowroomProduct,
@@ -33,8 +32,7 @@ export default async function ProductPreview({
     product,
   })
 
-  const outlet = isOutletProduct(product)
-  const showroom = !outlet && isShowroomProduct(product)
+  const showroom = isShowroomProduct(product)
 
   return (
     <LocalizedClientLink href={`/products/${product.handle}`} className="group">
@@ -46,11 +44,6 @@ export default async function ProductPreview({
             size="full"
             isFeatured={isFeatured}
           />
-          {outlet && (
-            <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-brand-accent text-[10px] font-bold uppercase tracking-widest text-white shadow-sm">
-              {OUTLET_BADGE_LABEL}
-            </span>
-          )}
           {showroom && (
             <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white text-[10px] font-bold uppercase tracking-widest text-brand-dark shadow-sm">
               {SHOWROOM_BADGE_LABEL}
