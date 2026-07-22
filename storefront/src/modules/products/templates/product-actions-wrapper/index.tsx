@@ -9,10 +9,12 @@ export default async function ProductActionsWrapper({
   id,
   region,
   upgrades,
+  warranty,
 }: {
   id: string
   region: HttpTypes.StoreRegion
   upgrades?: HttpTypes.StoreProduct[]
+  warranty?: HttpTypes.StoreProduct
 }) {
   const product = await listProducts({
     queryParams: { id: [id] },
@@ -23,5 +25,12 @@ export default async function ProductActionsWrapper({
     return null
   }
 
-  return <ProductActions product={product} region={region} upgrades={upgrades} />
+  return (
+    <ProductActions
+      product={product}
+      region={region}
+      upgrades={upgrades}
+      warranty={warranty}
+    />
+  )
 }

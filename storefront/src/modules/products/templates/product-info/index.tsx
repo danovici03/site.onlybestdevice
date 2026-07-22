@@ -56,7 +56,7 @@ const ProductInfo = ({ product, reviewStats }: ProductInfoProps) => {
         </LocalizedClientLink>
       )}
       <h1
-        className="text-[2rem] sm:text-[2.5rem] font-bold leading-none tracking-[-0.03em] text-brand-dark break-words"
+        className="text-2xl sm:text-3xl font-bold leading-snug tracking-[-0.02em] text-brand-dark break-words"
         data-testid="product-title"
       >
         {product.title}

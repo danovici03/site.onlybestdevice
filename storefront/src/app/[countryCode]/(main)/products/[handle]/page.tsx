@@ -110,7 +110,7 @@ export default async function ProductPage(props: Props) {
     return list.filter((h): h is string => typeof h === "string" && h.length > 0)
   })()
 
-  const [upgrades, reviewStats] = await Promise.all([
+  const [upgrades, reviewStats, warranty] = await Promise.all([
     upgradeHandles.length
       ? listProducts({
           countryCode: params.countryCode,
@@ -125,6 +125,12 @@ export default async function ProductPage(props: Props) {
         )
       : Promise.resolve([] as HttpTypes.StoreProduct[]),
     listProductReviews(pricedProduct.id, { limit: 1 }).then((d) => d.stats),
+    // Produsul de serviciu „Garanție extinsă" (ascuns din catalog); cardul
+    // de pe PDP îi arată variantele +1 an / +2 ani cu prețurile din Admin.
+    listProducts({
+      countryCode: params.countryCode,
+      queryParams: { handle: "garantie-extinsa" },
+    }).then(({ response }) => response.products[0] ?? undefined),
   ])
 
   // Date structurate Product (schema.org) pentru rezultate îmbogățite în Google.
@@ -185,6 +191,7 @@ export default async function ProductPage(props: Props) {
         region={region}
         countryCode={params.countryCode}
         upgrades={upgrades}
+        warranty={warranty}
         reviewStats={reviewStats}
         reviewSort={searchParams.review_sort}
         reviewPage={searchParams.review_page}

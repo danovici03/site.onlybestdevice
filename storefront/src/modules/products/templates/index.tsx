@@ -21,6 +21,7 @@ type ProductTemplateProps = {
   region: HttpTypes.StoreRegion
   countryCode: string
   upgrades?: HttpTypes.StoreProduct[]
+  warranty?: HttpTypes.StoreProduct
   reviewStats?: ReviewStatsDTO
   reviewSort?: string
   reviewPage?: string
@@ -31,6 +32,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
   region,
   countryCode,
   upgrades = [],
+  warranty,
   reviewStats,
   reviewSort,
   reviewPage,
@@ -62,6 +64,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
                     product={product}
                     region={region}
                     upgrades={upgrades}
+                    warranty={warranty}
                   />
                 }
               >
@@ -69,6 +72,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
                   id={product.id}
                   region={region}
                   upgrades={upgrades}
+                  warranty={warranty}
                 />
               </Suspense>
             </div>

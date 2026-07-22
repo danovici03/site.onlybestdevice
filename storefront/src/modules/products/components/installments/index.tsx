@@ -23,9 +23,11 @@ const Installments = ({ amount, currency }: InstallmentsProps) => {
   const terms = useMemo(() => availableTerms(amount), [amount])
   const providers = useMemo(() => availableProviders(amount), [amount])
 
-  // Termenul implicit: 12 rate dacă se poate, altfel cel mai lung disponibil —
-  // e cel care dă rata cea mai mică, deci cel mai relevant la prima vedere.
-  const defaultTerm = terms.includes(12) ? 12 : terms[terms.length - 1]
+  // Termenul implicit: cel mai lung disponibil, adică rata cea mai mică. E
+  // aceeași cifră cu cea din rezumatul „rate lunare de la” de lângă preț
+  // (`lowestOffer`); dacă le desincronizezi, pe același ecran apar două rate
+  // diferite pentru același produs.
+  const defaultTerm = terms[terms.length - 1]
   const [months, setMonths] = useState<number | null>(null)
   const [showDetails, setShowDetails] = useState(false)
 
@@ -41,7 +43,8 @@ const Installments = ({ amount, currency }: InstallmentsProps) => {
 
   return (
     <section
-      className="rounded-2xl border border-brand-dark/10 bg-white overflow-hidden"
+      id="plata-in-rate"
+      className="scroll-mt-28 rounded-2xl border border-brand-dark/10 bg-white overflow-hidden"
       aria-label="Plata în rate"
     >
       <div className="flex items-center gap-2 px-4 pt-4 pb-3">
@@ -92,7 +95,7 @@ const Installments = ({ amount, currency }: InstallmentsProps) => {
         <span className="text-xs font-bold uppercase tracking-[0.14em] text-brand-dark/40">
           de la
         </span>
-        <span className="font-serif text-2xl text-brand-dark">
+        <span className="text-2xl font-extrabold tracking-tight text-brand-dark">
           {formatLei(offer.monthly)}
         </span>
         <span className="text-sm text-brand-dark/50">/ lună</span>

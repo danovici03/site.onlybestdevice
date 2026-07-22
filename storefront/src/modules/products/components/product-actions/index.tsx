@@ -22,6 +22,12 @@ import {
 } from "@phosphor-icons/react/dist/ssr"
 import { COMPANY } from "@lib/util/company-info"
 import { isOutletProduct } from "@lib/util/outlet"
+import {
+  formatLei,
+  lowestOffer,
+  supportsInstallments,
+} from "@lib/util/installments"
+import ExtendedWarranty from "@modules/products/components/extended-warranty"
 import Installments from "@modules/products/components/installments"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import ProductUpgrades, {
@@ -36,6 +42,7 @@ type ProductActionsProps = {
   product: HttpTypes.StoreProduct
   region: HttpTypes.StoreRegion
   upgrades?: HttpTypes.StoreProduct[]
+  warranty?: HttpTypes.StoreProduct
   disabled?: boolean
 }
 
@@ -51,6 +58,7 @@ const optionsAsKeymap = (
 export default function ProductActions({
   product,
   upgrades = [],
+  warranty,
   disabled,
 }: ProductActionsProps) {
   const router = useRouter()
@@ -60,9 +68,11 @@ export default function ProductActions({
   const [options, setOptions] = useState<Record<string, string | undefined>>({})
   const [quantity, setQuantity] = useState(1)
   const [isAdding, setIsAdding] = useState(false)
-  const [isBuyingNow, setIsBuyingNow] = useState(false)
   const [upgradeSelections, setUpgradeSelections] = useState<UpgradeSelection[]>(
     []
+  )
+  const [warrantyVariantId, setWarrantyVariantId] = useState<string | null>(
+    null
   )
   const [addError, setAddError] = useState<string | null>(null)
   const countryCode = useParams().countryCode as string
@@ -225,6 +235,16 @@ export default function ProductActions({
   const selectedPrice = selectedVariant ? variantPrice : cheapestPrice
   const onSale = selectedPrice?.price_type === "sale"
 
+  // Rata cea mai mică posibilă, pentru rezumatul de lângă preț. Aceeași sursă
+  // ca în cardul de rate de mai jos, ca cifrele să nu se contrazică.
+  const teaserOffer = useMemo(() => {
+    const amount = selectedPrice?.calculated_price_number
+    if (!amount || !supportsInstallments(selectedPrice?.currency_code)) {
+      return null
+    }
+    return lowestOffer(amount)
+  }, [selectedPrice?.calculated_price_number, selectedPrice?.currency_code])
+
   const actionsRef = useRef<HTMLDivElement>(null)
   const inView = useIntersection(actionsRef, "0px")
 
@@ -245,7 +265,17 @@ export default function ProductActions({
           countryCode,
         })
       }
+      // Garanția extinsă acoperă câte o bucată, deci urmează cantitatea
+      // produsului (2 telefoane → 2 garanții).
+      if (warrantyVariantId) {
+        await addToCart({
+          variantId: warrantyVariantId,
+          quantity,
+          countryCode,
+        })
+      }
       setUpgradeSelections([])
+      setWarrantyVariantId(null)
     } catch (e) {
       setAddError(
         e instanceof Error
@@ -255,17 +285,6 @@ export default function ProductActions({
     } finally {
       setIsAdding(false)
     }
-  }
-
-  const handleBuyNow = async () => {
-    if (!selectedVariant?.id) return null
-    setIsBuyingNow(true)
-    await addToCart({
-      variantId: selectedVariant.id,
-      quantity,
-      countryCode,
-    })
-    router.push(`/${countryCode}/cart`)
   }
 
   const ctaLabel = !selectedVariant
@@ -285,37 +304,76 @@ export default function ProductActions({
   return (
     <>
       <div className="flex flex-col gap-y-6" ref={actionsRef}>
-        <div className="flex items-baseline gap-3 pb-6 border-b border-brand-dark/10">
+        <div className="flex flex-wrap items-center gap-x-4 xsmall:gap-x-5 gap-y-3 pb-6 border-b border-brand-dark/10">
           {selectedPrice ? (
             <>
-              <span
-                className={clx(
-                  "font-serif text-3xl lg:text-4xl",
-                  onSale ? "text-brand-accent" : "text-brand-dark"
-                )}
-                data-testid="product-price"
-                data-value={selectedPrice.calculated_price_number}
-              >
-                {!selectedVariant && (
-                  <span className="text-base font-sans text-brand-dark/50 mr-2">
-                    Da
-                  </span>
-                )}
-                {selectedPrice.calculated_price}
-              </span>
-              {onSale && (
-                <>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-baseline gap-3">
                   <span
-                    className="text-brand-dark/40 line-through text-lg"
-                    data-testid="original-product-price"
-                    data-value={selectedPrice.original_price_number}
+                    className={clx(
+                      "text-[1.75rem] xsmall:text-3xl lg:text-4xl font-extrabold tracking-tight",
+                      onSale ? "text-brand-accent" : "text-brand-dark"
+                    )}
+                    data-testid="product-price"
+                    data-value={selectedPrice.calculated_price_number}
                   >
-                    {selectedPrice.original_price}
+                    {!selectedVariant && (
+                      <span className="text-base font-sans text-brand-dark/50 mr-2">
+                        Da
+                      </span>
+                    )}
+                    {selectedPrice.calculated_price}
                   </span>
-                  <span className="bg-brand-accent text-white px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">
-                    -{selectedPrice.percentage_diff}%
+                  {onSale && (
+                    <>
+                      <span
+                        className="text-brand-dark/40 line-through text-lg"
+                        data-testid="original-product-price"
+                        data-value={selectedPrice.original_price_number}
+                      >
+                        {selectedPrice.original_price}
+                      </span>
+                      <span className="bg-brand-accent text-white px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">
+                        -{selectedPrice.percentage_diff}%
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {/* Disponibilitatea, sub preț. La `isBackorder` tăcem: mai jos
+                    există caseta „La comandă” cu termenul real de livrare. */}
+                {inStock && !isBackorder && (
+                  <span className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    În stoc
                   </span>
-                </>
+                )}
+              </div>
+
+              {/* Separatorul și blocul de rate stau într-un singur flex item, ca
+                  la wrap (ecran îngust + preț lung) să treacă împreună pe rândul
+                  următor; altfel separatorul rămâne agățat la capătul rândului. */}
+              {teaserOffer && (
+                <div className="flex items-center gap-x-4 xsmall:gap-x-5">
+                  <span
+                    aria-hidden
+                    className="h-10 xsmall:h-12 w-px shrink-0 bg-brand-dark/20"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold uppercase tracking-[0.14em] text-brand-dark/40">
+                      Rate lunare de la
+                    </span>
+                    <span className="text-xl font-extrabold tracking-tight text-brand-dark leading-tight">
+                      {formatLei(teaserOffer.monthly)}
+                    </span>
+                    <a
+                      href="#plata-in-rate"
+                      className="self-start text-xs font-bold text-brand-dark/60 underline decoration-dashed underline-offset-4 transition-colors hover:text-brand-accent"
+                    >
+                      vezi detalii
+                    </a>
+                  </div>
+                </div>
               )}
             </>
           ) : (
@@ -450,14 +508,12 @@ export default function ProductActions({
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={handleBuyNow}
-          disabled={cartDisabled || isBuyingNow}
-          className="w-full py-4 rounded-full border border-brand-dark text-brand-dark font-bold text-sm hover:bg-brand-dark hover:text-white transition-colors disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-brand-dark"
-        >
-          {isBuyingNow ? "Se redirecționează…" : "Cumpără acum"}
-        </button>
+        <ExtendedWarranty
+          warranty={warranty}
+          selectedVariantId={warrantyVariantId}
+          onSelect={setWarrantyVariantId}
+          disabled={!!disabled || isAdding}
+        />
 
         {selectedPrice?.calculated_price_number ? (
           <Installments

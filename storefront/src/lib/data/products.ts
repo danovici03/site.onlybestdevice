@@ -74,9 +74,19 @@ export const listProducts = async ({
     .then(({ products, count }) => {
       const nextPage = count > offset + limit ? pageParam + 1 : null
 
+      // Produsele „de serviciu" (ex. garanția extinsă) au metadata.hidden și
+      // nu apar în listări (magazin, rail-uri, produse similare). Rămân
+      // accesibile când sunt cerute explicit după handle sau id.
+      const isDirectLookup = Boolean(queryParams?.handle || queryParams?.id)
+      const visible = isDirectLookup
+        ? products
+        : products.filter(
+            (p) => (p.metadata as Record<string, unknown> | null)?.hidden !== "true"
+          )
+
       return {
         response: {
-          products,
+          products: visible,
           count,
         },
         nextPage: nextPage,
