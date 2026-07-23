@@ -3,6 +3,7 @@
 import CartTotals from "@modules/common/components/cart-totals"
 import DiscountCode from "@modules/checkout/components/discount-code"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import Installments from "@modules/products/components/installments"
 import { HttpTypes } from "@medusajs/types"
 import {
   ArrowRight,
@@ -48,6 +49,12 @@ const Summary = ({ cart }: SummaryProps) => {
         <div className="border-t border-brand-dark/10" />
 
         <CartTotals totals={cart} />
+
+        <Installments
+          amount={cart.total ?? 0}
+          currency={cart.currency_code}
+          compact
+        />
 
         <LocalizedClientLink
           href={"/checkout?step=" + step}

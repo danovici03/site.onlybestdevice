@@ -11,7 +11,11 @@ export const paymentInfoMap: Record<
   { title: string; icon: React.JSX.Element }
 > = {
   pp_stripe_stripe: {
-    title: "Carta, Klarna o altro",
+    title: "Card, Klarna sau altele",
+    icon: <CreditCard />,
+  },
+  pp_unicredit_unicredit: {
+    title: "Rate prin UniCredit Consumer Financing",
     icon: <CreditCard />,
   },
   "pp_medusa-payments_default": {
@@ -49,6 +53,11 @@ export const isPaypal = (providerId?: string) => {
 }
 export const isManual = (providerId?: string) => {
   return providerId?.startsWith("pp_system_default")
+}
+
+/** Rate prin UniCredit Consumer Financing (ePOS) — flux redirect + callback. */
+export const isUnicredit = (providerId?: string) => {
+  return providerId?.startsWith("pp_unicredit")
 }
 
 // Add currencies that don't need to be divided by 100

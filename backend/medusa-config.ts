@@ -53,22 +53,41 @@ const modules: any[] = [
   },
 ]
 
+const paymentProviders: any[] = []
+
 if (process.env.STRIPE_API_KEY) {
+  paymentProviders.push({
+    resolve: '@medusajs/payment-stripe',
+    id: 'stripe',
+    options: {
+      apiKey: process.env.STRIPE_API_KEY,
+      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+      capture: true,
+      automaticPaymentMethods: true,
+    },
+  })
+}
+
+// Rate prin UniCredit Consumer Financing (ePOS). Staging: /TestOnline.
+if (process.env.UNICREDIT_EPOS_EMAIL && process.env.UNICREDIT_EPOS_PASSWORD) {
+  paymentProviders.push({
+    resolve: './src/modules/unicredit-epos',
+    id: 'unicredit',
+    options: {
+      baseUrl:
+        process.env.UNICREDIT_EPOS_BASE_URL ||
+        'https://epos.unicredit.ro/TestOnline',
+      email: process.env.UNICREDIT_EPOS_EMAIL,
+      password: process.env.UNICREDIT_EPOS_PASSWORD,
+    },
+  })
+}
+
+if (paymentProviders.length) {
   modules.push({
     resolve: '@medusajs/medusa/payment',
     options: {
-      providers: [
-        {
-          resolve: '@medusajs/payment-stripe',
-          id: 'stripe',
-          options: {
-            apiKey: process.env.STRIPE_API_KEY,
-            webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
-            capture: true,
-            automaticPaymentMethods: true,
-          },
-        },
-      ],
+      providers: paymentProviders,
     },
   })
 }

@@ -439,6 +439,61 @@ export async function placeOrder(cartId?: string) {
 }
 
 /**
+ * Plasează comanda cu plata „Rate prin UniCredit" și redirecționează clientul
+ * către platforma ePOS (creditare la distanță). Dacă cererea de credit nu
+ * poate fi creată, comanda rămâne plasată și clientul ajunge pe pagina de
+ * confirmare — finanțarea se reia din suport.
+ */
+export async function placeFinancedOrder(cartId?: string) {
+  const id = cartId || (await getCartId())
+
+  if (!id) {
+    throw new Error("No existing cart found when placing an order")
+  }
+
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  const cartRes = await sdk.store.cart
+    .complete(id, {}, headers)
+    .then(async (cartRes) => {
+      const cartCacheTag = await getCacheTag("carts")
+      revalidateTag(cartCacheTag)
+      return cartRes
+    })
+    .catch(medusaError)
+
+  if (cartRes?.type !== "order") {
+    return cartRes.cart
+  }
+
+  const order = cartRes.order
+  const countryCode = order.shipping_address?.country_code?.toLowerCase()
+
+  const orderCacheTag = await getCacheTag("orders")
+  revalidateTag(orderCacheTag)
+  removeCartId()
+
+  let sessionUrl: string | null = null
+  try {
+    const resp = await sdk.client.fetch<{ session_url: string }>(
+      `/store/unicredit/session`,
+      {
+        method: "POST",
+        body: { order_id: order.id },
+        headers,
+      }
+    )
+    sessionUrl = resp?.session_url ?? null
+  } catch (e) {
+    console.error("[unicredit] Crearea sesiunii ePOS a eșuat:", e)
+  }
+
+  redirect(sessionUrl || `/${countryCode}/order/${order.id}/confirmed`)
+}
+
+/**
  * Updates the countrycode param and revalidates the regions cache
  * @param regionId
  * @param countryCode

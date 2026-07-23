@@ -1,7 +1,7 @@
 "use client"
 
-import { isManual, isStripeLike } from "@lib/constants"
-import { placeOrder } from "@lib/data/cart"
+import { isManual, isStripeLike, isUnicredit } from "@lib/constants"
+import { placeFinancedOrder, placeOrder } from "@lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@medusajs/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
@@ -38,6 +38,10 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
     case isManual(paymentSession?.provider_id):
       return (
         <ManualTestPaymentButton notReady={notReady} data-testid={dataTestId} />
+      )
+    case isUnicredit(paymentSession?.provider_id):
+      return (
+        <UnicreditPaymentButton notReady={notReady} data-testid={dataTestId} />
       )
     default:
       return <Button disabled>Select a payment method</Button>
@@ -144,6 +148,58 @@ const StripePaymentButton = ({
       <ErrorMessage
         error={errorMessage}
         data-testid="stripe-payment-error-message"
+      />
+    </>
+  )
+}
+
+/**
+ * Rate prin UniCredit: plasează comanda, apoi serverul creează cererea de
+ * credit în ePOS și redirecționează clientul către platforma UCFin, unde
+ * parcurge creditarea la distanță. Statusul final vine prin callback.
+ */
+const UnicreditPaymentButton = ({
+  notReady,
+  "data-testid": dataTestId,
+}: {
+  notReady: boolean
+  "data-testid"?: string
+}) => {
+  const [submitting, setSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const handlePayment = async () => {
+    setSubmitting(true)
+    setErrorMessage(null)
+    // placeFinancedOrder face redirect (către ePOS sau confirmare) — dacă
+    // ajungem înapoi aici fără redirect, coșul nu s-a putut finaliza.
+    await placeFinancedOrder()
+      .catch((err) => {
+        setErrorMessage(err.message)
+      })
+      .finally(() => {
+        setSubmitting(false)
+      })
+  }
+
+  return (
+    <>
+      <Button
+        disabled={notReady}
+        isLoading={submitting}
+        onClick={handlePayment}
+        size="large"
+        data-testid={dataTestId ?? "submit-order-button"}
+      >
+        Trimite cererea de finanțare
+      </Button>
+      <p className="mt-2 text-xs text-ui-fg-subtle">
+        Vei fi redirecționat către UniCredit Consumer Financing pentru
+        creditarea 100% online. Răspunsul vine în maximum 15 minute.
+      </p>
+      <ErrorMessage
+        error={errorMessage}
+        data-testid="unicredit-payment-error-message"
       />
     </>
   )

@@ -1,128 +1,187 @@
 /**
- * Configurația și calculul pentru plata în rate (TBI Bank / UniCredit).
+ * Calculul ratelor pentru Creditul Online UniCredit Consumer Financing IFN S.A.
  *
- * ATENȚIE — valorile comerciale de mai jos sunt PLACEHOLDERE. Înainte de
- * lansare trebuie confirmate cu fiecare finanțator și completate:
- *   • `interestFactor` — 1 înseamnă 0% dobândă (campanie „rate fără dobândă”).
- *     Pentru credit purtător de dobândă, pune factorul total de rambursare
- *     comunicat de bancă (ex. 1.18 pentru 18% cost total pe perioadă).
- *   • `dae` — Dobânda Anuală Efectivă. Cât timp e `null`, cardul afișează doar
- *     estimarea, fără cifre de cost. Publicitatea la credit în România cere
- *     afișarea DAE, deci NU activa un `interestFactor > 1` fără să pui și DAE.
- *   • `minAmount` / `maxAmount` — pragurile de finanțare ale fiecărui produs.
+ * Valorile comerciale și formula vin din documentația oficială UCFin
+ * (email 23.07.2026 + „Calcul Rata.xlsx" + „Informatii Credit UCFin_ONLY BEST
+ * DEVICE SRL_23.07.26.docx"). NU modifica dobânzile/pragurile fără confirmare
+ * de la UCFin — publicitatea la credit cere afișarea DAE corect.
  *
- * Calculul de aici e pur orientativ: aprobarea și rata finală aparțin băncii.
+ * Formula ratei (extrasă din Excel-ul oficial, verificată pe toate exemplele
+ * lor: 2090/36/25% → 94,74 · 4199,99/48/22% → 144,63 · 6999,99/60/11% →
+ * 163,53, plus exemplele reprezentative din documentul juridic):
+ *
+ *   rata = ROUND( P · (1 + r·59/360) · i·(1+i)^(n−1) / ((1+i)^n − 1), 2 ) + 10
+ *
+ * unde P = valoarea coșului, r = dobânda anuală fixă, i = r/12, n = numărul
+ * de luni, 10 = comisionul lunar de administrare. Factorul (1 + r·59/360)
+ * capitalizează dobânda pe perioada de grație de 59 de zile până la prima
+ * scadență.
+ *
+ * Calculul rămâne orientativ: aprobarea și graficul final aparțin UCFin.
  */
 
-export type InstallmentProvider = {
-  id: "tbi" | "unicredit"
-  label: string
-  /** Suma minimă finanțabilă, în unitatea majoră (lei). */
+export type FinancingProduct = {
+  id: "low-dae-36" | "low-dae-48" | "low-dae-60"
+  name: string
+  /** Suma minimă finanțabilă (inclusiv), în lei. */
   minAmount: number
-  /** Suma maximă finanțabilă, în unitatea majoră (lei). */
-  maxAmount: number
-  /** Numărul de rate disponibile la acest finanțator. */
-  terms: number[]
-  /** Factor total de rambursare; 1 = 0% dobândă. Vezi nota de sus. */
-  interestFactor: number
-  /** Dobânda Anuală Efectivă, dacă `interestFactor > 1`. */
-  dae: number | null
+  /** Prima sumă care NU mai intră în produs (exclusiv), în lei. */
+  maxAmountExclusive: number
+  /** Suma maximă afișabilă în textele legale, în lei. */
+  maxAmountLabel: number
+  /** Dobânda anuală fixă, ex. 0.25 = 25%. */
+  annualRate: number
+  /** Comision lunar de administrare credit, în lei. */
+  monthlyAdminFee: number
+  /** Comision de analiză dosar (perceput doar la acordare), în lei. */
+  fileAnalysisFee: number
+  minMonths: number
+  maxMonths: number
+  /** DAE, calculată de UCFin pentru suma maximă și perioada maximă. */
+  dae: number
 }
 
-export const INSTALLMENT_PROVIDERS: InstallmentProvider[] = [
+export const FINANCING_PRODUCTS: FinancingProduct[] = [
   {
-    id: "tbi",
-    label: "TBI Bank",
-    minAmount: 300,
-    maxAmount: 20000,
-    terms: [3, 6, 12, 24, 36],
-    interestFactor: 1,
-    dae: null,
+    id: "low-dae-36",
+    name: "Low DAE 36M",
+    minAmount: 1000,
+    maxAmountExclusive: 3000,
+    maxAmountLabel: 2999,
+    annualRate: 0.25,
+    monthlyAdminFee: 10,
+    fileAnalysisFee: 0,
+    minMonths: 12,
+    maxMonths: 36,
+    dae: 37.92,
   },
   {
-    id: "unicredit",
-    label: "UniCredit",
-    minAmount: 500,
-    maxAmount: 40000,
-    terms: [6, 12, 24, 36, 48],
-    interestFactor: 1,
-    dae: null,
+    id: "low-dae-48",
+    name: "Low DAE 48M",
+    minAmount: 3000,
+    maxAmountExclusive: 5000,
+    maxAmountLabel: 4999,
+    annualRate: 0.22,
+    monthlyAdminFee: 10,
+    fileAnalysisFee: 0,
+    minMonths: 12,
+    maxMonths: 48,
+    dae: 30.09,
+  },
+  {
+    id: "low-dae-60",
+    name: "Low DAE 60M",
+    minAmount: 5000,
+    maxAmountExclusive: 50000.01,
+    maxAmountLabel: 50000,
+    annualRate: 0.11,
+    monthlyAdminFee: 10,
+    fileAnalysisFee: 0,
+    minMonths: 12,
+    maxMonths: 60,
+    dae: 12.44,
   },
 ]
 
-/** Moneda pentru care afișăm rate; în afara ei cardul se ascunde. */
+/** Pragurile globale de finanțare UCFin, în lei. */
+export const FINANCING_MIN = FINANCING_PRODUCTS[0].minAmount
+export const FINANCING_MAX =
+  FINANCING_PRODUCTS[FINANCING_PRODUCTS.length - 1].maxAmountLabel
+
+export const FINANCER_NAME = "UniCredit Consumer Financing"
+
+/** Nota GDPR UCFin — obligatoriu bifată la checkout pentru plata în rate. */
+export const UCFIN_GDPR_URL =
+  "https://www.ucfin.ro/pdf/protectia-datelor/UCFIN-Informare-privind-prelucrarea-datelor-personale-in-contextul-creditarii-la-distanta.pdf"
+
+/** Ghidul UCFin pentru semnarea la distanță (dreptul de retragere etc.). */
+export const UCFIN_GUIDE_URL =
+  "https://www.ucfin.ro/pdf/fise_produs/GhidSemnareLaDistanta.pdf"
+
+/** Moneda pentru care afișăm rate; în afara ei calculatorul se ascunde. */
 export const INSTALLMENT_CURRENCY = "ron"
 
-/** Termenele oferite în selector, în ordinea afișării. */
-export const INSTALLMENT_TERMS = [6, 12, 24, 36]
-
 export type InstallmentOffer = {
-  provider: InstallmentProvider
+  product: FinancingProduct
   months: number
-  /** Rata lunară, rotunjită în sus la leu. */
+  /** Rata lunară (include comisionul de administrare), cu 2 zecimale. */
   monthly: number
+  /** Valoare totală plătibilă orientativă = rata × luni. */
+  total: number
 }
 
+/** Produsul financiar în care se încadrează suma, sau null în afara pragurilor. */
+export function productForAmount(amount: number): FinancingProduct | null {
+  return (
+    FINANCING_PRODUCTS.find(
+      (p) => amount >= p.minAmount && amount < p.maxAmountExclusive
+    ) ?? null
+  )
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100
+
 /**
- * Rata lunară, rotunjită **în sus**: mai bine afișăm cu un leu peste decât să
- * promitem o rată mai mică decât cea reală.
+ * Rata lunară după formula oficială UCFin (vezi comentariul din capul
+ * fișierului). Rotunjirea la 2 zecimale se face ÎNAINTE de adăugarea
+ * comisionului lunar, exact ca în Excel-ul lor.
  */
-export const monthlyPayment = (
+export function monthlyPayment(
   amount: number,
   months: number,
-  interestFactor: number
-): number => Math.ceil((amount * interestFactor) / months)
-
-const eligible = (p: InstallmentProvider, amount: number, months: number) =>
-  amount >= p.minAmount && amount <= p.maxAmount && p.terms.includes(months)
-
-/** Finanțatorii care acceptă suma, indiferent de termen. */
-export function availableProviders(amount: number): InstallmentProvider[] {
-  return INSTALLMENT_PROVIDERS.filter(
-    (p) => amount >= p.minAmount && amount <= p.maxAmount
-  )
-}
-
-/** Termenele pentru care cel puțin un finanțator acceptă suma. */
-export function availableTerms(amount: number): number[] {
-  return INSTALLMENT_TERMS.filter((m) =>
-    INSTALLMENT_PROVIDERS.some((p) => eligible(p, amount, m))
-  )
+  product: FinancingProduct
+): number {
+  const i = product.annualRate / 12
+  const grace = 1 + (product.annualRate * 59) / 360
+  const pow = Math.pow(1 + i, months - 1)
+  const raw = (amount * grace * (i * pow)) / ((1 + i) * pow - 1)
+  return round2(raw) + product.monthlyAdminFee
 }
 
 /**
- * Cea mai mică rată lunară la un termen dat (oferta „de la …”), sau null dacă
- * niciun finanțator nu acoperă combinația sumă × termen.
+ * Termenele afișate în selector (multipli de 12 luni în intervalul
+ * produsului), sau [] dacă suma nu e finanțabilă.
  */
-export function bestOffer(
+export function availableTerms(amount: number): number[] {
+  const product = productForAmount(amount)
+  if (!product) return []
+  const terms: number[] = []
+  for (let m = 12; m <= product.maxMonths; m += 12) {
+    if (m >= product.minMonths) terms.push(m)
+  }
+  return terms
+}
+
+/** Oferta pentru o combinație sumă × termen, sau null dacă nu e finanțabilă. */
+export function offerFor(
   amount: number,
   months: number
 ): InstallmentOffer | null {
-  const offers = INSTALLMENT_PROVIDERS.filter((p) =>
-    eligible(p, amount, months)
-  ).map((provider) => ({
-    provider,
-    months,
-    monthly: monthlyPayment(amount, months, provider.interestFactor),
-  }))
-  if (!offers.length) return null
-  return offers.reduce((a, b) => (b.monthly < a.monthly ? b : a))
+  const product = productForAmount(amount)
+  if (!product || months < product.minMonths || months > product.maxMonths) {
+    return null
+  }
+  const monthly = monthlyPayment(amount, months, product)
+  return { product, months, monthly, total: round2(monthly * months) }
 }
 
 /**
- * Cea mai mică rată lunară posibilă pentru sumă, indiferent de termen — adică
- * la cel mai lung termen disponibil. Pentru cardul din listări, unde afișăm o
- * singură cifră „de la”.
+ * Cea mai mică rată lunară posibilă pentru sumă — la cel mai lung termen
+ * disponibil. Pentru teaser-ul „rate de la …" din listări și PDP.
  */
 export function lowestOffer(amount: number): InstallmentOffer | null {
   const terms = availableTerms(amount)
   if (!terms.length) return null
-  return bestOffer(amount, terms[terms.length - 1])
+  return offerFor(amount, terms[terms.length - 1])
 }
 
 /** Ratele se afișează doar pentru RON. */
 export const supportsInstallments = (currency?: string | null): boolean =>
   !currency || currency.toLowerCase() === INSTALLMENT_CURRENCY
 
+/** „1.234,56 lei" — zecimalele apar doar când există. */
 export const formatLei = (n: number): string =>
-  `${n.toLocaleString("ro-RO")} lei`
+  `${n.toLocaleString("ro-RO", {
+    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })} lei`

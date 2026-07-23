@@ -1,8 +1,14 @@
 "use client"
 
 import { RadioGroup } from "@headlessui/react"
-import { isStripeLike, paymentInfoMap } from "@lib/constants"
+import { isStripeLike, isUnicredit, paymentInfoMap } from "@lib/constants"
 import { initiatePaymentSession, placeOrder } from "@lib/data/cart"
+import {
+  UCFIN_GDPR_URL,
+  availableTerms,
+  supportsInstallments,
+} from "@lib/util/installments"
+import Installments from "@modules/products/components/installments"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
 import { Button, Container, Heading, Text, clx } from "@medusajs/ui"
 import ErrorMessage from "@modules/checkout/components/error-message"
@@ -30,8 +36,16 @@ const Payment = ({
     (paymentSession: any) => paymentSession.status === "pending"
   )
 
+  // Ratele UniCredit apar doar când totalul coșului e finanțabil (RON,
+  // 1.000–50.000 lei) — în afara pragurilor UCFin metoda dispare.
+  const cartTotal = cart?.total ?? 0
+  const financeable =
+    supportsInstallments(cart?.currency_code) &&
+    availableTerms(cartTotal).length > 0
+
   const visiblePaymentMethods = availablePaymentMethods.filter(
-    (pm) => !isHiddenStripeSubprovider(pm.id)
+    (pm) =>
+      !isHiddenStripeSubprovider(pm.id) && (!isUnicredit(pm.id) || financeable)
   )
 
   const [isLoading, setIsLoading] = useState(false)
@@ -43,6 +57,17 @@ const Payment = ({
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
     activeSession?.provider_id ?? ""
   )
+
+  // Rate UniCredit: numărul de rate ales + acordul GDPR UCFin (obligatoriu).
+  const financingTerms = availableTerms(cartTotal)
+  const [creditMonths, setCreditMonths] = useState<number | null>(
+    (activeSession?.data?.credit_period as number) ?? null
+  )
+  const [gdprAccepted, setGdprAccepted] = useState(false)
+  const selectedCreditMonths =
+    creditMonths && financingTerms.includes(creditMonths)
+      ? creditMonths
+      : financingTerms[financingTerms.length - 1]
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -91,7 +116,17 @@ const Payment = ({
       const checkActiveSession =
         activeSession?.provider_id === selectedPaymentMethod
 
-      if (!checkActiveSession) {
+      if (isUnicredit(selectedPaymentMethod)) {
+        // Re-inițiem mereu sesiunea ca numărul de rate ales să fie cel curent;
+        // backend-ul îl folosește la crearea cererii de credit în ePOS.
+        await initiatePaymentSession(cart, {
+          provider_id: selectedPaymentMethod,
+          data: {
+            credit_period: selectedCreditMonths,
+            gdpr: gdprAccepted,
+          },
+        })
+      } else if (!checkActiveSession) {
         await initiatePaymentSession(cart, {
           provider_id: selectedPaymentMethod,
         })
@@ -183,11 +218,50 @@ const Payment = ({
                         setStripeReady={setStripeReady}
                       />
                     ) : (
-                      <PaymentContainer
-                        paymentInfoMap={paymentInfoMap}
-                        paymentProviderId={paymentMethod.id}
-                        selectedPaymentOptionId={selectedPaymentMethod}
-                      />
+                      <>
+                        <PaymentContainer
+                          paymentInfoMap={paymentInfoMap}
+                          paymentProviderId={paymentMethod.id}
+                          selectedPaymentOptionId={selectedPaymentMethod}
+                        />
+                        {isUnicredit(paymentMethod.id) &&
+                          selectedPaymentMethod === paymentMethod.id && (
+                            <div className="mt-3 mb-4 flex flex-col gap-3">
+                              <Installments
+                                amount={cartTotal}
+                                currency={cart?.currency_code}
+                                compact
+                                initialMonths={selectedCreditMonths}
+                                onSelectMonths={setCreditMonths}
+                              />
+                              <label className="flex items-start gap-2.5 rounded-2xl border border-brand-dark/10 bg-white px-4 py-3 text-xs leading-relaxed text-brand-dark/70 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={gdprAccepted}
+                                  onChange={(e) =>
+                                    setGdprAccepted(e.target.checked)
+                                  }
+                                  className="mt-0.5 h-4 w-4 shrink-0 accent-brand-dark"
+                                  data-testid="ucfin-gdpr-checkbox"
+                                />
+                                <span>
+                                  Am luat la cunoștință și sunt de acord cu{" "}
+                                  <a
+                                    href={UCFIN_GDPR_URL}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-bold underline underline-offset-2 hover:text-brand-accent"
+                                  >
+                                    nota de informare cu privire la prelucrarea
+                                    datelor cu caracter personal
+                                  </a>{" "}
+                                  de către UniCredit Consumer Financing IFN
+                                  S.A.
+                                </span>
+                              </label>
+                            </div>
+                          )}
+                      </>
                     )}
                   </div>
                 ))}
@@ -221,6 +295,7 @@ const Payment = ({
             isLoading={isLoading}
             disabled={
               (isStripeLike(selectedPaymentMethod) && !stripeReady) ||
+              (isUnicredit(selectedPaymentMethod) && !gdprAccepted) ||
               (!selectedPaymentMethod && !paidByGiftcard)
             }
             data-testid="submit-payment-button"

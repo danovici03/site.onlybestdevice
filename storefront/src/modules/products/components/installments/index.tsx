@@ -1,14 +1,15 @@
 "use client"
 
 import {
-  INSTALLMENT_CURRENCY,
-  availableProviders,
+  FINANCER_NAME,
+  UCFIN_GUIDE_URL,
   availableTerms,
-  bestOffer,
   formatLei,
+  offerFor,
+  supportsInstallments,
 } from "@lib/util/installments"
 import { clx } from "@medusajs/ui"
-import { ArrowRight, CaretDown, CreditCard } from "@phosphor-icons/react/dist/ssr"
+import { CaretDown, CreditCard } from "@phosphor-icons/react/dist/ssr"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { useMemo, useState } from "react"
 
@@ -17,29 +18,45 @@ type InstallmentsProps = {
   amount: number
   /** Codul ISO al monedei; ratele se afișează doar pentru RON. */
   currency?: string
+  /** Varianta compactă (coș/checkout): fără detalii extinse. */
+  compact?: boolean
+  /** Termenul preselectat (dacă vine din altă parte a fluxului). */
+  initialMonths?: number
+  /** Anunță selecția termenului (folosit la checkout). */
+  onSelectMonths?: (months: number) => void
 }
 
-const Installments = ({ amount, currency }: InstallmentsProps) => {
+const Installments = ({
+  amount,
+  currency,
+  compact = false,
+  initialMonths,
+  onSelectMonths,
+}: InstallmentsProps) => {
   const terms = useMemo(() => availableTerms(amount), [amount])
-  const providers = useMemo(() => availableProviders(amount), [amount])
 
   // Termenul implicit: cel mai lung disponibil, adică rata cea mai mică. E
-  // aceeași cifră cu cea din rezumatul „rate lunare de la” de lângă preț
-  // (`lowestOffer`); dacă le desincronizezi, pe același ecran apar două rate
-  // diferite pentru același produs.
+  // aceeași cifră cu teaser-ul „rate de la …" de lângă preț (`lowestOffer`);
+  // dacă le desincronizezi, pe același ecran apar două rate diferite.
   const defaultTerm = terms[terms.length - 1]
-  const [months, setMonths] = useState<number | null>(null)
+  const [months, setMonths] = useState<number | null>(initialMonths ?? null)
   const [showDetails, setShowDetails] = useState(false)
 
-  const selected = months != null && terms.includes(months) ? months : defaultTerm
+  const selected =
+    months != null && terms.includes(months) ? months : defaultTerm
   const offer = useMemo(
-    () => (selected ? bestOffer(amount, selected) : null),
+    () => (selected ? offerFor(amount, selected) : null),
     [amount, selected]
   )
 
-  const currencyOk =
-    !currency || currency.toLowerCase() === INSTALLMENT_CURRENCY
-  if (!currencyOk || !terms.length || !providers.length || !offer) return null
+  if (!supportsInstallments(currency) || !terms.length || !offer) return null
+
+  const { product } = offer
+
+  const pick = (m: number) => {
+    setMonths(m)
+    onSelectMonths?.(m)
+  }
 
   return (
     <section
@@ -50,7 +67,7 @@ const Installments = ({ amount, currency }: InstallmentsProps) => {
       <div className="flex items-center gap-2 px-4 pt-4 pb-3">
         <CreditCard size={16} weight="fill" className="text-brand-accent" />
         <span className="flex-1 font-bold text-sm text-brand-dark">
-          Cumpără în rate
+          Cumpără în rate prin {FINANCER_NAME}
         </span>
         <button
           type="button"
@@ -68,17 +85,17 @@ const Installments = ({ amount, currency }: InstallmentsProps) => {
       </div>
 
       {/* Selector de termen */}
-      <div className="flex gap-1.5 px-4">
+      <div className="flex flex-wrap gap-1.5 px-4">
         {terms.map((m) => {
           const active = m === selected
           return (
             <button
               key={m}
               type="button"
-              onClick={() => setMonths(m)}
+              onClick={() => pick(m)}
               aria-pressed={active}
               className={clx(
-                "flex-1 rounded-xl border py-2 text-xs font-bold transition-colors",
+                "flex-1 min-w-[64px] rounded-xl border py-2 text-xs font-bold transition-colors",
                 active
                   ? "border-brand-dark bg-brand-dark text-white"
                   : "border-brand-dark/15 text-brand-dark hover:border-brand-dark/40"
@@ -90,69 +107,71 @@ const Installments = ({ amount, currency }: InstallmentsProps) => {
         })}
       </div>
 
-      {/* Rata estimată */}
+      {/* Rata calculată */}
       <div className="flex items-baseline gap-2 px-4 pt-4">
-        <span className="text-xs font-bold uppercase tracking-[0.14em] text-brand-dark/40">
-          de la
-        </span>
         <span className="text-2xl font-extrabold tracking-tight text-brand-dark">
           {formatLei(offer.monthly)}
         </span>
         <span className="text-sm text-brand-dark/50">/ lună</span>
       </div>
 
-      <p className="px-4 pt-1 text-xs text-brand-dark/60">
-        în {selected} rate lunare, prin{" "}
-        {providers.map((p) => p.label).join(" sau ")}
+      <p className="px-4 pt-1 pb-4 text-xs text-brand-dark/60">
+        în {selected} rate lunare egale · dobândă anuală fixă{" "}
+        {Math.round(product.annualRate * 100)}% · DAE {product.dae}%
+        {!compact && (
+          <>
+            {" "}
+            · valoare totală orientativă {formatLei(offer.total)}
+          </>
+        )}
       </p>
-
-      {/* Finanțatori */}
-      <div className="flex flex-wrap items-center gap-2 px-4 pt-4">
-        {providers.map((p) => (
-          <span
-            key={p.id}
-            className="inline-flex items-center rounded-lg border border-brand-dark/12 bg-brand-light px-2.5 py-1.5 text-xs font-bold text-brand-dark"
-          >
-            {p.label}
-          </span>
-        ))}
-      </div>
-
-      {/* Finanțarea nu se poate încă închide singură la checkout, deci trimitem
-          explicit spre contact în loc să promitem un pas care nu există. */}
-      <LocalizedClientLink
-        href="/contact"
-        className="mt-3 flex items-center justify-between gap-2 border-t border-brand-dark/10 px-4 py-3 text-xs font-bold text-brand-dark transition-colors hover:bg-brand-light"
-      >
-        Contactează-ne pentru finanțare
-        <ArrowRight size={13} weight="bold" className="text-brand-accent" />
-      </LocalizedClientLink>
 
       {showDetails && (
         <div className="border-t border-brand-dark/10 bg-brand-light/50 px-4 py-3">
           <ul className="flex flex-col gap-1.5 text-xs leading-relaxed text-brand-dark/70">
             <li>
-              Rata afișată este{" "}
-              <span className="font-bold text-brand-dark">orientativă</span> și
-              se calculează împărțind prețul produsului la numărul de rate.
+              Produs financiar{" "}
+              <span className="font-bold text-brand-dark">{product.name}</span>{" "}
+              de la UniCredit Consumer Financing IFN S.A.: finanțare între{" "}
+              {formatLei(product.minAmount)} și{" "}
+              {formatLei(product.maxAmountLabel)}, pe {product.minMonths}–
+              {product.maxMonths} de luni.
             </li>
             <li>
-              Suma finală, dobânda și comisioanele sunt stabilite de finanțator
-              în funcție de dosarul tău.
+              Rata include comisionul lunar de administrare credit de{" "}
+              {formatLei(product.monthlyAdminFee)}. Comision de analiză dosar:{" "}
+              {formatLei(product.fileAnalysisFee)}.
             </li>
             <li>
-              Finanțarea este supusă aprobării. Scrie-ne și te ajutăm cu
-              alegerea băncii și cu dosarul.
+              DAE {product.dae}% este calculată pentru suma maximă și perioada
+              maximă a produsului. Calculul este orientativ — suma finală și
+              graficul de rambursare sunt stabilite de finanțator la aprobarea
+              dosarului.
             </li>
-            {providers.map((p) => (
-              <li key={p.id}>
-                <span className="font-bold text-brand-dark">{p.label}</span>:
-                finanțare între {formatLei(p.minAmount)} și{" "}
-                {formatLei(p.maxAmount)}, în {p.terms[0]}–
-                {p.terms[p.terms.length - 1]} rate
-                {p.dae != null ? `, DAE ${p.dae}%` : ""}.
-              </li>
-            ))}
+            <li>
+              Alegi ratele ca metodă de plată la finalizarea comenzii, parcurgi
+              creditarea 100% online (identificare video + semnătură
+              electronică) și primești răspunsul în maximum 15 minute.
+            </li>
+            <li>
+              Finanțarea este supusă aprobării UCFin.{" "}
+              <a
+                href={UCFIN_GUIDE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-brand-dark underline underline-offset-2 hover:text-brand-accent"
+              >
+                Ghidul creditării la distanță
+              </a>{" "}
+              ·{" "}
+              <LocalizedClientLink
+                href="/credit-online"
+                className="font-bold text-brand-dark underline underline-offset-2 hover:text-brand-accent"
+              >
+                toate detaliile despre Creditul Online
+              </LocalizedClientLink>
+              .
+            </li>
           </ul>
         </div>
       )}
