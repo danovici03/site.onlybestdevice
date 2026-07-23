@@ -70,6 +70,11 @@ export const isTbi = (providerId?: string) => {
   return providerId?.startsWith("pp_tbi")
 }
 
+/** Card prin Netopia mobilPay — form POST criptat + IPN. */
+export const isNetopia = (providerId?: string) => {
+  return providerId?.startsWith("pp_netopia")
+}
+
 // Add currencies that don't need to be divided by 100
 export const noDivisionCurrencies = [
   "krw",

@@ -9,10 +9,18 @@
  */
 
 import { RadioGroup, Radio } from "@headlessui/react"
-import { isStripeLike, isUnicredit, isManual, isCod, isTbi } from "@lib/constants"
+import {
+  isStripeLike,
+  isUnicredit,
+  isManual,
+  isCod,
+  isTbi,
+  isNetopia,
+} from "@lib/constants"
 import {
   initiatePaymentSession,
   placeFinancedOrder,
+  placeNetopiaOrder,
   placeOrder,
   saveCheckoutDetails,
   setShippingMethod,
@@ -65,6 +73,7 @@ import {
 /* ------------------------------------------------------------------ */
 
 const METHOD_ORDER = [
+  "pp_netopia_netopia",
   "pp_stripe_stripe",
   "pp_unicredit_unicredit",
   "pp_tbi_tbi",
@@ -72,9 +81,40 @@ const METHOD_ORDER = [
   "pp_system_default",
 ]
 
+/** Form POST către mobilPay — browserul clientului trimite env_key + data. */
+const submitNetopiaForm = (url: string, envKey: string, data: string) => {
+  const form = document.createElement("form")
+  form.method = "POST"
+  form.action = url
+  const add = (name: string, value: string) => {
+    const input = document.createElement("input")
+    input.type = "hidden"
+    input.name = name
+    input.value = value
+    form.appendChild(input)
+  }
+  add("env_key", envKey)
+  add("data", data)
+  document.body.appendChild(form)
+  form.submit()
+}
+
 const methodMeta = (
   id: string
 ): { title: string; description?: string; badges: React.ReactNode } | null => {
+  if (isNetopia(id)) {
+    return {
+      title: "Plată cu card – debit sau credit",
+      description:
+        "Plată securizată prin Netopia Payments. Vei introduce datele cardului pe pagina securizată mobilPay.",
+      badges: (
+        <>
+          <VisaBadge />
+          <MastercardBadge />
+        </>
+      ),
+    }
+  }
   if (isStripeLike(id)) {
     return {
       title: "Plată cu card – debit sau credit",
@@ -460,6 +500,18 @@ const OnePageCheckout = ({
           provider_id: selectedPayment,
         })
         await placeFinancedOrder("tbi")
+      } else if (isNetopia(selectedPayment)) {
+        const sessionOk = activeSession?.provider_id === selectedPayment
+        if (!sessionOk) {
+          await initiatePaymentSession(cart, { provider_id: selectedPayment })
+        }
+        const fields = await placeNetopiaOrder()
+        if ("payment_url" in fields) {
+          submitNetopiaForm(fields.payment_url, fields.env_key, fields.data)
+          return // browserul pleacă spre mobilPay
+        }
+        window.location.href = fields.fallback_url
+        return
       } else {
         const sessionOk =
           activeSession?.provider_id === selectedPayment

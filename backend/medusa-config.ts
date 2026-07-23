@@ -75,6 +75,18 @@ if (process.env.STRIPE_API_KEY) {
   })
 }
 
+// Card prin Netopia mobilPay. Se activează când semnătura + cheile există.
+if (
+  process.env.NETOPIA_POS_SIGNATURE &&
+  process.env.NETOPIA_PUBLIC_CER_PATH &&
+  process.env.NETOPIA_PRIVATE_KEY_PATH
+) {
+  paymentProviders.push({
+    resolve: './src/modules/netopia',
+    id: 'netopia',
+  })
+}
+
 // Rate prin TBI Bank (eCommerce API). Se activează când config-ul e complet
 // (chei RSA + credențiale de la echipa de integrare TBI).
 if (

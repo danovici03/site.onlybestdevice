@@ -428,6 +428,69 @@ export async function saveCheckoutDetails(payload: {
   })
 }
 
+export type NetopiaPaymentFields =
+  | { payment_url: string; env_key: string; data: string }
+  | { fallback_url: string }
+
+/**
+ * Plasează comanda cu plata „Card prin Netopia" și întoarce câmpurile pentru
+ * form POST-ul către mobilPay (browserul clientului trimite formularul, nu
+ * serverul). Dacă pregătirea plății eșuează, întoarce URL-ul de confirmare —
+ * comanda e plasată, plata se reia din suport.
+ */
+export async function placeNetopiaOrder(
+  cartId?: string
+): Promise<NetopiaPaymentFields> {
+  const id = cartId || (await getCartId())
+
+  if (!id) {
+    throw new Error("No existing cart found when placing an order")
+  }
+
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  const cartRes = await sdk.store.cart
+    .complete(id, {}, headers)
+    .then(async (cartRes) => {
+      const cartCacheTag = await getCacheTag("carts")
+      revalidateTag(cartCacheTag)
+      return cartRes
+    })
+    .catch(medusaError)
+
+  if (cartRes?.type !== "order") {
+    throw new Error("Comanda nu a putut fi plasată. Verifică datele și reîncearcă.")
+  }
+
+  const order = cartRes.order
+  const countryCode = order.shipping_address?.country_code?.toLowerCase()
+
+  const orderCacheTag = await getCacheTag("orders")
+  revalidateTag(orderCacheTag)
+  removeCartId()
+
+  try {
+    const resp = await sdk.client.fetch<{
+      payment_url: string
+      env_key: string
+      data: string
+    }>(`/store/netopia/session`, {
+      method: "POST",
+      body: { order_id: order.id },
+      headers,
+    })
+    if (resp?.payment_url && resp?.env_key && resp?.data) {
+      return resp
+    }
+  } catch (e) {
+    console.error("[netopia] Pregătirea plății mobilPay a eșuat:", e)
+  }
+
+  return { fallback_url: `/${countryCode}/order/${order.id}/confirmed` }
+}
+
 /**
  * Places an order for a cart. If no cart ID is provided, it will use the cart ID from the cookies.
  * @param cartId - optional - The ID of the cart to place an order for.
