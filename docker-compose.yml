@@ -78,6 +78,32 @@ services:
       STRIPE_API_KEY: ${STRIPE_API_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
 
+      # ── URL-ul public al storefront-ului (redirect-uri după plată) ──
+      STOREFRONT_URL: ${STOREFRONT_URL:-}
+
+      # ── UniCredit ePOS (rate) — gol = provider dezactivat ──
+      UNICREDIT_EPOS_BASE_URL: ${UNICREDIT_EPOS_BASE_URL:-}
+      UNICREDIT_EPOS_EMAIL: ${UNICREDIT_EPOS_EMAIL:-}
+      UNICREDIT_EPOS_PASSWORD: ${UNICREDIT_EPOS_PASSWORD:-}
+      UNICREDIT_CALLBACK_TOKEN: ${UNICREDIT_CALLBACK_TOKEN:-}
+
+      # ── Netopia mobilPay (card) — gol = provider dezactivat.
+      #    Cheile se montează pe server în /opt/onlybestdevice/keys (vezi volumes).
+      NETOPIA_ENV: ${NETOPIA_ENV:-}
+      NETOPIA_POS_SIGNATURE: ${NETOPIA_POS_SIGNATURE:-}
+      NETOPIA_PUBLIC_CER_PATH: ${NETOPIA_PUBLIC_CER_PATH:-}
+      NETOPIA_PRIVATE_KEY_PATH: ${NETOPIA_PRIVATE_KEY_PATH:-}
+
+      # ── TBI Bank (rate) — gol = provider dezactivat ──
+      TBI_ENV: ${TBI_ENV:-}
+      TBI_STORE_ID: ${TBI_STORE_ID:-}
+      TBI_USERNAME: ${TBI_USERNAME:-}
+      TBI_PASSWORD: ${TBI_PASSWORD:-}
+      TBI_PUBLIC_KEY_PATH: ${TBI_PUBLIC_KEY_PATH:-}
+      TBI_PRIVATE_KEY_PATH: ${TBI_PRIVATE_KEY_PATH:-}
+      TBI_PRIVATE_KEY_PASSPHRASE: ${TBI_PRIVATE_KEY_PASSPHRASE:-}
+      TBI_CALLBACK_TOKEN: ${TBI_CALLBACK_TOKEN:-}
+
       # ── Resend email (opțional) ──
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM: ${RESEND_FROM:-}
@@ -85,6 +111,9 @@ services:
     volumes:
       # Doar dacă NU folosești S3 — păstrează fișierele urcate la restart.
       - backend_static:/app/static
+      # Cheile de plată (Netopia .cer/.key, TBI) — copiate manual pe server
+      # prin SSH; NU sunt în imagine și NU se comit în git.
+      - /opt/onlybestdevice/keys:/app/keys:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:9000/health || exit 1"]
       interval: 30s
