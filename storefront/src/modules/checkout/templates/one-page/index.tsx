@@ -26,6 +26,7 @@ import {
   setShippingMethod,
   type CheckoutAddressPayload,
 } from "@lib/data/cart"
+import { signup } from "@lib/data/customer"
 import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
 import { convertToLocale } from "@lib/util/money"
 import {
@@ -403,6 +404,43 @@ const OnePageCheckout = ({
   const [stripeComplete, setStripeComplete] = useState(false)
   const [gdprAccepted, setGdprAccepted] = useState(false)
 
+  /* ---------------- Termeni + cont opțional ---------------- */
+  // Obligatoriu (OUG 34/2014): acceptarea explicită a termenilor. Prelucrarea
+  // datelor pentru onorarea comenzii se face pe art. 6(1)(b) GDPR — informare,
+  // nu consimțământ; doar newsletter-ul cere opt-in separat, nebifat implicit.
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [createAccount, setCreateAccount] = useState(false)
+  const [accountPassword, setAccountPassword] = useState("")
+  const [marketingOptIn, setMarketingOptIn] = useState(false)
+  const passwordTooShort = createAccount && accountPassword.length < 8
+  // Contul s-a creat deja în acest checkout (ex. plata a eșuat la primul
+  // încearcă) — nu mai reapelăm signup, ar pica pe „already exists".
+  const accountCreatedRef = useRef(false)
+
+  /** Creează contul (register + customer + transfer coș) înainte de plasare. */
+  const maybeCreateAccount = async () => {
+    if (!createAccount || customer || accountCreatedRef.current) return
+    const fd = new FormData()
+    fd.set("email", form.email)
+    fd.set("first_name", form.first_name)
+    fd.set("last_name", form.last_name)
+    fd.set("phone", form.phone)
+    fd.set("password", accountPassword)
+    if (marketingOptIn) fd.set("marketing_opt_in", "on")
+    const result = await signup(null, fd)
+    if (typeof result === "string") {
+      if (/already exists/i.test(result)) {
+        throw new Error(
+          "Există deja un cont cu acest email. Autentifică-te sau debifează „Creează-mi cont” pentru a continua fără cont."
+        )
+      }
+      throw new Error(
+        "Contul nu a putut fi creat. Poți debifa „Creează-mi cont” și finaliza comanda fără cont."
+      )
+    }
+    accountCreatedRef.current = true
+  }
+
   const cartTotal = cart?.total ?? 0
   const financingTerms = availableTerms(cartTotal)
   const financeable =
@@ -455,7 +493,9 @@ const OnePageCheckout = ({
     !!shippingMethodId &&
     !!selectedPayment &&
     (!isStripeLike(selectedPayment) || stripeComplete) &&
-    (!isUnicredit(selectedPayment) || gdprAccepted)
+    (!isUnicredit(selectedPayment) || gdprAccepted) &&
+    !passwordTooShort &&
+    termsAccepted
 
   const disabledHint = !selectedPayment
     ? "Alege metoda de plată"
@@ -467,7 +507,11 @@ const OnePageCheckout = ({
           ? "Bifează acordul GDPR UCFin"
           : isStripeLike(selectedPayment) && !stripeComplete
             ? "Completează datele cardului"
-            : null
+            : passwordTooShort
+              ? "Parola contului trebuie să aibă minim 8 caractere"
+              : !termsAccepted
+                ? "Bifează acordul cu termenii și condițiile"
+                : null
 
   const [placing, setPlacing] = useState(false)
   const [placeError, setPlaceError] = useState<string | null>(null)
@@ -480,6 +524,10 @@ const OnePageCheckout = ({
       if (dirty || !cart.email) {
         await persistAddress()
       }
+
+      // Contul se creează înaintea plasării: transferCart() din signup mută
+      // coșul pe client, deci comanda apare direct în „Comenzile mele".
+      await maybeCreateAccount()
 
       if (isStripeLike(selectedPayment)) {
         if (!stripeConfirmRef.current) {
@@ -708,6 +756,54 @@ const OnePageCheckout = ({
                 value={billing.company}
                 onChange={(e) => setBillingField("company", e.target.value)}
               />
+            </div>
+          )}
+
+          {!customer && (
+            <div className="mt-4 rounded-2xl border border-brand-dark/10 bg-brand-light/40 p-4">
+              <label className="flex items-center gap-2.5 text-sm text-brand-dark/80 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={createAccount}
+                  onChange={(e) => setCreateAccount(e.target.checked)}
+                  className="h-4 w-4 accent-brand-dark"
+                  data-testid="create-account-checkbox"
+                />
+                <span>
+                  <span className="font-semibold text-brand-dark">
+                    Creează-mi cont
+                  </span>{" "}
+                  — urmărești comenzile și returnezi mai ușor
+                </span>
+              </label>
+
+              {createAccount && (
+                <div className="mt-3 flex flex-col gap-3">
+                  <Input
+                    label="Parolă (minim 8 caractere)"
+                    name="account_password"
+                    type="password"
+                    autoComplete="new-password"
+                    value={accountPassword}
+                    onChange={(e) => setAccountPassword(e.target.value)}
+                    required
+                    data-testid="account-password-input"
+                  />
+                  <label className="flex items-start gap-2.5 text-xs leading-relaxed text-brand-dark/70 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={marketingOptIn}
+                      onChange={(e) => setMarketingOptIn(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-brand-dark"
+                      data-testid="marketing-opt-in-checkbox"
+                    />
+                    <span>
+                      Vreau să primesc pe email oferte și noutăți
+                      onlybestdevice (opțional — te poți dezabona oricând).
+                    </span>
+                  </label>
+                </div>
+              )}
             </div>
           )}
 
@@ -953,6 +1049,41 @@ const OnePageCheckout = ({
 
           <CartTotals totals={cart} />
 
+          <label className="flex items-start gap-2.5 text-xs leading-relaxed text-brand-dark/70 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-brand-dark"
+              data-testid="terms-checkbox"
+            />
+            <span>
+              Am citit și sunt de acord cu{" "}
+              <LocalizedClientLink
+                href="/termeni"
+                className="underline underline-offset-2 hover:text-brand-accent"
+              >
+                termenii și condițiile
+              </LocalizedClientLink>{" "}
+              (inclusiv{" "}
+              <LocalizedClientLink
+                href="/retur"
+                className="underline underline-offset-2 hover:text-brand-accent"
+              >
+                politica de retur
+              </LocalizedClientLink>
+              ) și am luat la cunoștință{" "}
+              <LocalizedClientLink
+                href="/confidentialitate"
+                className="underline underline-offset-2 hover:text-brand-accent"
+              >
+                politica de confidențialitate
+              </LocalizedClientLink>{" "}
+              privind prelucrarea datelor mele personale pentru onorarea
+              comenzii.
+            </span>
+          </label>
+
           <button
             type="button"
             onClick={handlePlaceOrder}
@@ -979,24 +1110,6 @@ const OnePageCheckout = ({
             </p>
           )}
           <ErrorMessage error={placeError} data-testid="place-order-error" />
-
-          <p className="text-xs leading-relaxed text-brand-dark/55 text-center">
-            Prin plasarea comenzii confirmi că ai citit și ești de acord cu{" "}
-            <LocalizedClientLink
-              href="/termeni"
-              className="underline underline-offset-2 hover:text-brand-accent"
-            >
-              termenii și condițiile
-            </LocalizedClientLink>{" "}
-            și cu{" "}
-            <LocalizedClientLink
-              href="/confidentialitate"
-              className="underline underline-offset-2 hover:text-brand-accent"
-            >
-              politica de confidențialitate
-            </LocalizedClientLink>
-            .
-          </p>
         </div>
 
         <ul className="bg-white rounded-3xl p-5 shadow-sm flex flex-col gap-2 text-sm">

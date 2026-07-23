@@ -225,6 +225,10 @@ export const account = {
     placedOn: "Plasată la",
     downloadInvoice: "Descarcă factura PDF",
     viewOrders: "Mergi la comenzile mele",
+    guestAccountTitle: "Vrei să urmărești comanda mai ușor?",
+    guestAccountBody:
+      "Creează-ți un cont cu emailul folosit la comandă — vezi statusul comenzilor, descarci facturi și faci retururi în câteva clickuri.",
+    guestAccountCta: "Creează-ți cont",
     itemsTitle: "Produse",
     summaryTitle: "Rezumat",
     shippingAddress: "Adresă de livrare",

@@ -20,6 +20,12 @@ type InstallmentsProps = {
   currency?: string
   /** Varianta compactă (coș/checkout): fără detalii extinse. */
   compact?: boolean
+  /**
+   * Randare în interiorul altui container (ex. selectorul de finanțatori din
+   * coș): fără chenar, fără header propriu și fără nota TBI — părintele le
+   * asigură pe toate.
+   */
+  embedded?: boolean
   /** Termenul preselectat (dacă vine din altă parte a fluxului). */
   initialMonths?: number
   /** Anunță selecția termenului (folosit la checkout). */
@@ -30,6 +36,7 @@ const Installments = ({
   amount,
   currency,
   compact = false,
+  embedded = false,
   initialMonths,
   onSelectMonths,
 }: InstallmentsProps) => {
@@ -60,29 +67,39 @@ const Installments = ({
 
   return (
     <section
-      id="plata-in-rate"
-      className="scroll-mt-28 rounded-2xl border border-brand-dark/10 bg-white overflow-hidden"
+      id={embedded ? undefined : "plata-in-rate"}
+      className={clx(
+        "overflow-hidden",
+        !embedded &&
+          "scroll-mt-28 rounded-2xl border border-brand-dark/10 bg-white"
+      )}
       aria-label="Plata în rate"
     >
-      <div className="flex items-center gap-2 px-4 pt-4 pb-3">
-        <CreditCard size={16} weight="fill" className="text-brand-accent" />
-        <span className="flex-1 font-bold text-sm text-brand-dark">
-          Cumpără în rate prin {FINANCER_NAME}
-        </span>
-        <button
-          type="button"
-          onClick={() => setShowDetails((v) => !v)}
-          aria-expanded={showDetails}
-          className="inline-flex items-center gap-1 text-xs font-bold text-brand-dark/50 transition-colors hover:text-brand-accent"
-        >
-          Detalii
-          <CaretDown
-            size={11}
-            weight="bold"
-            className={clx("transition-transform", showDetails && "rotate-180")}
-          />
-        </button>
-      </div>
+      {!embedded && (
+        <div className="flex items-center gap-2 px-4 pt-4 pb-3">
+          <CreditCard size={16} weight="fill" className="text-brand-accent" />
+          <span className="flex-1 font-bold text-sm text-brand-dark">
+            Cumpără în rate prin {FINANCER_NAME}
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowDetails((v) => !v)}
+            aria-expanded={showDetails}
+            className="inline-flex items-center gap-1 text-xs font-bold text-brand-dark/50 transition-colors hover:text-brand-accent"
+          >
+            Detalii
+            <CaretDown
+              size={11}
+              weight="bold"
+              className={clx(
+                "transition-transform",
+                showDetails && "rotate-180"
+              )}
+            />
+          </button>
+        </div>
+      )}
+      {embedded && <div className="pt-3" />}
 
       {/* Selector de termen */}
       <div className="flex flex-wrap gap-1.5 px-4">
@@ -129,12 +146,33 @@ const Installments = ({
 
       {/* TBI fără cifre: până nu avem dobânda/DAE de la ei, nu avem voie să
           afișăm rate (OUG 50/2010 cere DAE la publicitatea creditelor). */}
-      <p className="px-4 pt-2 pb-4 text-xs text-brand-dark/45">
-        <span className="mr-1.5 inline-flex items-center rounded bg-black px-1.5 py-0.5 text-[9px] font-bold lowercase text-white">
-          tbi bank
-        </span>
-        În curând: plata în rate online și prin TBI Bank.
-      </p>
+      {!embedded ? (
+        <p className="px-4 pt-2 pb-4 text-xs text-brand-dark/45">
+          <span className="mr-1.5 inline-flex items-center rounded bg-black px-1.5 py-0.5 text-[9px] font-bold lowercase text-white">
+            tbi bank
+          </span>
+          În curând: plata în rate online și prin TBI Bank.
+        </p>
+      ) : (
+        <div className="px-4 pt-2 pb-3">
+          <button
+            type="button"
+            onClick={() => setShowDetails((v) => !v)}
+            aria-expanded={showDetails}
+            className="inline-flex items-center gap-1 text-xs font-bold text-brand-dark/50 transition-colors hover:text-brand-accent"
+          >
+            Detalii despre credit
+            <CaretDown
+              size={11}
+              weight="bold"
+              className={clx(
+                "transition-transform",
+                showDetails && "rotate-180"
+              )}
+            />
+          </button>
+        </div>
+      )}
 
       {showDetails && (
         <div className="border-t border-brand-dark/10 bg-brand-light/50 px-4 py-3">

@@ -1,8 +1,21 @@
 import ItemsTemplate from "./items"
 import Summary from "./summary"
 import EmptyCartMessage from "../components/empty-cart-message"
+import FinancingOptions from "../components/financing-options"
 import SignInPrompt from "../components/sign-in-prompt"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { HttpTypes } from "@medusajs/types"
+import { ArrowRight, Lock } from "@phosphor-icons/react/dist/ssr"
+
+function getCheckoutStep(cart: HttpTypes.StoreCart) {
+  if (!cart?.shipping_address?.address_1 || !cart.email) {
+    return "address"
+  } else if (cart?.shipping_methods?.length === 0) {
+    return "delivery"
+  } else {
+    return "payment"
+  }
+}
 
 const CartTemplate = ({
   cart,
@@ -39,6 +52,25 @@ const CartTemplate = ({
               <div className="flex flex-col gap-6">
                 {!customer && <SignInPrompt />}
                 <ItemsTemplate cart={cart} />
+
+                <FinancingOptions
+                  amount={cart.total ?? 0}
+                  currency={cart.currency_code}
+                />
+
+                <LocalizedClientLink
+                  href={"/checkout?step=" + getCheckoutStep(cart)}
+                  data-testid="checkout-button"
+                >
+                  <button
+                    type="button"
+                    className="w-full bg-brand-dark text-white rounded-full px-6 py-4 font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-accent transition-colors"
+                  >
+                    <Lock size={16} weight="bold" />
+                    <span>Mergi la finalizare</span>
+                    <ArrowRight size={16} weight="bold" />
+                  </button>
+                </LocalizedClientLink>
               </div>
 
               <div className="lg:sticky lg:top-28">

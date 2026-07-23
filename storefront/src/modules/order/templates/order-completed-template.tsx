@@ -1,5 +1,6 @@
 import { cookies as nextCookies } from "next/headers"
 
+import { retrieveCustomer } from "@lib/data/customer"
 import { account as t } from "@lib/i18n/account.it"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
@@ -66,6 +67,7 @@ export default async function OrderCompletedTemplate({
 }: OrderCompletedTemplateProps) {
   const cookies = await nextCookies()
   const isOnboarding = cookies.get("_medusa_onboarding")?.value === "true"
+  const customer = await retrieveCustomer().catch(() => null)
 
   const placedOn = new Date(order.created_at).toLocaleDateString(
     "ro-RO",
@@ -160,13 +162,32 @@ export default async function OrderCompletedTemplate({
             >
               {t.orderConfirmed.downloadInvoice}
             </LocalizedClientLink>
-            <LocalizedClientLink
-              href="/account/orders"
-              className="inline-flex items-center justify-center rounded-full border border-brand-dark/[0.15] text-brand-dark px-6 py-3 text-sm font-medium hover:bg-brand-dark/[0.05] transition-colors"
-            >
-              {t.orderConfirmed.viewOrders}
-            </LocalizedClientLink>
+            {customer && (
+              <LocalizedClientLink
+                href="/account/orders"
+                className="inline-flex items-center justify-center rounded-full border border-brand-dark/[0.15] text-brand-dark px-6 py-3 text-sm font-medium hover:bg-brand-dark/[0.05] transition-colors"
+              >
+                {t.orderConfirmed.viewOrders}
+              </LocalizedClientLink>
+            )}
           </div>
+
+          {!customer && (
+            <div className="mt-6 rounded-2xl bg-brand-light/60 border border-brand-dark/[0.06] p-5 text-left small:text-center">
+              <p className="text-sm font-semibold text-brand-dark">
+                {t.orderConfirmed.guestAccountTitle}
+              </p>
+              <p className="text-sm text-brand-dark/70 mt-1">
+                {t.orderConfirmed.guestAccountBody}
+              </p>
+              <LocalizedClientLink
+                href="/account"
+                className="inline-flex items-center justify-center rounded-full border border-brand-dark/[0.15] text-brand-dark px-5 py-2.5 text-sm font-medium hover:bg-brand-dark/[0.05] transition-colors mt-3"
+              >
+                {t.orderConfirmed.guestAccountCta}
+              </LocalizedClientLink>
+            </div>
+          )}
         </header>
 
         <div className="grid grid-cols-1 small:grid-cols-3 gap-6">
