@@ -115,7 +115,7 @@ const Installments = ({
         <span className="text-sm text-brand-dark/50">/ lună</span>
       </div>
 
-      <p className="px-4 pt-1 pb-4 text-xs text-brand-dark/60">
+      <p className="px-4 pt-1 text-xs text-brand-dark/60">
         în {selected} rate lunare egale · dobândă anuală fixă{" "}
         {Math.round(product.annualRate * 100)}% · DAE{" "}
         {product.dae.toLocaleString("ro-RO")}%
@@ -125,6 +125,15 @@ const Installments = ({
             · valoare totală orientativă {formatLei(offer.total)}
           </>
         )}
+      </p>
+
+      {/* TBI fără cifre: până nu avem dobânda/DAE de la ei, nu avem voie să
+          afișăm rate (OUG 50/2010 cere DAE la publicitatea creditelor). */}
+      <p className="px-4 pt-2 pb-4 text-xs text-brand-dark/45">
+        <span className="mr-1.5 inline-flex items-center rounded bg-black px-1.5 py-0.5 text-[9px] font-bold lowercase text-white">
+          tbi bank
+        </span>
+        În curând: plata în rate online și prin TBI Bank.
       </p>
 
       {showDetails && (
