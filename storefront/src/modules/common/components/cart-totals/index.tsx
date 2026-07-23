@@ -50,7 +50,7 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
                   amount: shipping_subtotal,
                   currency_code,
                 })
-              : "Da calcolare"}
+              : "Se calculează"}
           </span>
         </div>
         {!!discount_subtotal && (
@@ -69,16 +69,20 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
             </span>
           </div>
         )}
-        <div className="flex items-center justify-between">
-          <span>IVA</span>
-          <span
-            className="text-brand-dark tabular-nums"
-            data-testid="cart-taxes"
-            data-value={tax_total || 0}
-          >
-            {convertToLocale({ amount: tax_total ?? 0, currency_code })}
-          </span>
-        </div>
+        {/* Prețurile includ TVA; rândul apare doar când Medusa calculează
+            efectiv o taxă separată. */}
+        {!!tax_total && (
+          <div className="flex items-center justify-between">
+            <span>TVA</span>
+            <span
+              className="text-brand-dark tabular-nums"
+              data-testid="cart-taxes"
+              data-value={tax_total || 0}
+            >
+              {convertToLocale({ amount: tax_total ?? 0, currency_code })}
+            </span>
+          </div>
+        )}
       </div>
       <div className="border-t border-brand-dark/10" />
       <div className="flex items-baseline justify-between">

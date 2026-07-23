@@ -53,7 +53,14 @@ const modules: any[] = [
   },
 ]
 
-const paymentProviders: any[] = []
+const paymentProviders: any[] = [
+  // Plată la livrare (ramburs) — manual, mereu activ. pp_system_default
+  // rămâne pentru ordin de plată / transfer bancar.
+  {
+    resolve: './src/modules/manual-payments',
+    id: 'cod',
+  },
+]
 
 if (process.env.STRIPE_API_KEY) {
   paymentProviders.push({

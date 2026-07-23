@@ -399,6 +399,35 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
   )
 }
 
+export type CheckoutAddressPayload = {
+  first_name: string
+  last_name: string
+  address_1: string
+  company?: string
+  postal_code: string
+  city: string
+  country_code: string
+  province?: string
+  phone: string
+}
+
+/**
+ * Salvează datele de contact + adresele din checkout-ul într-un singur pas,
+ * fără redirect (spre deosebire de `setAddresses`). Dacă `billing_address`
+ * lipsește, facturarea = livrarea.
+ */
+export async function saveCheckoutDetails(payload: {
+  email: string
+  shipping_address: CheckoutAddressPayload
+  billing_address?: CheckoutAddressPayload
+}) {
+  await updateCart({
+    email: payload.email,
+    shipping_address: payload.shipping_address,
+    billing_address: payload.billing_address ?? payload.shipping_address,
+  })
+}
+
 /**
  * Places an order for a cart. If no cart ID is provided, it will use the cart ID from the cookies.
  * @param cartId - optional - The ID of the cart to place an order for.

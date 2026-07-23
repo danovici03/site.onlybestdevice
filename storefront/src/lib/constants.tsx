@@ -60,6 +60,11 @@ export const isUnicredit = (providerId?: string) => {
   return providerId?.startsWith("pp_unicredit")
 }
 
+/** Plată la livrare (ramburs) — provider manual propriu. */
+export const isCod = (providerId?: string) => {
+  return providerId?.startsWith("pp_cod")
+}
+
 // Add currencies that don't need to be divided by 100
 export const noDivisionCurrencies = [
   "krw",

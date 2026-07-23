@@ -34,3 +34,6 @@ migration/data/
 # Database dumps / backups
 *.dump
 /backups/
+
+# Chei de plată (Netopia etc.) — nu se comit niciodată
+backend/keys/

@@ -117,7 +117,8 @@ const Installments = ({
 
       <p className="px-4 pt-1 pb-4 text-xs text-brand-dark/60">
         în {selected} rate lunare egale · dobândă anuală fixă{" "}
-        {Math.round(product.annualRate * 100)}% · DAE {product.dae}%
+        {Math.round(product.annualRate * 100)}% · DAE{" "}
+        {product.dae.toLocaleString("ro-RO")}%
         {!compact && (
           <>
             {" "}
@@ -143,8 +144,8 @@ const Installments = ({
               {formatLei(product.fileAnalysisFee)}.
             </li>
             <li>
-              DAE {product.dae}% este calculată pentru suma maximă și perioada
-              maximă a produsului. Calculul este orientativ — suma finală și
+              DAE {product.dae.toLocaleString("ro-RO")}% este calculată pentru
+              suma maximă și perioada maximă a produsului. Calculul este orientativ — suma finală și
               graficul de rambursare sunt stabilite de finanțator la aprobarea
               dosarului.
             </li>

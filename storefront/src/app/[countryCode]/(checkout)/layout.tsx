@@ -1,6 +1,6 @@
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ChevronDown from "@modules/common/icons/chevron-down"
-import MedusaCTA from "@modules/layout/components/medusa-cta"
+import { Lock } from "@phosphor-icons/react/dist/ssr"
 
 export default function CheckoutLayout({
   children,
@@ -8,8 +8,8 @@ export default function CheckoutLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="w-full bg-white relative small:min-h-screen">
-      <div className="h-16 bg-white border-b ">
+    <div className="w-full bg-brand-light relative small:min-h-screen">
+      <div className="h-16 bg-white border-b border-brand-dark/10">
         <nav className="flex h-full items-center content-container justify-between">
           <LocalizedClientLink
             href="/cart"
@@ -34,12 +34,19 @@ export default function CheckoutLayout({
               onlybest<span className="text-brand-accent">device</span>
             </span>
           </LocalizedClientLink>
-          <div className="flex-1 basis-0" />
+          <div className="flex-1 basis-0 flex justify-end">
+            <span className="hidden small:inline-flex items-center gap-1.5 text-xs font-bold text-brand-dark/50">
+              <Lock size={13} weight="bold" />
+              Plată securizată
+            </span>
+          </div>
         </nav>
       </div>
       <div className="relative" data-testid="checkout-container">{children}</div>
-      <div className="py-4 w-full flex items-center justify-center">
-        <MedusaCTA />
+      <div className="py-5 w-full flex items-center justify-center">
+        <p className="text-xs text-brand-dark/45">
+          © onlybestdevice · Plată securizată · TVA inclus
+        </p>
       </div>
     </div>
   )

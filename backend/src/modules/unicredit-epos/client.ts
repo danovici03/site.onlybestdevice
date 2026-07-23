@@ -79,6 +79,7 @@ export class EposClient {
         email: this.options.email,
         password: this.options.password,
       }),
+      signal: AbortSignal.timeout(15_000),
     })
     const body = await res.json().catch(() => null)
     if (!res.ok || !body?.access_token) {
@@ -103,6 +104,9 @@ export class EposClient {
         Authorization: `Bearer ${this.accessToken}`,
       },
       body: JSON.stringify(payload),
+      // Timeout scurt: dacă ePOS nu răspunde, comanda tot se plasează, iar
+      // clientul cade elegant pe pagina de confirmare (finanțare din suport).
+      signal: AbortSignal.timeout(15_000),
     })
     if (res.status === 401 && !retried) {
       this.accessToken = null
