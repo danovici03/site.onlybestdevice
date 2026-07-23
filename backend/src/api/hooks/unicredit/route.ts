@@ -9,8 +9,8 @@ import {
 } from '@medusajs/framework/utils'
 
 /**
- * Callback-ul de statusuri de la UniCredit ePOS (structura propusă de noi,
- * comunicată UCFin — vezi docs/unicredit/callback.md):
+ * Callback-ul de statusuri de la UniCredit ePOS — structura propusă de noi și
+ * comunicată UCFin (acest docstring e specificația de referință):
  *
  *   POST /hooks/unicredit?token=<UNICREDIT_CALLBACK_TOKEN>
  *   {
