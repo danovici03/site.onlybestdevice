@@ -2,9 +2,12 @@
 
 import CartTotals from "@modules/common/components/cart-totals"
 import DiscountCode from "@modules/checkout/components/discount-code"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { HttpTypes } from "@medusajs/types"
 import {
+  ArrowRight,
   ArrowUUpLeft,
+  Lock,
   ShieldCheck,
   Truck,
 } from "@phosphor-icons/react/dist/ssr"
@@ -15,7 +18,19 @@ type SummaryProps = {
   }
 }
 
+function getCheckoutStep(cart: HttpTypes.StoreCart) {
+  if (!cart?.shipping_address?.address_1 || !cart.email) {
+    return "address"
+  } else if (cart?.shipping_methods?.length === 0) {
+    return "delivery"
+  } else {
+    return "payment"
+  }
+}
+
 const Summary = ({ cart }: SummaryProps) => {
+  const step = getCheckoutStep(cart)
+
   return (
     <div className="flex flex-col gap-5">
       <div className="bg-white rounded-3xl p-6 lg:p-7 shadow-sm flex flex-col gap-5">
@@ -33,6 +48,20 @@ const Summary = ({ cart }: SummaryProps) => {
         <div className="border-t border-brand-dark/10" />
 
         <CartTotals totals={cart} />
+
+        <LocalizedClientLink
+          href={"/checkout?step=" + step}
+          data-testid="checkout-button"
+        >
+          <button
+            type="button"
+            className="w-full bg-brand-dark text-white rounded-full px-6 py-4 font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-accent transition-colors"
+          >
+            <Lock size={16} weight="bold" />
+            <span>Mergi la finalizare</span>
+            <ArrowRight size={16} weight="bold" />
+          </button>
+        </LocalizedClientLink>
 
         <p className="text-xs text-brand-dark/50 text-center">
           Plată sigură · Livrare cu tracking · TVA inclus
