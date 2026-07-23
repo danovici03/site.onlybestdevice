@@ -468,12 +468,15 @@ export async function placeOrder(cartId?: string) {
 }
 
 /**
- * Plasează comanda cu plata „Rate prin UniCredit" și redirecționează clientul
- * către platforma ePOS (creditare la distanță). Dacă cererea de credit nu
- * poate fi creată, comanda rămâne plasată și clientul ajunge pe pagina de
- * confirmare — finanțarea se reia din suport.
+ * Plasează comanda cu plata în rate (UniCredit sau TBI) și redirecționează
+ * clientul către platforma finanțatorului. Dacă cererea de credit nu poate fi
+ * creată, comanda rămâne plasată și clientul ajunge pe pagina de confirmare —
+ * finanțarea se reia din suport.
  */
-export async function placeFinancedOrder(cartId?: string) {
+export async function placeFinancedOrder(
+  financer: "unicredit" | "tbi" = "unicredit",
+  cartId?: string
+) {
   const id = cartId || (await getCartId())
 
   if (!id) {
@@ -507,7 +510,7 @@ export async function placeFinancedOrder(cartId?: string) {
   let sessionUrl: string | null = null
   try {
     const resp = await sdk.client.fetch<{ session_url: string }>(
-      `/store/unicredit/session`,
+      `/store/${financer}/session`,
       {
         method: "POST",
         body: { order_id: order.id },
@@ -516,7 +519,7 @@ export async function placeFinancedOrder(cartId?: string) {
     )
     sessionUrl = resp?.session_url ?? null
   } catch (e) {
-    console.error("[unicredit] Crearea sesiunii ePOS a eșuat:", e)
+    console.error(`[${financer}] Crearea sesiunii de finanțare a eșuat:`, e)
   }
 
   redirect(sessionUrl || `/${countryCode}/order/${order.id}/confirmed`)

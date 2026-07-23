@@ -75,6 +75,21 @@ if (process.env.STRIPE_API_KEY) {
   })
 }
 
+// Rate prin TBI Bank (eCommerce API). Se activează când config-ul e complet
+// (chei RSA + credențiale de la echipa de integrare TBI).
+if (
+  process.env.TBI_STORE_ID &&
+  process.env.TBI_USERNAME &&
+  process.env.TBI_PASSWORD &&
+  process.env.TBI_PUBLIC_KEY_PATH &&
+  process.env.TBI_PRIVATE_KEY_PATH
+) {
+  paymentProviders.push({
+    resolve: './src/modules/tbi-pay',
+    id: 'tbi',
+  })
+}
+
 // Rate prin UniCredit Consumer Financing (ePOS). Staging: /TestOnline.
 if (process.env.UNICREDIT_EPOS_EMAIL && process.env.UNICREDIT_EPOS_PASSWORD) {
   paymentProviders.push({

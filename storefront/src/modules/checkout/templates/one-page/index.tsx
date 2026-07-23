@@ -9,7 +9,7 @@
  */
 
 import { RadioGroup, Radio } from "@headlessui/react"
-import { isStripeLike, isUnicredit, isManual, isCod } from "@lib/constants"
+import { isStripeLike, isUnicredit, isManual, isCod, isTbi } from "@lib/constants"
 import {
   initiatePaymentSession,
   placeFinancedOrder,
@@ -94,6 +94,14 @@ const methodMeta = (
       description:
         "Credit online 100%, cu răspuns în maximum 15 minute. Vei fi redirecționat către UCFin pentru creditarea la distanță.",
       badges: <UniCreditBadge />,
+    }
+  }
+  if (isTbi(id)) {
+    return {
+      title: "TBI Bank – plată în rate online",
+      description:
+        "Aplici online, fără card de credit. Vei fi redirecționat către TBI Bank, unde alegi numărul de rate și primești răspunsul pe loc.",
+      badges: <TbiBadge />,
     }
   }
   if (isCod(id)) {
@@ -446,7 +454,12 @@ const OnePageCheckout = ({
           provider_id: selectedPayment,
           data: { credit_period: selectedCreditMonths, gdpr: gdprAccepted },
         })
-        await placeFinancedOrder()
+        await placeFinancedOrder("unicredit")
+      } else if (isTbi(selectedPayment)) {
+        await initiatePaymentSession(cart, {
+          provider_id: selectedPayment,
+        })
+        await placeFinancedOrder("tbi")
       } else {
         const sessionOk =
           activeSession?.provider_id === selectedPayment
@@ -903,7 +916,7 @@ const OnePageCheckout = ({
             <Lock size={16} weight="bold" />
             {placing
               ? "Se procesează…"
-              : isUnicredit(selectedPayment)
+              : isUnicredit(selectedPayment) || isTbi(selectedPayment)
                 ? "Trimite cererea de finanțare"
                 : "Finalizează comanda"}
           </button>

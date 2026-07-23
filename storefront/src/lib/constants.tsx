@@ -65,6 +65,11 @@ export const isCod = (providerId?: string) => {
   return providerId?.startsWith("pp_cod")
 }
 
+/** Rate prin TBI Bank (eCommerce API) — flux redirect + callback criptat. */
+export const isTbi = (providerId?: string) => {
+  return providerId?.startsWith("pp_tbi")
+}
+
 // Add currencies that don't need to be divided by 100
 export const noDivisionCurrencies = [
   "krw",
