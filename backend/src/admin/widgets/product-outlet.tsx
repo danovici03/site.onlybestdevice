@@ -30,12 +30,12 @@ const resolveOutletTagId = async (): Promise<string> => {
   })
   if (!createRes.ok) {
     const body = await createRes.json().catch(() => ({}))
-    throw new Error(body?.message || `Errore creazione tag (${createRes.status})`)
+    throw new Error(body?.message || `Eroare la crearea tagului (${createRes.status})`)
   }
   const created = await createRes.json()
   const id = created?.product_tag?.id
   if (!id) {
-    throw new Error("Tag 'outlet' creato ma id non restituito")
+    throw new Error("Tagul outlet a fost creat, dar nu a returnat un id")
   }
   return id
 }
@@ -73,16 +73,14 @@ const ProductOutletWidget = ({
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body?.message || `Errore ${res.status}`)
+        throw new Error(body?.message || `Eroare ${res.status}`)
       }
       setIsOutlet(next)
       toast.success(
-        next
-          ? "Prodotto contrassegnato come Outlet (garanzia ridotta a 12 mesi)"
-          : "Prodotto rimosso dall'Outlet (garanzia ripristinata a 24 mesi)"
+        next ? "Produs marcat ca Outlet" : "Produs scos din Outlet"
       )
     } catch (err: any) {
-      toast.error(err.message || "Errore nel salvataggio")
+      toast.error(err.message || "Eroare la salvare")
     } finally {
       setSaving(false)
     }
@@ -93,20 +91,20 @@ const ProductOutletWidget = ({
       <div className="flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-3">
           <Tag />
-          <Heading level="h2">Outlet / Ex esposizione</Heading>
+          <Heading level="h2">Outlet / produs expus</Heading>
         </div>
       </div>
       <div className="px-6 py-4 flex items-start justify-between gap-6">
         <div className="flex flex-col gap-1 max-w-2xl">
           <Text>
-            Contrassegna il prodotto come <strong>Outlet</strong> se è stato
-            esposto in showroom o utilizzato a fini espositivi.
+            Marchează produsul ca <strong>Outlet</strong> dacă a fost expus
+            în magazin sau folosit în scop demonstrativ.
           </Text>
           <Text size="small" className="text-ui-fg-subtle">
-            Sullo storefront comparirà il badge &laquo;Outlet&raquo; e la
-            garanzia legale di conformità sarà ridotta a 12 mesi (anziché 24)
-            ai sensi dell&apos;art. 134 c. 2 Cod. Cons. Tecnicamente, applica
-            o rimuove il tag <code>outlet</code> sul prodotto.
+            Tehnic, aplică sau scoate tagul <code>outlet</code> de pe produs.
+            Atenție: deocamdată site-ul nu afișează nimic pe baza acestui tag —
+            rămâne o etichetă internă până adăugăm badge-ul și regulile de
+            garanție pentru produsele expuse.
           </Text>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -120,7 +118,7 @@ const ProductOutletWidget = ({
             htmlFor="outlet-toggle"
             className="text-sm font-medium cursor-pointer"
           >
-            {isOutlet ? "Prodotto Outlet" : "Prodotto standard"}
+            {isOutlet ? "Produs Outlet" : "Produs standard"}
           </label>
         </div>
       </div>

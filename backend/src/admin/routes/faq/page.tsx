@@ -58,7 +58,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body?.error?.formErrors?.[0] || body?.message || `Request failed: ${res.status}`)
+    throw new Error(body?.error?.formErrors?.[0] || body?.message || `Cererea a eșuat: ${res.status}`)
   }
   return res.json()
 }
@@ -107,7 +107,7 @@ const FaqPage = () => {
           body: JSON.stringify(payload),
         })
       }
-      toast.success("Categoria salvata")
+      toast.success("Categorie salvată")
       setCatDrawerOpen(false)
       load()
     } catch (err: any) {
@@ -116,10 +116,10 @@ const FaqPage = () => {
   }
 
   const deleteCategory = async (id: string) => {
-    if (!confirm("Eliminare la categoria e tutte le sue domande?")) return
+    if (!confirm("Ștergi categoria și toate întrebările din ea?")) return
     try {
       await api(`/admin/faq/categories/${id}`, { method: "DELETE" })
-      toast.success("Categoria eliminata")
+      toast.success("Categorie ștearsă")
       load()
     } catch (err: any) {
       toast.error(err.message)
@@ -147,7 +147,7 @@ const FaqPage = () => {
           body: JSON.stringify(payload),
         })
       }
-      toast.success("Domanda salvata")
+      toast.success("Întrebare salvată")
       setItemDrawerOpen(false)
       load()
     } catch (err: any) {
@@ -156,10 +156,10 @@ const FaqPage = () => {
   }
 
   const deleteItem = async (id: string) => {
-    if (!confirm("Eliminare la domanda?")) return
+    if (!confirm("Ștergi întrebarea?")) return
     try {
       await api(`/admin/faq/items/${id}`, { method: "DELETE" })
-      toast.success("Domanda eliminata")
+      toast.success("Întrebare ștearsă")
       load()
     } catch (err: any) {
       toast.error(err.message)
@@ -170,9 +170,9 @@ const FaqPage = () => {
     <Container className="divide-y p-0">
       <div className="flex items-center justify-between px-6 py-4">
         <div>
-          <Heading>FAQ — Domande Frequenti</Heading>
+          <Heading>FAQ — Întrebări frecvente</Heading>
           <Text size="small" className="text-ui-fg-subtle">
-            Gestisci categorie e domande visibili sullo storefront alla pagina /faq.
+            Administrează categoriile și întrebările afișate pe site la pagina /faq.
           </Text>
         </div>
         <Button
@@ -183,17 +183,17 @@ const FaqPage = () => {
           }}
         >
           <Plus />
-          Nuova categoria
+          Categorie nouă
         </Button>
       </div>
 
       {loading ? (
         <div className="px-6 py-12 text-center">
-          <Text>Caricamento…</Text>
+          <Text>Se încarcă…</Text>
         </div>
       ) : categories.length === 0 ? (
         <div className="px-6 py-12 text-center">
-          <Text>Nessuna categoria. Crea la prima oppure esegui lo script di seed.</Text>
+          <Text>Nicio categorie. Creeaz-o pe prima sau rulează scriptul de seed.</Text>
         </div>
       ) : (
         categories.map((cat) => (
@@ -203,7 +203,7 @@ const FaqPage = () => {
                 <div className="flex items-center gap-2">
                   <Heading level="h3">{cat.title}</Heading>
                   <Badge size="2xsmall" color={cat.is_published ? "green" : "grey"}>
-                    {cat.is_published ? "pubblicata" : "bozza"}
+                    {cat.is_published ? "publicată" : "ciornă"}
                   </Badge>
                   <Badge size="2xsmall" color="grey">/{cat.slug}</Badge>
                 </div>
@@ -223,7 +223,7 @@ const FaqPage = () => {
                   }}
                 >
                   <Plus />
-                  Domanda
+                  Întrebare
                 </Button>
                 <Button
                   variant="secondary"
@@ -245,10 +245,10 @@ const FaqPage = () => {
               <Table>
                 <Table.Header>
                   <Table.Row>
-                    <Table.HeaderCell>Domanda</Table.HeaderCell>
+                    <Table.HeaderCell>Întrebare</Table.HeaderCell>
                     <Table.HeaderCell className="w-24">Ordine</Table.HeaderCell>
-                    <Table.HeaderCell className="w-32">Stato</Table.HeaderCell>
-                    <Table.HeaderCell className="w-32 text-right">Azioni</Table.HeaderCell>
+                    <Table.HeaderCell className="w-32">Stare</Table.HeaderCell>
+                    <Table.HeaderCell className="w-32 text-right">Acțiuni</Table.HeaderCell>
                   </Table.Row>
                 </Table.Header>
                 <Table.Body>
@@ -260,7 +260,7 @@ const FaqPage = () => {
                         <Table.Cell>{item.display_order}</Table.Cell>
                         <Table.Cell>
                           <Badge size="2xsmall" color={item.is_published ? "green" : "grey"}>
-                            {item.is_published ? "pubblicata" : "bozza"}
+                            {item.is_published ? "publicată" : "ciornă"}
                           </Badge>
                         </Table.Cell>
                         <Table.Cell>
@@ -292,7 +292,7 @@ const FaqPage = () => {
       <Drawer open={catDrawerOpen} onOpenChange={setCatDrawerOpen}>
         <Drawer.Content>
           <Drawer.Header>
-            <Drawer.Title>{editingCat.id ? "Modifica categoria" : "Nuova categoria"}</Drawer.Title>
+            <Drawer.Title>{editingCat.id ? "Editează categoria" : "Categorie nouă"}</Drawer.Title>
           </Drawer.Header>
           <Drawer.Body className="flex flex-col gap-4 overflow-auto">
             <div className="flex flex-col gap-1">
@@ -300,21 +300,21 @@ const FaqPage = () => {
               <Input
                 value={editingCat.slug ?? ""}
                 onChange={(e) => setEditingCat({ ...editingCat, slug: e.target.value })}
-                placeholder="es. spedizioni-e-consegna"
+                placeholder="ex. livrare-si-transport"
               />
               <Text size="xsmall" className="text-ui-fg-subtle">
-                Solo minuscole, numeri e trattini. Usato nell&apos;URL ?tab=…
+                Doar litere mici, cifre și cratime. Folosit în URL la ?tab=…
               </Text>
             </div>
             <div className="flex flex-col gap-1">
-              <Label>Titolo</Label>
+              <Label>Titlu</Label>
               <Input
                 value={editingCat.title ?? ""}
                 onChange={(e) => setEditingCat({ ...editingCat, title: e.target.value })}
               />
             </div>
             <div className="flex flex-col gap-1">
-              <Label>Descrizione (opzionale)</Label>
+              <Label>Descriere (opțional)</Label>
               <Textarea
                 value={editingCat.description ?? ""}
                 onChange={(e) => setEditingCat({ ...editingCat, description: e.target.value })}
@@ -336,14 +336,14 @@ const FaqPage = () => {
                 checked={editingCat.is_published ?? true}
                 onCheckedChange={(v) => setEditingCat({ ...editingCat, is_published: v })}
               />
-              <Label>Pubblicata</Label>
+              <Label>Publicată</Label>
             </div>
           </Drawer.Body>
           <Drawer.Footer>
             <Drawer.Close asChild>
-              <Button variant="secondary">Annulla</Button>
+              <Button variant="secondary">Anulează</Button>
             </Drawer.Close>
-            <Button onClick={saveCategory}>Salva</Button>
+            <Button onClick={saveCategory}>Salvează</Button>
           </Drawer.Footer>
         </Drawer.Content>
       </Drawer>
@@ -351,23 +351,23 @@ const FaqPage = () => {
       <Drawer open={itemDrawerOpen} onOpenChange={setItemDrawerOpen}>
         <Drawer.Content>
           <Drawer.Header>
-            <Drawer.Title>{editingItem.id ? "Modifica domanda" : "Nuova domanda"}</Drawer.Title>
+            <Drawer.Title>{editingItem.id ? "Editează întrebarea" : "Întrebare nouă"}</Drawer.Title>
           </Drawer.Header>
           <Drawer.Body className="flex flex-col gap-4 overflow-auto">
             <div className="flex flex-col gap-1">
-              <Label>Domanda</Label>
+              <Label>Întrebare</Label>
               <Input
                 value={editingItem.question ?? ""}
                 onChange={(e) => setEditingItem({ ...editingItem, question: e.target.value })}
               />
             </div>
             <div className="flex flex-col gap-1">
-              <Label>Risposta (Markdown supportato)</Label>
+              <Label>Răspuns (acceptă Markdown)</Label>
               <Textarea
                 value={editingItem.answer ?? ""}
                 onChange={(e) => setEditingItem({ ...editingItem, answer: e.target.value })}
                 rows={10}
-                placeholder="Puoi usare **grassetto**, *corsivo*, elenchi e [link](https://...)"
+                placeholder="Poți folosi **îngroșat**, *italic*, liste și [link](https://...)"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -385,14 +385,14 @@ const FaqPage = () => {
                 checked={editingItem.is_published ?? true}
                 onCheckedChange={(v) => setEditingItem({ ...editingItem, is_published: v })}
               />
-              <Label>Pubblicata</Label>
+              <Label>Publicată</Label>
             </div>
           </Drawer.Body>
           <Drawer.Footer>
             <Drawer.Close asChild>
-              <Button variant="secondary">Annulla</Button>
+              <Button variant="secondary">Anulează</Button>
             </Drawer.Close>
-            <Button onClick={saveItem}>Salva</Button>
+            <Button onClick={saveItem}>Salvează</Button>
           </Drawer.Footer>
         </Drawer.Content>
       </Drawer>

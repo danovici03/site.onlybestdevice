@@ -864,8 +864,15 @@ const OnePageCheckout = ({
                         <span className="w-2 h-2 rounded-full bg-brand-dark" />
                       )}
                     </span>
-                    <span className="text-sm font-bold text-brand-dark truncate">
-                      {option.name}
+                    <span className="flex flex-col min-w-0">
+                      <span className="text-sm font-bold text-brand-dark">
+                        {option.name}
+                      </span>
+                      {option.type?.description && (
+                        <span className="text-xs text-brand-dark/55 leading-snug">
+                          {option.type.description}
+                        </span>
+                      )}
                     </span>
                   </span>
                   <span className="text-sm font-bold text-brand-dark shrink-0">

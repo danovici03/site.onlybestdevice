@@ -34,12 +34,13 @@ export default function LivrarePage() {
           1–3 zile lucrătoare;
         </li>
         <li>
-          <strong>Livrare express</strong> — 35 lei, în 24 de ore în orașele
-          mari;
+          <strong>Livrare prioritară</strong> — 25,99 lei, comanda este
+          procesată și expediată cu prioritate;
         </li>
         <li>
-          <strong>Ridicare personală</strong> — gratuit, după confirmarea
-          comenzii;
+          <strong>Ridicare personală de la locația magazinului</strong> —
+          gratuit, termen de procesare 1–2 zile lucrătoare; te anunțăm pe email
+          când comanda este disponibilă în magazin;
         </li>
         <li>
           <strong>Transport gratuit</strong> pentru comenzile de peste{" "}

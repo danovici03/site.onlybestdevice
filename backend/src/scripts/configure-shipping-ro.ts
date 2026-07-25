@@ -1,7 +1,7 @@
 /**
  * Configurează livrarea pentru România:
  *  - șterge opțiunile demo din seed
- *  - creează: Curier standard (20 lei), Curier express (35 lei), Ridicare personală (0 lei)
+ *  - creează: Curier standard (20 lei), Livrare prioritară (standard + 5.99 lei), Ridicare personală (0 lei)
  *  - creează o promoție automată „transport gratuit peste 1000 lei"
  *
  * Rulare: cd backend && yarn medusa exec ./src/scripts/configure-shipping-ro.ts
@@ -14,6 +14,10 @@ import {
 } from "@medusajs/medusa/core-flows"
 
 const FREE_SHIPPING_THRESHOLD = 1000 // lei
+const STANDARD_PRICE = 20 // lei
+const PRIORITY_SURCHARGE = 5.99 // lei peste livrarea standard
+// Rotunjire explicită: 20 + 5.99 dă 25.990000000000002 în virgulă mobilă.
+const PRIORITY_PRICE = Number((STANDARD_PRICE + PRIORITY_SURCHARGE).toFixed(2))
 
 export default async function configureShippingRo({ container }: ExecArgs) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
@@ -76,20 +80,21 @@ export default async function configureShippingRo({ container }: ExecArgs) {
         "standard",
         "Standard",
         "Livrare prin curier în 1-3 zile lucrătoare.",
-        20
+        STANDARD_PRICE
       ),
       opt(
-        "Livrare express",
-        "express",
-        "Express",
-        "Livrare rapidă prin curier, în 24 de ore în orașele mari.",
-        35
+        "Livrare prioritară",
+        "priority",
+        "Prioritară",
+        "Comanda ta e procesată și expediată cu prioritate, înaintea celorlalte.",
+        PRIORITY_PRICE
       ),
       opt(
-        "Ridicare personală",
+        "Ridicare personală de la locația magazinului",
         "pickup",
-        "Ridicare personală",
-        "Ridici comanda personal, gratuit, după confirmare.",
+        "Ridicare din magazin",
+        "Termen de procesare 1–2 zile lucrătoare. Te anunțăm pe email când " +
+          "comanda este disponibilă în magazin.",
         0
       ),
     ],

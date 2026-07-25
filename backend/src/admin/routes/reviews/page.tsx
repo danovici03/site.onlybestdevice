@@ -47,7 +47,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body?.message || `Request failed: ${res.status}`)
+    throw new Error(body?.message || `Cererea a eșuat: ${res.status}`)
   }
   return res.json()
 }
@@ -56,7 +56,7 @@ const statusColor = (s: Review["status"]) =>
   s === "approved" ? "green" : s === "rejected" ? "red" : "orange"
 
 const statusLabel = (s: Review["status"]) =>
-  s === "approved" ? "approvata" : s === "rejected" ? "rifiutata" : "in attesa"
+  s === "approved" ? "aprobată" : s === "rejected" ? "respinsă" : "în așteptare"
 
 const Stars = ({ rating }: { rating: number }) => (
   <div className="flex items-center gap-0.5 text-ui-fg-base">
@@ -108,7 +108,7 @@ const ReviewsPage = () => {
         method: "POST",
         body: JSON.stringify({ status: newStatus }),
       })
-      toast.success(`Recensione ${statusLabel(newStatus)}`)
+      toast.success(`Recenzie ${statusLabel(newStatus)}`)
       load()
     } catch (err: any) {
       toast.error(err.message)
@@ -116,10 +116,10 @@ const ReviewsPage = () => {
   }
 
   const remove = async (id: string) => {
-    if (!confirm("Eliminare definitivamente questa recensione?")) return
+    if (!confirm("Ștergi definitiv această recenzie?")) return
     try {
       await api(`/admin/reviews/${id}`, { method: "DELETE" })
-      toast.success("Recensione eliminata")
+      toast.success("Recenzie ștearsă")
       load()
     } catch (err: any) {
       toast.error(err.message)
@@ -133,7 +133,7 @@ const ReviewsPage = () => {
         method: "POST",
         body: JSON.stringify({ admin_response: response || null }),
       })
-      toast.success("Risposta salvata")
+      toast.success("Răspuns salvat")
       setSelected(null)
       load()
     } catch (err: any) {
@@ -142,7 +142,7 @@ const ReviewsPage = () => {
   }
 
   const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString("it-IT", {
+    new Date(iso).toLocaleDateString("ro-RO", {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -176,7 +176,7 @@ const ReviewsPage = () => {
           setResponse(r.admin_response ?? "")
         }}
       >
-        Risposta
+        Răspunde
       </Button>
       <Button
         size="small"
@@ -192,14 +192,14 @@ const ReviewsPage = () => {
     <Container className="divide-y p-0">
       <div className="flex flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
         <div>
-          <Heading>Recensioni prodotti</Heading>
+          <Heading>Recenzii produse</Heading>
           <Text size="small" className="text-ui-fg-subtle">
-            Modera le recensioni dei clienti. Le recensioni da acquisti
-            verificati sono pubblicate automaticamente.
+            Moderează recenziile clienților. Recenziile de la achiziții
+            verificate se publică automat.
           </Text>
         </div>
         <div className="flex items-center gap-3">
-          <Label>Filtro</Label>
+          <Label>Filtru</Label>
           <Select
             value={status}
             onValueChange={(v) => setStatus(v as StatusFilter)}
@@ -208,10 +208,10 @@ const ReviewsPage = () => {
               <Select.Value />
             </Select.Trigger>
             <Select.Content>
-              <Select.Item value="pending">In attesa</Select.Item>
-              <Select.Item value="approved">Approvate</Select.Item>
-              <Select.Item value="rejected">Rifiutate</Select.Item>
-              <Select.Item value="all">Tutte</Select.Item>
+              <Select.Item value="pending">În așteptare</Select.Item>
+              <Select.Item value="approved">Aprobate</Select.Item>
+              <Select.Item value="rejected">Respinse</Select.Item>
+              <Select.Item value="all">Toate</Select.Item>
             </Select.Content>
           </Select>
         </div>
@@ -219,11 +219,11 @@ const ReviewsPage = () => {
 
       {loading ? (
         <div className="px-4 py-12 text-center md:px-6">
-          <Text>Caricamento…</Text>
+          <Text>Se încarcă…</Text>
         </div>
       ) : reviews.length === 0 ? (
         <div className="px-4 py-12 text-center md:px-6">
-          <Text>Nessuna recensione per questo filtro.</Text>
+          <Text>Nicio recenzie pentru acest filtru.</Text>
         </div>
       ) : (
         <>
@@ -231,12 +231,12 @@ const ReviewsPage = () => {
             <Table>
               <Table.Header>
                 <Table.Row>
-                  <Table.HeaderCell>Prodotto</Table.HeaderCell>
-                  <Table.HeaderCell>Cliente</Table.HeaderCell>
-                  <Table.HeaderCell>Rating</Table.HeaderCell>
-                  <Table.HeaderCell>Recensione</Table.HeaderCell>
-                  <Table.HeaderCell>Stato</Table.HeaderCell>
-                  <Table.HeaderCell className="text-right">Azioni</Table.HeaderCell>
+                  <Table.HeaderCell>Produs</Table.HeaderCell>
+                  <Table.HeaderCell>Client</Table.HeaderCell>
+                  <Table.HeaderCell>Notă</Table.HeaderCell>
+                  <Table.HeaderCell>Recenzie</Table.HeaderCell>
+                  <Table.HeaderCell>Stare</Table.HeaderCell>
+                  <Table.HeaderCell className="text-right">Acțiuni</Table.HeaderCell>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -257,7 +257,7 @@ const ReviewsPage = () => {
                         <span>{r.customer_name}</span>
                         {r.is_verified_purchase && (
                           <Badge size="2xsmall" color="green">
-                            acquisto verificato
+                            achiziție verificată
                           </Badge>
                         )}
                       </div>
@@ -311,7 +311,7 @@ const ReviewsPage = () => {
                     <span className="truncate text-sm">{r.customer_name}</span>
                     {r.is_verified_purchase && (
                       <Badge size="2xsmall" color="green">
-                        acquisto verificato
+                        achiziție verificată
                       </Badge>
                     )}
                   </div>
@@ -334,14 +334,14 @@ const ReviewsPage = () => {
 
       <div className="px-4 py-3 md:px-6">
         <Text size="small" className="text-ui-fg-subtle">
-          {count} {count === 1 ? "recensione" : "recensioni"}
+          {count} {count === 1 ? "recenzie" : "recenzii"}
         </Text>
       </div>
 
       <Drawer open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
         <Drawer.Content>
           <Drawer.Header>
-            <Drawer.Title>Risposta del negozio</Drawer.Title>
+            <Drawer.Title>Răspunsul magazinului</Drawer.Title>
           </Drawer.Header>
           <Drawer.Body className="flex flex-col gap-4">
             {selected && (
@@ -357,12 +357,12 @@ const ReviewsPage = () => {
                   <Text size="small">{selected.body}</Text>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <Label>La tua risposta pubblica</Label>
+                  <Label>Răspunsul tău public</Label>
                   <Textarea
                     value={response}
                     onChange={(e) => setResponse(e.target.value)}
                     rows={6}
-                    placeholder="Verrà mostrata sotto la recensione, sulla pagina prodotto."
+                    placeholder="Va apărea sub recenzie, pe pagina produsului."
                   />
                 </div>
               </>
@@ -370,9 +370,9 @@ const ReviewsPage = () => {
           </Drawer.Body>
           <Drawer.Footer>
             <Drawer.Close asChild>
-              <Button variant="secondary">Annulla</Button>
+              <Button variant="secondary">Anulează</Button>
             </Drawer.Close>
-            <Button onClick={saveResponse}>Salva risposta</Button>
+            <Button onClick={saveResponse}>Salvează răspunsul</Button>
           </Drawer.Footer>
         </Drawer.Content>
       </Drawer>
@@ -381,7 +381,7 @@ const ReviewsPage = () => {
 }
 
 export const config = defineRouteConfig({
-  label: "Recensioni",
+  label: "Recenzii",
   icon: Star,
 })
 

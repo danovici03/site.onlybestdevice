@@ -2,6 +2,10 @@
 .env
 .DS_Store
 /uploads
+# Fișierele încărcate din admin când nu e configurat S3 (medusa-config →
+# file-local, upload_dir: 'static'). Imaginile de hero/produse ajung aici și
+# NU trebuie versionate.
+/static
 /node_modules
 yarn-error.log
 
