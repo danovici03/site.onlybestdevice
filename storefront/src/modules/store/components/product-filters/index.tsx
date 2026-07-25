@@ -23,6 +23,7 @@ import { useEffect, useMemo, useState } from "react"
  * puține valori și sunt sortate crescător, deci n-are sens să le tăiem.
  */
 const COLLAPSE_AFTER: Partial<Record<FilterKey, number>> = {
+  category: 8,
   brand: 6,
   color: 8,
 }

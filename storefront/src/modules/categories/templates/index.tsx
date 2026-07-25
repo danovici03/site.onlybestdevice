@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
-import { ArrowRight } from "@phosphor-icons/react/dist/ssr"
 
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -40,9 +39,6 @@ export default function CategoryTemplate({
 
   const directParent = parents[parents.length - 1]
   const eyebrow = directParent ? directParent.name : "Stanza"
-
-  const children = category.category_children ?? []
-  const hasChildren = children.length > 0
 
   const collectDescendantIds = (
     cat: HttpTypes.StoreProductCategory
@@ -110,57 +106,6 @@ export default function CategoryTemplate({
         </div>
       </div>
 
-      {hasChildren && (
-        <>
-          <ul className="lg:hidden flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 mb-5">
-            {children.map((c) => (
-              <li key={c.id} className="shrink-0">
-                <LocalizedClientLink
-                  href={`/categories/${c.handle}`}
-                  className="group inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-brand-light hover:bg-brand-dark transition-colors"
-                >
-                  <span className="font-bold text-sm text-brand-dark group-hover:text-white transition-colors whitespace-nowrap">
-                    {c.name}
-                  </span>
-                  <ArrowRight
-                    size={12}
-                    weight="bold"
-                    className="text-brand-dark/60 group-hover:text-white transition-colors"
-                  />
-                </LocalizedClientLink>
-              </li>
-            ))}
-          </ul>
-
-          <div className="hidden lg:block mb-10">
-            <h2 className="text-xs uppercase tracking-[0.2em] font-bold text-brand-dark/50 mb-4">
-              Sotto-categorie
-            </h2>
-            <ul className="grid grid-cols-3 lg:grid-cols-4 gap-4">
-              {children.map((c) => (
-                <li key={c.id}>
-                  <LocalizedClientLink
-                    href={`/categories/${c.handle}`}
-                    className="group flex items-center justify-between gap-3 px-5 py-4 rounded-[1.25rem] bg-brand-light hover:bg-brand-dark transition-colors"
-                  >
-                    <span className="font-bold text-base text-brand-dark group-hover:text-white transition-colors truncate">
-                      {c.name}
-                    </span>
-                    <span className="w-8 h-8 rounded-full bg-white/60 group-hover:bg-white/15 flex items-center justify-center text-brand-dark group-hover:text-white shrink-0 transition-colors">
-                      <ArrowRight
-                        size={14}
-                        weight="bold"
-                        className="group-hover:translate-x-0.5 transition-transform"
-                      />
-                    </span>
-                  </LocalizedClientLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </>
-      )}
-
       <MobileSortFab sortBy={sort} />
 
       <Suspense
@@ -176,6 +121,7 @@ export default function CategoryTemplate({
           categoryId={categoryIds.length > 1 ? categoryIds : category.id}
           countryCode={countryCode}
           filters={filters}
+          categoryScope={{ parentId: category.id }}
         />
       </Suspense>
     </section>

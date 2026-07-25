@@ -63,7 +63,10 @@ export const listProducts = async ({
           offset,
           region_id: region?.id,
           fields:
-            "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags,",
+            // Atenție: relațiile trebuie prefixate cu `+`/`*` — fără prefix,
+            // Medusa înlocuiește setul default de câmpuri al produsului
+            // (handle, title, thumbnail dispar).
+            "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags,+categories.id,+categories.name,+categories.parent_category_id,",
           ...queryParams,
         },
         headers,

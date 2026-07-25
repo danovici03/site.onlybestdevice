@@ -6,6 +6,7 @@ import {
   computeFacets,
   emptySelectedFilters,
   hasAnyFacet,
+  type CategoryScope,
   type SelectedFilters,
 } from "@lib/util/product-filters"
 import ProductCard from "@modules/products/components/product-card"
@@ -35,6 +36,7 @@ export default async function PaginatedProducts({
   productsIds,
   countryCode,
   filters,
+  categoryScope,
 }: {
   sortBy?: SortOptions
   page: number
@@ -43,6 +45,7 @@ export default async function PaginatedProducts({
   productsIds?: string[]
   countryCode: string
   filters?: SelectedFilters
+  categoryScope?: CategoryScope
 }) {
   const selected = filters ?? emptySelectedFilters()
 
@@ -84,7 +87,7 @@ export default async function PaginatedProducts({
 
   // Sortează tot setul, calculează fațetele din el (stabile), apoi filtrează.
   const allSorted = sortProducts(fetched, sortBy ?? "created_at")
-  const facets = computeFacets(allSorted)
+  const facets = computeFacets(allSorted, categoryScope)
   const filtered = applyFilters(allSorted, selected)
 
   const totalPages = Math.ceil(filtered.length / PRODUCT_LIMIT)
