@@ -3,7 +3,8 @@
 import { getProductPrice } from "@lib/util/get-product-price"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
-import { Check, ShieldPlus } from "@phosphor-icons/react/dist/ssr"
+import { CaretDown, Check, ShieldPlus } from "@phosphor-icons/react/dist/ssr"
+import { useState } from "react"
 
 type ExtendedWarrantyProps = {
   warranty?: HttpTypes.StoreProduct
@@ -12,8 +13,13 @@ type ExtendedWarrantyProps = {
   disabled?: boolean
 }
 
+const DETAILS_ID = "extended-warranty-details"
+
 /**
- * Card „Adaugă garanție extinsă" de sub butonul de adăugare în coș.
+ * Card „Adaugă garanție extinsă", deasupra butonului de adăugare în coș —
+ * varianta aleasă intră în coș odată cu el, deci trebuie văzută înainte.
+ * Ca să nu împingă butonul sub fold, antetul stă pe un rând și explicațiile
+ * sunt pliate în „Detalii"; cele două opțiuni rămân mereu vizibile.
  * Sursa de adevăr e produsul de serviciu `garantie-extinsa` din Medusa
  * (variante „+1 an" / „+2 ani") — prețurile se editează din Admin.
  * Selecția e un radio cu toggle-off: încă un click pe opțiunea activă
@@ -25,6 +31,7 @@ const ExtendedWarranty = ({
   onSelect,
   disabled,
 }: ExtendedWarrantyProps) => {
+  const [showDetails, setShowDetails] = useState(false)
   const variants = warranty?.variants ?? []
   if (!warranty || variants.length === 0) return null
 
@@ -37,32 +44,54 @@ const ExtendedWarranty = ({
           : "border-brand-dark/10 bg-white"
       )}
     >
-      <div className="flex items-start gap-3 px-4 pt-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-          <ShieldPlus size={22} weight="fill" />
+      <div className="flex items-center gap-2.5 px-4 pt-4">
+        <ShieldPlus size={18} weight="fill" className="shrink-0 text-emerald-600" />
+        <span className="flex-1 min-w-0 font-bold text-sm text-brand-dark">
+          Adaugă garanție extinsă
         </span>
-        <span className="flex-1 min-w-0">
-          <span className="block font-bold text-sm text-brand-dark">
-            Adaugă garanție extinsă
-          </span>
-          <span className="block text-xs text-brand-dark/60 mt-0.5 leading-snug">
-            Protecție suplimentară după expirarea garanției standard
-          </span>
-        </span>
+        <button
+          type="button"
+          onClick={() => setShowDetails((v) => !v)}
+          aria-expanded={showDetails}
+          aria-controls={DETAILS_ID}
+          className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-brand-dark/50 transition-colors hover:text-emerald-700"
+        >
+          Detalii
+          <CaretDown
+            size={11}
+            weight="bold"
+            className={clx("transition-transform", showDetails && "rotate-180")}
+          />
+        </button>
       </div>
 
-      <ul className="flex flex-col gap-1.5 px-4 pt-3 text-xs text-brand-dark/70">
-        <li className="flex items-center gap-2">
-          <Check size={14} weight="bold" className="text-emerald-600 shrink-0" />
-          Acoperă defecte de funcționare — piese și manoperă incluse
-        </li>
-        <li className="flex items-center gap-2">
-          <Check size={14} weight="bold" className="text-emerald-600 shrink-0" />
-          Liniște și siguranță, fără costuri neprevăzute
-        </li>
-      </ul>
+      {showDetails && (
+        <div id={DETAILS_ID} className="px-4 pt-2.5">
+          <p className="text-xs text-brand-dark/60 leading-snug">
+            Protecție suplimentară după expirarea garanției standard
+          </p>
+          <ul className="flex flex-col gap-1.5 pt-2 text-xs text-brand-dark/70">
+            <li className="flex items-center gap-2">
+              <Check
+                size={14}
+                weight="bold"
+                className="text-emerald-600 shrink-0"
+              />
+              Acoperă defecte de funcționare — piese și manoperă incluse
+            </li>
+            <li className="flex items-center gap-2">
+              <Check
+                size={14}
+                weight="bold"
+                className="text-emerald-600 shrink-0"
+              />
+              Liniște și siguranță, fără costuri neprevăzute
+            </li>
+          </ul>
+        </div>
+      )}
 
-      <div className="grid grid-cols-2 gap-2 p-4">
+      <div className="grid grid-cols-2 gap-2 p-4 pt-3">
         {variants.map((v) => {
           if (!v.id) return null
           const checked = selectedVariantId === v.id

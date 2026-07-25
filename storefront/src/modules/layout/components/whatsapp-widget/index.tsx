@@ -42,12 +42,15 @@ export default function WhatsAppWidget() {
     } catch {}
   }
 
-  const mobileBottom = isProductPage ? "5rem" : "5.5rem"
+  // Pe pagina de produs există deja linia „Ai întrebări?” sub „Adaugă în coș”,
+  // cu mesaj precompletat pentru produsul respectiv. Widgetul flotant ar fi al
+  // treilea punct de WhatsApp în același ecran, peste bara sticky de cumpărare.
+  if (isProductPage) return null
 
   return (
     <div className={`fixed right-4 lg:right-5 z-[45] wa-widget transition-opacity duration-300 ${footerInView ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
       <style>{`
-        .wa-widget { bottom: calc(env(safe-area-inset-bottom, 0px) + ${mobileBottom}); }
+        .wa-widget { bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem); }
         @media (min-width: 1024px) { .wa-widget { bottom: 1.25rem; } }
       `}</style>
 
