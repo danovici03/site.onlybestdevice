@@ -10,6 +10,7 @@ import {
 import { deleteLineItem, updateLineItem } from "@lib/data/cart"
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { convertToLocale } from "@lib/util/money"
+import { warrantyTargetTitle } from "@lib/util/warranty"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -247,6 +248,7 @@ type DrawerItemProps = {
 const DrawerItem = ({ item, currencyCode, onNavigate }: DrawerItemProps) => {
   const [updating, setUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const warrantyFor = warrantyTargetTitle(item)
 
   const changeQuantity = async (quantity: number) => {
     setUpdating(true)
@@ -306,6 +308,12 @@ const DrawerItem = ({ item, currencyCode, onNavigate }: DrawerItemProps) => {
         {item.variant?.title && item.variant.title !== item.product_title && (
           <span className="text-xs text-brand-dark/50">
             {item.variant.title}
+          </span>
+        )}
+        {/* Cu mai multe garanții în coș, fără asta nu știi care ce acoperă. */}
+        {warrantyFor && (
+          <span className="text-xs text-brand-dark/50">
+            pentru {warrantyFor}
           </span>
         )}
 

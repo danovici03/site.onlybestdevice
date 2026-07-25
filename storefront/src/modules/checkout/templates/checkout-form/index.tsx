@@ -1,5 +1,6 @@
 import { listCartShippingMethods } from "@lib/data/fulfillment"
 import { listCartPaymentMethods } from "@lib/data/payment"
+import { getWarrantyProduct } from "@lib/data/warranty"
 import { HttpTypes } from "@medusajs/types"
 import OnePageCheckout from "@modules/checkout/templates/one-page"
 
@@ -16,6 +17,9 @@ export default async function CheckoutForm({
 
   const shippingMethods = await listCartShippingMethods(cart.id)
   const paymentMethods = await listCartPaymentMethods(cart.region?.id ?? "")
+  const warranty = await getWarrantyProduct({
+    regionId: cart.region_id ?? undefined,
+  })
 
   if (!shippingMethods || !paymentMethods) {
     return null
@@ -27,6 +31,7 @@ export default async function CheckoutForm({
       customer={customer}
       shippingMethods={shippingMethods}
       paymentMethods={paymentMethods}
+      warranty={warranty}
     />
   )
 }

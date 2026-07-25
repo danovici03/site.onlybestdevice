@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useActionState } from "react"
 
 import Input from "@modules/common/components/input"
+import CountySelect from "@modules/common/components/county-select"
+import { matchCounty } from "@lib/util/counties"
 import NativeSelect from "@modules/common/components/native-select"
 
 import AccountInfo from "../account-info"
@@ -140,7 +142,7 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
             defaultValue={billingAddress?.address_2 || undefined}
             data-testid="billing-address-2-input"
           />
-          <div className="grid grid-cols-[120px_1fr_100px] gap-3">
+          <div className="grid grid-cols-[120px_1fr] gap-3">
             <Input
               label={t.addresses.postalCode}
               name="postal_code"
@@ -157,14 +159,14 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
               required
               data-testid="billing-city-input"
             />
-            <Input
-              label={t.addresses.province}
-              name="province"
-              defaultValue={billingAddress?.province || undefined}
-              maxLength={2}
-              data-testid="billing-province-input"
-            />
           </div>
+          <CountySelect
+            label={t.addresses.province}
+            name="province"
+            required
+            defaultValue={matchCounty(billingAddress?.province) ?? ""}
+            data-testid="billing-province-input"
+          />
           <NativeSelect
             name="country_code"
             defaultValue={billingAddress?.country_code || undefined}

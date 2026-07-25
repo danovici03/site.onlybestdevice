@@ -10,6 +10,8 @@ import LineItemUnitPrice from "@modules/common/components/line-item-unit-price"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Spinner from "@modules/common/icons/spinner"
 import Thumbnail from "@modules/products/components/thumbnail"
+import WarrantyOffer from "@modules/cart/components/warranty-offer"
+import { warrantyTargetTitle } from "@lib/util/warranty"
 import { Minus, Plus, Trash } from "@phosphor-icons/react/dist/ssr"
 import { useState } from "react"
 
@@ -17,12 +19,29 @@ type ItemProps = {
   item: HttpTypes.StoreCartLineItem
   type?: "full" | "preview"
   currencyCode: string
+  /** Produsul de serviciu „Garanție extinsă", pentru propunerea din coș. */
+  warranty?: HttpTypes.StoreProduct
+  /** Calculat de template: produsul ăsta n-are încă garanție în coș. */
+  offerWarranty?: boolean
+  /** În rezumatul de finalizare, doar liniile adăugabile de acolo se pot scoate. */
+  removable?: boolean
 }
 
-const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
+const Item = ({
+  item,
+  type = "full",
+  currencyCode,
+  warranty,
+  offerWarranty,
+  removable,
+}: ItemProps) => {
   const [updating, setUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Pe liniile de garanție arătăm ce produs acoperă — cu două telefoane în coș,
+  // altfel n-ai cum să știi la care se referă.
+  const warrantyFor = warrantyTargetTitle(item)
 
   const maxQuantity = 10
 
@@ -68,6 +87,25 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
             productTitle={item.product_title}
             data-testid="product-variant"
           />
+          {warrantyFor && (
+            <Text className="text-xs text-brand-dark/50">
+              pentru {warrantyFor}
+            </Text>
+          )}
+          {/* Dacă garanția se poate adăuga din rezumat, trebuie să se poată și
+              scoate tot de aici — altfel clientul e obligat să se întoarcă în
+              coș ca să anuleze o bifă pusă cu o secundă înainte. */}
+          {removable && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="mt-0.5 text-xs font-bold text-brand-dark/45 underline decoration-dashed underline-offset-4 transition-colors hover:text-brand-accent disabled:opacity-50"
+              data-testid="preview-remove-button"
+            >
+              {deleting ? "Se elimină…" : "Elimină"}
+            </button>
+          )}
         </Table.Cell>
 
         <Table.Cell className="!pr-0">
@@ -121,6 +159,11 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
             data-testid="product-variant"
           >
             {item.variant.title}
+          </span>
+        )}
+        {warrantyFor && (
+          <span className="text-sm text-brand-dark/55">
+            pentru {warrantyFor}
           </span>
         )}
         <div className="mt-1 sm:hidden">
@@ -188,12 +231,14 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
 
       <div className="col-span-2 flex sm:hidden items-center justify-between text-sm">
         <span className="text-brand-dark/55">Total</span>
-        <LineItemPrice
-          item={item}
-          style="tight"
-          currencyCode={currencyCode}
-        />
+        <LineItemPrice item={item} style="tight" currencyCode={currencyCode} />
       </div>
+
+      {offerWarranty && warranty && (
+        <div className="col-span-2 sm:col-span-4">
+          <WarrantyOffer warranty={warranty} item={item} />
+        </div>
+      )}
     </li>
   )
 }

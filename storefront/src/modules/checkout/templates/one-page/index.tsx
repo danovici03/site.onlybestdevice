@@ -50,6 +50,8 @@ import {
 import { StripeContext } from "@modules/checkout/components/payment-wrapper/stripe-wrapper"
 import CartTotals from "@modules/common/components/cart-totals"
 import Input from "@modules/common/components/input"
+import CountySelect from "@modules/common/components/county-select"
+import { matchCounty } from "@lib/util/counties"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Installments from "@modules/products/components/installments"
 import SkeletonCardDetails from "@modules/skeletons/components/skeleton-card-details"
@@ -200,7 +202,9 @@ const fromCart = (cart: any, customer: any): AddressForm => ({
   address_1: cart?.shipping_address?.address_1 || "",
   company: cart?.shipping_address?.company || "",
   city: cart?.shipping_address?.city || "",
-  province: cart?.shipping_address?.province || "",
+  // Adresele salvate înainte de select conțin text liber („Bistrita-Nasaud",
+  // „BN"); le aducem la numele canonic ca select-ul să nu pară necompletat.
+  province: matchCounty(cart?.shipping_address?.province) || "",
   postal_code: cart?.shipping_address?.postal_code || "",
 })
 
@@ -252,6 +256,8 @@ type OnePageCheckoutProps = {
   customer: HttpTypes.StoreCustomer | null
   shippingMethods: HttpTypes.StoreCartShippingOption[]
   paymentMethods: { id: string }[]
+  /** Produsul „Garanție extinsă", pentru propunerea din rezumat. */
+  warranty?: HttpTypes.StoreProduct
 }
 
 const SectionCard = ({
@@ -281,6 +287,7 @@ const OnePageCheckout = ({
   customer,
   shippingMethods,
   paymentMethods,
+  warranty,
 }: OnePageCheckoutProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -294,7 +301,13 @@ const OnePageCheckout = ({
   const [form, setForm] = useState<AddressForm>(() => fromCart(cart, customer))
   const [billing, setBilling] = useState<AddressForm>(() => emptyAddress())
   const [billingSame, setBillingSame] = useState(true)
-  const [dirty, setDirty] = useState(false)
+  // Dacă județul din coș a fost adus la forma canonică la încărcare („Bistrita-
+  // Nasaud" → „Bistrița-Năsăud"), pornim murdar: altfel clientul vede forma
+  // corectă, dar comanda pleacă cu cea veche, pentru că nimic n-a fost atins.
+  const [dirty, setDirty] = useState(() => {
+    const stored = cart?.shipping_address?.province
+    return !!stored && matchCounty(stored) !== stored
+  })
   const [saving, setSaving] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -658,12 +671,11 @@ const OnePageCheckout = ({
               required
               data-testid="shipping-city-input"
             />
-            <Input
+            <CountySelect
               label="Județ"
               name="province"
-              autoComplete="address-level1"
               value={form.province}
-              onChange={(e) => setField("province", e.target.value)}
+              onChange={(county) => setField("province", county)}
               required
               data-testid="shipping-province-input"
             />
@@ -735,19 +747,17 @@ const OnePageCheckout = ({
                 onChange={(e) => setBillingField("city", e.target.value)}
                 required
               />
-              <Input
+              <CountySelect
                 label="Județ"
                 name="billing_province"
                 value={billing.province}
-                onChange={(e) => setBillingField("province", e.target.value)}
+                onChange={(county) => setBillingField("province", county)}
               />
               <Input
                 label="Cod poștal"
                 name="billing_postal_code"
                 value={billing.postal_code}
-                onChange={(e) =>
-                  setBillingField("postal_code", e.target.value)
-                }
+                onChange={(e) => setBillingField("postal_code", e.target.value)}
                 required
               />
               <Input
@@ -1041,7 +1051,7 @@ const OnePageCheckout = ({
             </h2>
           </div>
 
-          <ItemsPreviewTemplate cart={cart} />
+          <ItemsPreviewTemplate cart={cart} warranty={warranty} />
 
           <DiscountCode cart={cart} />
 
