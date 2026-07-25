@@ -81,6 +81,15 @@ services:
       # ── URL-ul public al storefront-ului (redirect-uri după plată) ──
       STOREFRONT_URL: ${STOREFRONT_URL:-}
 
+      # ── Invalidarea cache-ului Next.js după modificări în Admin ──
+      #    Storefront-ul cere produsele cu `force-cache` și fără TTL, deci un
+      #    produs nou sau un preț schimbat NU apare pe site până când
+      #    subscriberul `revalidate-storefront` lovește ruta de mai jos.
+      #    Goale = subscriberul se autodezactivează și site-ul rămâne cu datele
+      #    vechi până la următorul deploy de storefront.
+      STOREFRONT_REVALIDATE_URL: ${STOREFRONT_REVALIDATE_URL:-}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
+
       # ── UniCredit ePOS (rate) — gol = provider dezactivat ──
       UNICREDIT_EPOS_BASE_URL: ${UNICREDIT_EPOS_BASE_URL:-}
       UNICREDIT_EPOS_EMAIL: ${UNICREDIT_EPOS_EMAIL:-}
