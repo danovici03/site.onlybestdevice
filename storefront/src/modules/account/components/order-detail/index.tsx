@@ -150,11 +150,13 @@ const OrderDetail = ({ order }: { order: HttpTypes.StoreOrder }) => {
                   <p className="text-sm font-medium text-brand-dark truncate">
                     {item.product_title || item.title}
                   </p>
-                  {item.variant_title && (
-                    <p className="text-xs text-brand-dark/60">
-                      {item.variant_title}
-                    </p>
-                  )}
+                  {item.variant_title &&
+                    item.variant_title !==
+                      (item.product_title || item.title) && (
+                      <p className="text-xs text-brand-dark/60">
+                        {item.variant_title}
+                      </p>
+                    )}
                   <p className="text-xs text-brand-dark/60 mt-1">
                     {t.orders.items}: {item.quantity}
                   </p>

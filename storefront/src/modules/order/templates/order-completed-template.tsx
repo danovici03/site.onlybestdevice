@@ -219,11 +219,15 @@ export default async function OrderCompletedTemplate({
                     >
                       {item.product_title || item.title}
                     </p>
-                    {item.variant_title && (
-                      <p className="text-xs text-brand-dark/60">
-                        {item.variant_title}
-                      </p>
-                    )}
+                    {/* La produsele cu o singură variantă, titlul variantei
+                        repetă titlul de mai sus — atunci îl sărim. */}
+                    {item.variant_title &&
+                      item.variant_title !==
+                        (item.product_title || item.title) && (
+                        <p className="text-xs text-brand-dark/60">
+                          {item.variant_title}
+                        </p>
+                      )}
                     <p className="text-xs text-brand-dark/60 mt-1">
                       <span data-testid="product-quantity">
                         {item.quantity}
