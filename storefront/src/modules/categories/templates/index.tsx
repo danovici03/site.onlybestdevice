@@ -121,7 +121,7 @@ export default function CategoryTemplate({
           categoryId={categoryIds.length > 1 ? categoryIds : category.id}
           countryCode={countryCode}
           filters={filters}
-          categoryScope={{ parentId: category.id }}
+          facetParentId={category.id}
         />
       </Suspense>
     </section>

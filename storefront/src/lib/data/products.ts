@@ -4,6 +4,13 @@ import { sdk } from "@lib/config"
 import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
+import {
+  FILTER_KEYS,
+  emptyFacets,
+  serializePrice,
+  type Facets,
+  type SelectedFilters,
+} from "@lib/util/product-filters"
 import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { getRegion, retrieveRegion } from "./regions"
 
@@ -146,4 +153,74 @@ export const listProductsWithSort = async ({
     nextPage,
     queryParams,
   }
+}
+
+/**
+ * Catalog filtrat, servit de ruta custom `/store/catalog` din backend.
+ *
+ * Spre deosebire de `listProducts`, nu aduce tot catalogul ca să filtreze în
+ * memorie: filtrarea, numărătoarea fațetelor și paginarea se fac în SQL, iar
+ * peste rețea vine doar pagina curentă plus contoarele.
+ */
+export const listCatalog = async ({
+  countryCode,
+  categoryIds,
+  collectionId,
+  facetParentId,
+  selected,
+  sortBy = "created_at",
+  page = 1,
+  limit = 12,
+}: {
+  countryCode: string
+  categoryIds?: string[]
+  collectionId?: string
+  facetParentId?: string | null
+  selected: SelectedFilters
+  sortBy?: SortOptions
+  page?: number
+  limit?: number
+}): Promise<{ products: HttpTypes.StoreProduct[]; count: number; facets: Facets }> => {
+  const region = await getRegion(countryCode)
+  if (!region) {
+    return { products: [], count: 0, facets: emptyFacets() }
+  }
+
+  const query: Record<string, string | string[] | number> = {
+    region_id: region.id,
+    sort: sortBy,
+    page,
+    limit,
+  }
+  if (categoryIds?.length) query.category_id = categoryIds
+  if (collectionId) query.collection_id = collectionId
+  // Absent = fațeta de categorie oferă nivelul de top.
+  if (facetParentId) query.facet_parent_id = facetParentId
+
+  for (const key of FILTER_KEYS) {
+    if (selected[key].length) query[key] = selected[key].join(",")
+  }
+  const price = serializePrice(selected.price)
+  if (price) query.price = price
+
+  const headers = { ...(await getAuthHeaders()) }
+  const next = { ...(await getCacheOptions("products")) }
+
+  return sdk.client
+    .fetch<{
+      products: HttpTypes.StoreProduct[]
+      count: number
+      facets: Facets
+    }>(`/store/catalog`, {
+      method: "GET",
+      query,
+      headers,
+      next,
+      cache: "force-cache",
+    })
+    .catch((e) => {
+      // Fără log, un catalog picat arată exact ca „niciun produs găsit".
+      console.error("[catalog] cererea a eșuat:", e?.message ?? e)
+      return { products: [], count: 0, facets: emptyFacets() }
+    })
 }

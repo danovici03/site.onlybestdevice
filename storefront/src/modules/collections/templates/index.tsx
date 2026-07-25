@@ -79,7 +79,7 @@ export default function CollectionTemplate({
           collectionId={collection.id}
           countryCode={countryCode}
           filters={filters}
-          categoryScope={{ parentId: null }}
+          facetParentId={null}
         />
       </Suspense>
     </section>
