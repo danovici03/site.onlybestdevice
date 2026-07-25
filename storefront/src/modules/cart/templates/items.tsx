@@ -1,4 +1,6 @@
 import repeat from "@lib/util/repeat"
+import { getWarrantyProduct } from "@lib/data/warranty"
+import { shouldOfferWarranty } from "@lib/util/warranty"
 import { HttpTypes } from "@medusajs/types"
 
 import Item from "@modules/cart/components/item"
@@ -8,8 +10,11 @@ type ItemsTemplateProps = {
   cart?: HttpTypes.StoreCart
 }
 
-const ItemsTemplate = ({ cart }: ItemsTemplateProps) => {
+const ItemsTemplate = async ({ cart }: ItemsTemplateProps) => {
   const items = cart?.items
+  const warranty = await getWarrantyProduct({
+    regionId: cart?.region_id ?? undefined,
+  })
 
   return (
     <div className="bg-white rounded-3xl p-4 sm:p-6 lg:p-8 shadow-sm">
@@ -30,6 +35,8 @@ const ItemsTemplate = ({ cart }: ItemsTemplateProps) => {
                   key={item.id}
                   item={item}
                   currencyCode={cart?.currency_code}
+                  warranty={warranty}
+                  offerWarranty={shouldOfferWarranty(item, cart)}
                 />
               ))
           : repeat(3).map((i) => <SkeletonLineItem key={i} />)}

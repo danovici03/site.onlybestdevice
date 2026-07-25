@@ -26,6 +26,7 @@ import {
   lowestOffer,
   supportsInstallments,
 } from "@lib/util/installments"
+import { WARRANTY_FOR, WARRANTY_FOR_TITLE } from "@lib/util/warranty"
 import ExtendedWarranty from "@modules/products/components/extended-warranty"
 import Installments from "@modules/products/components/installments"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
@@ -271,12 +272,17 @@ export default function ProductActions({
         })
       }
       // Garanția extinsă acoperă câte o bucată, deci urmează cantitatea
-      // produsului (2 telefoane → 2 garanții).
+      // produsului (2 telefoane → 2 garanții). Metadata leagă linia de
+      // produsul acoperit: în coș știm cui să nu-i mai propunem garanție.
       if (warrantyVariantId) {
         await addToCart({
           variantId: warrantyVariantId,
           quantity,
           countryCode,
+          metadata: {
+            [WARRANTY_FOR]: product.id,
+            [WARRANTY_FOR_TITLE]: product.title,
+          },
         })
       }
       setUpgradeSelections([])

@@ -7,6 +7,8 @@ import { Heading, clx } from "@medusajs/ui"
 import useToggleState from "@lib/hooks/use-toggle-state"
 import CountrySelect from "@modules/checkout/components/country-select"
 import Input from "@modules/common/components/input"
+import CountySelect from "@modules/common/components/county-select"
+import { matchCounty } from "@lib/util/counties"
 import Modal from "@modules/common/components/modal"
 import Spinner from "@modules/common/icons/spinner"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
@@ -202,7 +204,7 @@ const EditAddress: React.FC<EditAddressProps> = ({ region, address }) => {
                 defaultValue={address.address_2 || undefined}
                 data-testid="address-2-input"
               />
-              <div className="grid grid-cols-[120px_1fr_100px] gap-3">
+              <div className="grid grid-cols-[120px_1fr] gap-3">
                 <Input
                   label={t.addresses.postalCode}
                   name="postal_code"
@@ -221,15 +223,15 @@ const EditAddress: React.FC<EditAddressProps> = ({ region, address }) => {
                   defaultValue={address.city || undefined}
                   data-testid="city-input"
                 />
-                <Input
-                  label={t.addresses.province}
-                  name="province"
-                  autoComplete="address-level1"
-                  maxLength={2}
-                  defaultValue={address.province || undefined}
-                  data-testid="state-input"
-                />
               </div>
+              <CountySelect
+                label={t.addresses.province}
+                name="province"
+                required
+                // Adresa salvată poate avea „BN" sau text fără diacritice.
+                defaultValue={matchCounty(address.province) ?? ""}
+                data-testid="state-input"
+              />
               <CountrySelect
                 name="country_code"
                 region={region}
