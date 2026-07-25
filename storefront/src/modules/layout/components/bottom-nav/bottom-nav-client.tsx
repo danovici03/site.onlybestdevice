@@ -11,6 +11,7 @@ import {
 import { clx } from "@medusajs/ui"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { useConsent } from "@lib/context/consent-context"
 import { useFooterInView } from "@lib/hooks/use-footer-in-view"
 import { useScrolledPast } from "@lib/hooks/use-scrolled-past"
@@ -21,6 +22,8 @@ type Item = {
   icon: React.ComponentType<{ size?: number; weight?: any }>
   matchPrefixes?: string[]
   badge?: ReactNode
+  /** Când e setat, tab-ul deschide un panou în loc să navigheze. */
+  onSelect?: () => void
 }
 
 type Props = {
@@ -31,6 +34,7 @@ export default function BottomNavClient({ cartIndicator }: Props) {
   const pathname = usePathname()
   const { countryCode } = useParams<{ countryCode: string }>()
   const scrolled = useScrolledPast(160)
+  const { open: openCart } = useCartDrawer()
   const { decided } = useConsent()
   const footerInView = useFooterInView()
   const visible = scrolled && decided && !footerInView
@@ -53,6 +57,7 @@ export default function BottomNavClient({ cartIndicator }: Props) {
       icon: ShoppingBag,
       matchPrefixes: ["/cart", "/checkout"],
       badge: cartIndicator,
+      onSelect: openCart,
     },
     {
       href: "/account",
@@ -85,32 +90,49 @@ export default function BottomNavClient({ cartIndicator }: Props) {
         {items.map((item) => {
           const active = isActive(item)
           const Icon = item.icon
-          return (
-            <li key={item.href} className="flex-1">
-              <LocalizedClientLink
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                tabIndex={visible ? 0 : -1}
+          const className = clx(
+            "w-full flex flex-col items-center justify-center gap-1 py-2 rounded-2xl transition-colors",
+            active ? "text-brand-accent" : "text-white/70 hover:text-white"
+          )
+          const content = (
+            <>
+              <span className="relative">
+                <Icon size={24} weight={active ? "fill" : "regular"} />
+                {item.badge}
+              </span>
+              <span
                 className={clx(
-                  "flex flex-col items-center justify-center gap-1 py-2 rounded-2xl transition-colors",
-                  active
-                    ? "text-brand-accent"
-                    : "text-white/70 hover:text-white"
+                  "text-[11px] leading-none tracking-wide",
+                  active ? "font-bold" : "font-medium"
                 )}
               >
-                <span className="relative">
-                  <Icon size={24} weight={active ? "fill" : "regular"} />
-                  {item.badge}
-                </span>
-                <span
-                  className={clx(
-                    "text-[11px] leading-none tracking-wide",
-                    active ? "font-bold" : "font-medium"
-                  )}
+                {item.label}
+              </span>
+            </>
+          )
+
+          return (
+            <li key={item.href} className="flex-1">
+              {item.onSelect ? (
+                <button
+                  type="button"
+                  onClick={item.onSelect}
+                  tabIndex={visible ? 0 : -1}
+                  aria-haspopup="dialog"
+                  className={className}
                 >
-                  {item.label}
-                </span>
-              </LocalizedClientLink>
+                  {content}
+                </button>
+              ) : (
+                <LocalizedClientLink
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  tabIndex={visible ? 0 : -1}
+                  className={className}
+                >
+                  {content}
+                </LocalizedClientLink>
+              )}
             </li>
           )
         })}

@@ -5,7 +5,9 @@ import { retrieveCustomer } from "@lib/data/customer"
 import { getBaseURL } from "@lib/util/env"
 import { StoreCartShippingOption } from "@medusajs/types"
 import { ConsentProvider } from "@lib/context/consent-context"
+import { CartDrawerProvider } from "@lib/context/cart-drawer-context"
 import BottomNav from "@modules/layout/components/bottom-nav"
+import CartDrawer from "@modules/layout/components/cart-drawer"
 import CartMismatchBanner from "@modules/layout/components/cart-mismatch-banner"
 import CookieConsent from "@modules/layout/components/cookie-consent"
 import WhatsAppWidget from "@modules/layout/components/whatsapp-widget"
@@ -35,31 +37,34 @@ export default async function PageLayout(props: {
 
   return (
     <ConsentProvider>
-      <TopBar />
-      <Nav countryCode={countryCode} />
-      {customer && cart && (
-        <CartMismatchBanner customer={customer} cart={cart} />
-      )}
+      <CartDrawerProvider>
+        <TopBar />
+        <Nav countryCode={countryCode} />
+        {customer && cart && (
+          <CartMismatchBanner customer={customer} cart={cart} />
+        )}
 
-      {cart && (
-        <FreeShippingPriceNudge
-          variant="popup"
-          cart={cart}
-          shippingOptions={shippingOptions}
+        {cart && (
+          <FreeShippingPriceNudge
+            variant="popup"
+            cart={cart}
+            shippingOptions={shippingOptions}
+          />
+        )}
+        {props.children}
+        <Footer />
+        <div
+          aria-hidden
+          className="lg:hidden"
+          style={{
+            height: "calc(max(0.75rem, env(safe-area-inset-bottom)) + 4.5rem)",
+          }}
         />
-      )}
-      {props.children}
-      <Footer />
-      <div
-        aria-hidden
-        className="lg:hidden"
-        style={{
-          height: "calc(max(0.75rem, env(safe-area-inset-bottom)) + 4.5rem)",
-        }}
-      />
-      <BottomNav />
-      <CookieConsent />
-      <WhatsAppWidget />
+        <BottomNav />
+        <CartDrawer cart={cart} />
+        <CookieConsent />
+        <WhatsAppWidget />
+      </CartDrawerProvider>
     </ConsentProvider>
   )
 }

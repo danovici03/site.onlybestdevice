@@ -461,6 +461,16 @@ export default function ProductActions({
           </div>
         )}
 
+        {/* Garanția extinsă e un simplu selector — varianta aleasă intră în coș
+            odată cu clickul pe „Adaugă în coș”. Deci stă deasupra butonului,
+            ca și accesoriile; sub buton ar fi bifată prea târziu. */}
+        <ExtendedWarranty
+          warranty={warranty}
+          selectedVariantId={warrantyVariantId}
+          onSelect={setWarrantyVariantId}
+          disabled={!!disabled || isAdding}
+        />
+
         <div className="flex items-stretch gap-3">
           <div className="flex items-center bg-brand-light rounded-full px-2 shrink-0">
             <button
@@ -508,20 +518,17 @@ export default function ProductActions({
           </button>
         </div>
 
-        <ExtendedWarranty
-          warranty={warranty}
-          selectedVariantId={warrantyVariantId}
-          onSelect={setWarrantyVariantId}
-          disabled={!!disabled || isAdding}
-        />
+        {addError && (
+          <p
+            role="alert"
+            className="text-sm text-brand-accent bg-brand-accent/10 border border-brand-accent/20 rounded-2xl px-4 py-3"
+          >
+            {addError}
+          </p>
+        )}
 
-        {selectedPrice?.calculated_price_number ? (
-          <Installments
-            amount={selectedPrice.calculated_price_number}
-            currency={selectedPrice.currency_code}
-          />
-        ) : null}
-
+        {/* WhatsApp imediat sub CTA: dacă ezită la „Adaugă în coș”, alternativa
+            firească e să întrebe, nu să deruleze mai jos. */}
         <a
           href={`https://wa.me/${COMPANY.whatsapp.replace(/[^\d]/g, "")}?text=${encodeURIComponent(`Bună! Aș dori informații despre produsul "${product.title}".`)}`}
           target="_blank"
@@ -532,15 +539,6 @@ export default function ProductActions({
           <span className="font-bold text-brand-dark">Ai întrebări?</span>
           <span className="text-brand-dark/50">Scrie-ne pe WhatsApp</span>
         </a>
-
-        {addError && (
-          <p
-            role="alert"
-            className="text-sm text-brand-accent bg-brand-accent/10 border border-brand-accent/20 rounded-2xl px-4 py-3"
-          >
-            {addError}
-          </p>
-        )}
 
         <ul className="grid grid-cols-2 gap-2 text-sm">
           {[
@@ -594,6 +592,13 @@ export default function ProductActions({
             </li>
           ))}
         </ul>
+
+        {selectedPrice?.calculated_price_number ? (
+          <Installments
+            amount={selectedPrice.calculated_price_number}
+            currency={selectedPrice.currency_code}
+          />
+        ) : null}
 
         <div className="flex items-center justify-between pt-2 text-sm">
           <span className="text-brand-dark/60">Distribuie</span>

@@ -63,7 +63,11 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
           >
             {item.product_title}
           </Text>
-          <LineItemOptions variant={item.variant} data-testid="product-variant" />
+          <LineItemOptions
+            variant={item.variant}
+            productTitle={item.product_title}
+            data-testid="product-variant"
+          />
         </Table.Cell>
 
         <Table.Cell className="!pr-0">
@@ -111,7 +115,7 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
         >
           {item.product_title}
         </LocalizedClientLink>
-        {item.variant?.title && (
+        {item.variant?.title && item.variant.title !== item.product_title && (
           <span
             className="text-sm text-brand-dark/55"
             data-testid="product-variant"
