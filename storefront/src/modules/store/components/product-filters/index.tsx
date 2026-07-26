@@ -294,6 +294,10 @@ const FacetSection = ({
       <div className="flex flex-wrap gap-2">
         {visible.map((v) => {
           const active = isSelected(v.value)
+          // Backendul întoarce count 0 doar pentru valori bifate pe care restul
+          // selecției le exclude complet — le păstrează în listă tocmai ca să
+          // poată fi debifate.
+          const deadEnd = active && v.count === 0
           if (isColor) {
             return (
               <button
@@ -326,7 +330,11 @@ const FacetSection = ({
                 "rounded-full border px-3.5 py-2 text-sm font-bold transition-colors",
                 active
                   ? "border-brand-dark bg-brand-dark text-white"
-                  : "border-brand-dark/15 text-brand-dark hover:border-brand-dark/40"
+                  : "border-brand-dark/15 text-brand-dark hover:border-brand-dark/40",
+                // Bifat, dar fără rezultate în combinația curentă: rămâne
+                // clicabil ca să poată fi debifat, doar că se vede că e o
+                // fundătură.
+                deadEnd && "opacity-50"
               )}
             >
               {v.value}

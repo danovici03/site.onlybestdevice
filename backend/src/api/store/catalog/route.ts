@@ -63,6 +63,16 @@ const normName = (s: string): string =>
 /** Categorii-container care n-au sens ca valoare de filtru. */
 const CATEGORY_FACET_BLOCKLIST = new Set(["fara categorie"])
 
+/** Trebuie să rămână aliniat cu `FilterKey` din storefront. */
+type FilterKey = "category" | "brand" | "storage" | "ram" | "color"
+const FILTER_KEYS: FilterKey[] = [
+  "category",
+  "brand",
+  "storage",
+  "ram",
+  "color",
+]
+
 const asArray = (v: string | string[] | undefined): string[] =>
   v == null ? [] : Array.isArray(v) ? v : [v]
 
@@ -127,16 +137,20 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   /* ---------------- CTE-ul de scope ---------------- */
 
-  // Bindings-urile trebuie împinse în ordinea în care apar `?`-urile în textul
-  // SQL, nu în ordinea în care ne e comod să le calculăm: moneda e legată în
-  // JOIN, care precedă WHERE-ul.
-  const bindings: any[] = []
-  const bind = (v: any) => {
-    bindings.push(v)
-    return "?"
+  // Bindings NUMITE, nu poziționale. Cu `?` ordinea din array trebuie să
+  // corespundă ordinii `?`-urilor din textul SQL — de acolo a venit bug-ul în
+  // care moneda, legată în JOIN, era consumată ca sales_channel_id. Cu fragmente
+  // de WHERE construite pentru șapte CTE-uri diferite, ordinea devine
+  // imposibil de urmărit; numele o fac irelevantă.
+  const b: Record<string, any> = { currency }
+  let seq = 0
+  const bind = (v: any, prefix = "p") => {
+    const key = `${prefix}_${seq++}`
+    b[key] = v
+    return `:${key}`
   }
-
-  const currencyPlaceholder = bind(currency)
+  const bindList = (values: any[], prefix: string) =>
+    values.map((v) => bind(v, prefix)).join(",")
 
   const scopeWhere: string[] = [
     "p.deleted_at IS NULL",
@@ -145,20 +159,22 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   ]
   if (channelIds.length) {
     scopeWhere.push(
-      `p.id IN (SELECT product_id FROM product_sales_channel WHERE sales_channel_id IN (${channelIds
-        .map(bind)
-        .join(",")}))`
+      `p.id IN (SELECT product_id FROM product_sales_channel WHERE sales_channel_id IN (${bindList(
+        channelIds,
+        "ch"
+      )}))`
     )
   }
   if (categoryScopeIds.length) {
     scopeWhere.push(
-      `p.id IN (SELECT product_id FROM product_category_product WHERE product_category_id IN (${categoryScopeIds
-        .map(bind)
-        .join(",")}))`
+      `p.id IN (SELECT product_id FROM product_category_product WHERE product_category_id IN (${bindList(
+        categoryScopeIds,
+        "scope"
+      )}))`
     )
   }
   if (q.collection_id) {
-    scopeWhere.push(`p.collection_id = ${bind(q.collection_id)}`)
+    scopeWhere.push(`p.collection_id = ${bind(q.collection_id, "coll")}`)
   }
 
   const scopedCte = `
@@ -177,81 +193,109 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       LEFT JOIN price pr ON pr.price_set_id = vps.price_set_id
                         AND pr.deleted_at IS NULL
                         AND pr.price_list_id IS NULL
-                        AND pr.currency_code = ${currencyPlaceholder}
+                        AND pr.currency_code = :currency
       WHERE ${scopeWhere.join(" AND ")}
       GROUP BY p.id
     )`
 
-  // Bindings acumulate până aici descriu scope-ul; fațetele și setul filtrat
-  // pornesc amândouă de la el, deci fiecare query își reia prefixul.
-  const scopeBindings = [...bindings]
+  /* ---------------- Clauzele de filtrare ---------------- */
 
-  /* ---------------- Fațetele (peste scope, fără selecția curentă) ---------------- */
+  /**
+   * Clauzele selecției curente, cu posibilitatea de a sări peste una.
+   *
+   * O fațetă se îngustează după TOATE celelalte filtre, dar niciodată după
+   * propria selecție: altfel, bifând „Apple", restul mărcilor ar arăta 0 și
+   * selecția multiplă în interiorul unei fațete ar deveni imposibilă.
+   * În interiorul unei fațete valorile sunt SAU, între fațete ȘI.
+   */
+  type Excludable = FilterKey | "price"
+  const filterClauses = (exclude?: Excludable): string[] => {
+    const out: string[] = []
+    const inList = (col: string, values: string[], key: FilterKey) => {
+      if (exclude === key || !values.length) return
+      out.push(`${col} IN (${bindList(values, key)})`)
+    }
+    inList("brand", q.brand, "brand")
+    inList("storage", q.storage, "storage")
+    inList("ram", q.ram, "ram")
+    if (exclude !== "color" && q.color.length) {
+      out.push(
+        `LOWER(color) IN (${bindList(
+          q.color.map((c) => c.toLowerCase()),
+          "color"
+        )})`
+      )
+    }
+    if (exclude !== "category") {
+      if (selectedCategoryIds.length) {
+        out.push(
+          `id IN (SELECT product_id FROM product_category_product WHERE product_category_id IN (${bindList(
+            selectedCategoryIds,
+            "cat"
+          )}))`
+        )
+      } else if (q.category.length) {
+        // Nume cerut care nu corespunde niciunei categorii → set gol, nu „toate".
+        out.push("FALSE")
+      }
+    }
+    if (exclude !== "price") {
+      if (price.min != null) out.push(`price >= ${bind(price.min, "pmin")}`)
+      if (price.max != null) out.push(`price <= ${bind(price.max, "pmax")}`)
+      // Un produs fără preț nu poate satisface un interval de preț.
+      if (price.min != null || price.max != null) out.push("price IS NOT NULL")
+    }
+    return out
+  }
+
+  /** `SELECT * FROM scoped` filtrat cu tot, mai puțin cheia exclusă. */
+  const facetCte = (name: string, exclude: Excludable) => {
+    const clauses = filterClauses(exclude)
+    return `${name} AS (SELECT * FROM scoped${
+      clauses.length ? ` WHERE ${clauses.join(" AND ")}` : ""
+    })`
+  }
+
+  const allClauses = filterClauses()
+  const filteredCte = `filtered AS (SELECT * FROM scoped${
+    allClauses.length ? ` WHERE ${allClauses.join(" AND ")}` : ""
+  })`
+
+  /* ---------------- Fațetele, fiecare peste setul îngustat de celelalte ---------------- */
 
   const facetSql = `
-    WITH ${scopedCte}
-    SELECT 'brand'   AS facet, brand   AS value, NULL AS hex, COUNT(*)::int AS count FROM scoped WHERE brand   IS NOT NULL GROUP BY brand
+    WITH ${scopedCte},
+      ${facetCte("f_brand", "brand")},
+      ${facetCte("f_storage", "storage")},
+      ${facetCte("f_ram", "ram")},
+      ${facetCte("f_color", "color")}
+    SELECT 'brand'   AS facet, brand   AS value, NULL AS hex, COUNT(*)::int AS count FROM f_brand   WHERE brand   IS NOT NULL GROUP BY brand
     UNION ALL
-    SELECT 'storage', storage, NULL, COUNT(*)::int FROM scoped WHERE storage IS NOT NULL GROUP BY storage
+    SELECT 'storage', storage, NULL, COUNT(*)::int FROM f_storage WHERE storage IS NOT NULL GROUP BY storage
     UNION ALL
-    SELECT 'ram',     ram,     NULL, COUNT(*)::int FROM scoped WHERE ram     IS NOT NULL GROUP BY ram
+    SELECT 'ram',     ram,     NULL, COUNT(*)::int FROM f_ram     WHERE ram     IS NOT NULL GROUP BY ram
     UNION ALL
-    SELECT 'color',   color,   MIN(color_hex), COUNT(*)::int FROM scoped WHERE color IS NOT NULL GROUP BY color`
+    SELECT 'color',   color,   MIN(color_hex), COUNT(*)::int FROM f_color WHERE color IS NOT NULL GROUP BY color
+    UNION ALL
+    -- Toate mărcile din scope, neîngustate: regula care scoate din fațeta
+    -- „Categorie" numele care coincid cu mărci trebuie să fie stabilă. Altfel
+    -- „Apple" ar reapărea ca sub-categorie exact când filtrezi pe Samsung.
+    SELECT 'brand_all', brand, NULL, COUNT(*)::int FROM scoped WHERE brand IS NOT NULL GROUP BY brand`
 
   const priceSql = `
-    WITH ${scopedCte}
-    SELECT MIN(price)::float AS min, MAX(price)::float AS max FROM scoped WHERE price IS NOT NULL`
+    WITH ${scopedCte}, ${facetCte("f_price", "price")}
+    SELECT MIN(price)::float AS min, MAX(price)::float AS max FROM f_price WHERE price IS NOT NULL`
 
   const categoryFacetSql = `
-    WITH ${scopedCte}
+    WITH ${scopedCte}, ${facetCte("f_category", "category")}
     SELECT c.name AS value, COUNT(DISTINCT s.id)::int AS count
-    FROM scoped s
+    FROM f_category s
     JOIN product_category_product pcp ON pcp.product_id = s.id
     JOIN product_category c ON c.id = pcp.product_category_id AND c.deleted_at IS NULL
     WHERE c.parent_category_id IS NOT DISTINCT FROM ${
-      q.facet_parent_id ? "?" : "NULL"
+      q.facet_parent_id ? bind(q.facet_parent_id, "fparent") : "NULL"
     }
     GROUP BY c.name`
-
-  /* ---------------- Setul filtrat ---------------- */
-
-  const filterWhere: string[] = []
-  const filterBindings: any[] = []
-  const fbind = (v: any) => {
-    filterBindings.push(v)
-    return "?"
-  }
-  const inList = (col: string, values: string[]) => {
-    if (!values.length) return
-    filterWhere.push(`${col} IN (${values.map(fbind).join(",")})`)
-  }
-  inList("brand", q.brand)
-  inList("storage", q.storage)
-  inList("ram", q.ram)
-  if (q.color.length) {
-    filterWhere.push(
-      `LOWER(color) IN (${q.color.map((c) => fbind(c.toLowerCase())).join(",")})`
-    )
-  }
-  if (selectedCategoryIds.length) {
-    filterWhere.push(
-      `id IN (SELECT product_id FROM product_category_product WHERE product_category_id IN (${selectedCategoryIds
-        .map(fbind)
-        .join(",")}))`
-    )
-  } else if (q.category.length) {
-    // Nume cerut care nu corespunde niciunei categorii → set gol, nu „toate".
-    filterWhere.push("FALSE")
-  }
-  if (price.min != null) filterWhere.push(`price >= ${fbind(price.min)}`)
-  if (price.max != null) filterWhere.push(`price <= ${fbind(price.max)}`)
-  // Un produs fără preț nu poate satisface un interval de preț.
-  if (price.min != null || price.max != null)
-    filterWhere.push("price IS NOT NULL")
-
-  const filteredCte = `filtered AS (SELECT * FROM scoped${
-    filterWhere.length ? ` WHERE ${filterWhere.join(" AND ")}` : ""
-  })`
 
   // Importul în masă a dat același `created_at` la zeci de produse deodată, iar
   // și prețurile se repetă — fără `id` la coadă ordinea nu e totală și paginile
@@ -263,33 +307,24 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
         ? "price DESC NULLS LAST, created_at DESC, id DESC"
         : "created_at DESC, id DESC"
 
-  const offset = (q.page - 1) * q.limit
   const pageSql = `
     WITH ${scopedCte}, ${filteredCte}
     SELECT id, COUNT(*) OVER ()::int AS total
     FROM filtered
     ORDER BY ${orderBy}
-    LIMIT ? OFFSET ?`
+    LIMIT ${bind(q.limit, "lim")} OFFSET ${bind((q.page - 1) * q.limit, "off")}`
 
   /* ---------------- Execuție ---------------- */
 
+  // Toate interogările primesc același obiect de bindings; knex ignoră cheile
+  // care nu apar în textul SQL respectiv.
   let facetRows: any[], priceRow: any, categoryRowsFacet: any[], pageRows: any[]
   try {
     const [f, pr, cf, pg] = await Promise.all([
-      knex.raw(facetSql, scopeBindings),
-      knex.raw(priceSql, scopeBindings),
-      knex.raw(
-        categoryFacetSql,
-        q.facet_parent_id
-          ? [...scopeBindings, q.facet_parent_id]
-          : scopeBindings
-      ),
-      knex.raw(pageSql, [
-        ...scopeBindings,
-        ...filterBindings,
-        q.limit,
-        offset,
-      ]),
+      knex.raw(facetSql, b),
+      knex.raw(priceSql, b),
+      knex.raw(categoryFacetSql, b),
+      knex.raw(pageSql, b),
     ])
     facetRows = f.rows
     priceRow = pr.rows[0]
@@ -360,7 +395,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     b.count - a.count || a.value.localeCompare(b.value)
 
   const brand = pick("brand").sort(byCountThenName)
-  const brandNames = new Set(brand.map((v) => normName(v.value)))
+  const brandNames = new Set(pick("brand_all").map((v) => normName(v.value)))
 
   // Categoriile duplicate din import se unesc după numele normalizat; cele
   // care coincid cu o marcă se scot, ca să nu dubleze fațeta „Marcă".
@@ -378,7 +413,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     .map((r) => ({ value: r.value as string, count: r.count as number, hex: r.hex }))
     .sort(byCountThenName)
 
-  const facets = {
+  const facets: Record<string, any> = {
     category: Array.from(categoryMerged.values()).sort(byCountThenName),
     brand,
     storage: pick("storage").sort(
@@ -390,6 +425,18 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       priceRow?.min != null && priceRow?.max != null && priceRow.max > priceRow.min
         ? { min: Math.floor(priceRow.min), max: Math.ceil(priceRow.max) }
         : null,
+  }
+
+  // O valoare bifată poate să nu mai apară deloc dacă altă fațetă o exclude
+  // complet — și atunci n-ar mai putea fi debifată din panou. O readăugăm cu 0,
+  // ca să rămână vizibilă și clicabilă.
+  for (const key of FILTER_KEYS) {
+    for (const value of q[key]) {
+      const exists = facets[key].some(
+        (v: any) => normName(v.value) === normName(value)
+      )
+      if (!exists) facets[key].push({ value, count: 0 })
+    }
   }
 
   return res.json({ products, count, facets })
