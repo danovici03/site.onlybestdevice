@@ -15,7 +15,7 @@ import {
 } from "@lib/util/installments"
 import { HttpTypes } from "@medusajs/types"
 import { CreditCard, Star, Truck } from "@phosphor-icons/react/dist/ssr"
-import Image from "next/image"
+import Image from "@modules/common/components/image"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 

@@ -1,6 +1,6 @@
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
-import Image from "next/image"
+import Image from "@modules/common/components/image"
 import React from "react"
 
 type OptionSelectProps = {

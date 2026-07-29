@@ -11,7 +11,7 @@ import { ArrowLeft, ArrowRight, Star } from "@phosphor-icons/react/dist/ssr"
 import { usePrevNextButtons } from "@modules/common/components/carousel/embla-carousel-hooks"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import useEmblaCarousel from "embla-carousel-react"
-import Image from "next/image"
+import Image from "@modules/common/components/image"
 import { useState } from "react"
 
 type Tab = {

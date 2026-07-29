@@ -2,7 +2,7 @@
 
 import { HttpTypes } from "@medusajs/types"
 import { useSearchParams } from "next/navigation"
-import Image from "next/image"
+import Image from "@modules/common/components/image"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import useEmblaCarousel from "embla-carousel-react"
 

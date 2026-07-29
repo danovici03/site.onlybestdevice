@@ -2,7 +2,7 @@
 
 import { HttpTypes } from "@medusajs/types"
 import { CaretLeft, CaretRight } from "@phosphor-icons/react/dist/ssr"
-import Image from "next/image"
+import Image from "@modules/common/components/image"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 type Side = {

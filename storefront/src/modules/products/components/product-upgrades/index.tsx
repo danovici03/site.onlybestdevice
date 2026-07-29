@@ -4,7 +4,7 @@ import { getProductPrice } from "@lib/util/get-product-price"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
 import { Check, Sparkle } from "@phosphor-icons/react/dist/ssr"
-import Image from "next/image"
+import Image from "@modules/common/components/image"
 
 export type UpgradeSelection = {
   productId: string

@@ -1,5 +1,5 @@
 import { Container, clx } from "@medusajs/ui"
-import Image from "next/image"
+import Image from "@modules/common/components/image"
 import React from "react"
 
 import PlaceholderImage from "@modules/common/icons/placeholder-image"
@@ -46,6 +46,18 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
   )
 }
 
+// `sizes` trebuie să descrie lățimea reală a containerului, altfel browserul
+// cere din srcset o lățime mult mai mare decât are nevoie (o transformare
+// facturată în plus + trafic degeaba). Containerele sunt cele din `Container`
+// de mai sus: 180 / 290 / 440 px, iar „full" ia lățimea părintelui.
+const SIZES_BY_SIZE: Record<NonNullable<ThumbnailProps["size"]>, string> = {
+  small: "180px",
+  medium: "290px",
+  large: "440px",
+  square: "(min-width: 768px) 290px, 45vw",
+  full: "(min-width: 768px) 440px, 90vw",
+}
+
 const ImageOrPlaceholder = ({
   image,
   size,
@@ -56,8 +68,7 @@ const ImageOrPlaceholder = ({
       alt="Thumbnail"
       className="absolute inset-0 object-cover object-center"
       draggable={false}
-      quality={50}
-      sizes="(max-width: 576px) 280px, (max-width: 768px) 360px, (max-width: 992px) 480px, 800px"
+      sizes={SIZES_BY_SIZE[size ?? "small"]}
       fill
     />
   ) : (
