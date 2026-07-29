@@ -177,13 +177,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // if one of the country codes is in the url and the cache id is not set, set the cache id and redirect
+  // Url-ul are country code, dar lipsește cookie-ul: îl setăm și lăsăm cererea
+  // să meargă mai departe.
+  //
+  // Varianta din starter făcea aici redirect 307 către exact același url. Pentru
+  // orice client care nu păstrează cookie-uri — crawlere, boți de preview link,
+  // curl — asta însemna buclă infinită de redirect, iar pentru un vizitator
+  // normal un round-trip în plus la prima vizită. Cookie-ul îl punem și pe
+  // request (ca `getCacheTag` din lib/data/cookies să-l vadă la randare) și
+  // pe răspuns (ca browserul să-l rețină).
   if (urlHasCountryCode && !cacheIdCookie) {
-    response.cookies.set("_medusa_cache_id", cacheId, {
+    request.cookies.set("_medusa_cache_id", cacheId)
+
+    const nextResponse = NextResponse.next({ request })
+
+    nextResponse.cookies.set("_medusa_cache_id", cacheId, {
       maxAge: 60 * 60 * 24,
     })
 
-    return response
+    return nextResponse
   }
 
   // check if the url is a static asset
