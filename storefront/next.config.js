@@ -20,6 +20,12 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  env: {
+    // `image-source.ts` rulează și în client components, unde doar variabilele
+    // NEXT_PUBLIC_* sunt inline-uite. Aici le derivăm din S3_HOSTNAME, ca să
+    // rămână o singură variabilă de setat în Vercel.
+    NEXT_PUBLIC_S3_HOSTNAME: S3_HOSTNAME || "",
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

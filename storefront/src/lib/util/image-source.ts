@@ -11,11 +11,26 @@
  * AVIF de 5 KB iese un WebP adesea mai mare. Deci `res_*` se servesc direct, iar
  * originalele grele trec mai departe prin optimizare — acolo chiar se plătește.
  *
- * Când pozele se mută pe object storage, sursele alea nu intră aici și se
- * optimizează normal.
+ * Mutarea pe object storage (iulie 2026) a schimbat doar hostul, nu și fișierele:
+ * cele 1906 de `res_*` din catalog sunt aceleași AVIF-uri de ~6 KB, deci regula
+ * se aplică mai departe. Fără hostul bucket-ului aici, 62% din poze ar intra
+ * inutil prin Image Optimization.
  */
-const PRE_OPTIMIZED_SOURCE =
-  /^https?:\/\/(www\.)?onlybestdevice\.ro\/wp-content\/uploads\/.*\/res_[^/]+$/
+const PRE_OPTIMIZED_NAME = /\/res_[^/]+$/
 
-export const isPreOptimizedImage = (src: unknown): boolean =>
-  typeof src === "string" && PRE_OPTIMIZED_SOURCE.test(src)
+const PRE_OPTIMIZED_HOSTS = [
+  "onlybestdevice.ro",
+  "www.onlybestdevice.ro",
+  process.env.NEXT_PUBLIC_S3_HOSTNAME || process.env.S3_HOSTNAME,
+].filter(Boolean) as string[]
+
+export const isPreOptimizedImage = (src: unknown): boolean => {
+  if (typeof src !== "string" || !PRE_OPTIMIZED_NAME.test(src)) {
+    return false
+  }
+  try {
+    return PRE_OPTIMIZED_HOSTS.includes(new URL(src).hostname)
+  } catch {
+    return false
+  }
+}
