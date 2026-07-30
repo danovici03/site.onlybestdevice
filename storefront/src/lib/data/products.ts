@@ -198,7 +198,8 @@ export const listCatalog = async ({
   if (facetParentId) query.facet_parent_id = facetParentId
 
   for (const key of FILTER_KEYS) {
-    if (selected[key].length) query[key] = selected[key].join(",")
+    // Array, nu CSV: valorile pot conține virgule (numele de categorii).
+    if (selected[key].length) query[key] = selected[key]
   }
   const price = serializePrice(selected.price)
   if (price) query.price = price

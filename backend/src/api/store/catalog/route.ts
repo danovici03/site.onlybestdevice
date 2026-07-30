@@ -13,18 +13,26 @@ import { z } from "zod"
  * pagina curentă de produse (hidratată cu prețurile calculate de Medusa) plus
  * contoarele fațetelor.
  *
- * GET /store/catalog?region_id=…&category_id=…&brand=Apple,Samsung&page=1
+ * GET /store/catalog?region_id=…&category_id=…&brand=Apple&brand=Samsung&page=1
  *
  * Fațetele de marcă/stocare/RAM/culoare vin din `product.metadata`
  * (`filter_*`), scrise de scriptul `extract-product-filters.ts`.
  */
 
-const csv = z
-  .string()
+/**
+ * Fațetă cu selecție multiplă: o apariție a parametrului per valoare.
+ *
+ * NU e o listă separată prin virgulă — numele de categorii o conțin („Console,
+ * Jocuri", „Tv, Audio-Video si Foto"), iar split-ul pe virgulă le rupea în
+ * bucăți care nu corespundeau niciunei categorii, deci clauza devenea `FALSE`
+ * și catalogul se golea. `qs` (Express) păstrează array-ul intact chiar și
+ * pentru o singură valoare.
+ */
+const multi = z
+  .union([z.string(), z.array(z.string())])
   .optional()
   .transform((v) =>
-    (v ?? "")
-      .split(",")
+    (v == null ? [] : Array.isArray(v) ? v : [v])
       .map((s) => s.trim())
       .filter(Boolean)
   )
@@ -35,11 +43,11 @@ const QuerySchema = z.object({
   collection_id: z.string().optional(),
   /** Categoria-părinte ale cărei fațete de sub-categorie le oferim; absent = nivelul de top. */
   facet_parent_id: z.string().optional(),
-  category: csv,
-  brand: csv,
-  storage: csv,
-  ram: csv,
-  color: csv,
+  category: multi,
+  brand: multi,
+  storage: multi,
+  ram: multi,
+  color: multi,
   /** Interval de preț „min-max"; capetele sunt opționale („-500", „100-"). */
   price: z.string().optional(),
   sort: z.enum(["created_at", "price_asc", "price_desc"]).default("created_at"),
