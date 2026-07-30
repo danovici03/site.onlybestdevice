@@ -76,7 +76,7 @@ export const MEGA_MENU: MegaMenuRoot[] = [
       },
       {
         label: "Smartwatch & Wearables",
-        href: "/categories/smartatch-si-wearables",
+        href: "/categories/smartwatch-wearables",
         description: "Ceasuri smart și brățări fitness.",
         image:
           "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80",

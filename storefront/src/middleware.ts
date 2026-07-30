@@ -116,12 +116,69 @@ const LEGACY_SYSTEM_PAGES: Record<string, string> = {
 }
 
 /**
+ * Handle-uri de categorie scoase din uz de `merge-duplicate-categories.ts` →
+ * calea canonică de azi.
+ *
+ * Catalogul a avut categorii duplicate din cele două valuri de import (seed RO
+ * + WooCommerce). După unire, rândurile retrase nu mai există în baza de date,
+ * deci URL-urile lor n-ar mai putea fi rezolvate — de aici, 404 în loc de 308.
+ * Restul mutărilor de URL (sufixul de dezambiguizare: `apple-tablete` →
+ * `tablete/apple`) se redirectează dinamic în pagina de categorie, care poate
+ * încă rezolva handle-ul; aici stau doar cele care au dispărut.
+ *
+ * Cheile sunt scrise decodat: unele conțineau virgule și diacritice, care în
+ * URL ajung percent-encodate. Valorile sunt căi relative la regiune, nu doar
+ * handle-uri — „Fără categorie" nu are echivalent, deci pleacă în catalog.
+ */
+const RETIRED_CATEGORY_HANDLES: Record<string, string> = {
+  "console,-jocuri": "/categories/console-jocuri",
+  "tv,-audio-video-și-foto": "/categories/tv-audio-video-si-foto",
+  "folii-de-protecție": "/categories/folii-de-protectie",
+  "desktop-pc-&-periferice": "/categories/desktop-pc-periferice",
+  "încărcătoare-&-accesorii": "/categories/incarcatoare-accesorii",
+  "smartwatch-&-wearables": "/categories/smartwatch-wearables",
+  "honor-2": "/categories/telefoane-mobile/honor",
+  // Redenumite, nu șterse — vechiul handle avea typo-ul din slug-ul WooCommerce.
+  "incarcatoare-acccesorii": "/categories/incarcatoare-accesorii",
+  "smartatch-si-wearables": "/categories/smartwatch-wearables",
+  // Pubela WooCommerce pentru produse necategorizate: nu e o categorie de
+  // navigat, iar produsele ei sunt oricum în catalog.
+  "fara-categorie": "/store",
+}
+
+/**
  * Redirecturi 301/308 de pe vechiul site WordPress/WooCommerce, ca să nu
  * pierdem poziționarea SEO a celor ~600 de produse și a categoriilor.
  * handle Medusa == slug WooCommerce, deci redirectul e pe pattern.
  */
 function legacyRedirect(request: NextRequest): NextResponse | null {
   const pathname = request.nextUrl.pathname.replace(/\/+$/, "") || "/"
+
+  // Categorii retrase: prinde și forma cu prefix de regiune (`/ro/categories/…`)
+  // și pe cea fără, pe care o localizează pasul următor din middleware.
+  const retired = pathname.match(
+    /^(?:\/([a-z]{2}))?\/categories\/(?:.*\/)?([^/]+)$/
+  )
+  if (retired) {
+    let leaf = retired[2]
+    try {
+      leaf = decodeURIComponent(leaf)
+    } catch {
+      // Percent-encoding rupt — mergem pe forma brută.
+    }
+    const target = RETIRED_CATEGORY_HANDLES[leaf.toLowerCase()]
+    if (target) {
+      // `search` se duce mai departe: altfel un link către o categorie filtrată
+      // ar ateriza pe catalogul nefiltrat.
+      return NextResponse.redirect(
+        new URL(
+          `/${retired[1] ?? DEFAULT_REGION}${target}${request.nextUrl.search}`,
+          request.url
+        ),
+        308
+      )
+    }
+  }
 
   const product = pathname.match(/^\/produs\/([^/]+)$/)
   if (product) {

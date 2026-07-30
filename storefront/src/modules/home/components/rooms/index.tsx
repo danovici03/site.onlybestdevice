@@ -62,7 +62,7 @@ const ROOMS: Room[] = [
     tint: "#F59E0B",
   },
   {
-    href: "/categories/smartatch-si-wearables",
+    href: "/categories/smartwatch-wearables",
     title: "Smartwatch & Wearables",
     description: "Ceasuri smart și brățări fitness",
     image:
