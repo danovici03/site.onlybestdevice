@@ -20,6 +20,16 @@ const fileProvider = s3Bucket
         region: process.env.S3_REGION,
         bucket: s3Bucket,
         endpoint: process.env.S3_ENDPOINT,
+        // Aceeași rădăcină ca pozele migrate din WordPress, ca tot catalogul să
+        // stea sub media/ și `remotePatterns` să aibă un singur tipar.
+        //
+        // ATENȚIE: providerul construiește URL-ul cu `encodeURIComponent(fileKey)`
+        // (@medusajs/file-s3 → upload()), deci slash-ul din prefix ajunge `%2F`
+        // în URL-ul salvat în baza de date: .../onlybest/media%2Fpoza-01J.png.
+        // Hetzner îl servește corect (testat, 200), dar `next/image` compară
+        // pathname-ul brut — de aceea S3_PATHNAME trebuie să fie `/onlybest/**`,
+        // nu `/onlybest/media/**`, care nu potrivește forma encodată.
+        prefix: process.env.S3_PREFIX ?? "media/",
         additional_client_config: {
           forcePathStyle: true,
         },
