@@ -64,15 +64,20 @@ const num = (v: string | undefined): number | null => {
   return Number.isFinite(n) ? n : null
 }
 
-/** Citește selecția din query string (valori separate prin virgulă; preț „min-max"). */
+/**
+ * Citește selecția din query string (parametru repetat per valoare; preț „min-max").
+ *
+ * Valorile NU se separă prin virgulă: numele de categorii o conțin („Console,
+ * Jocuri", „Tv, Audio-Video si Foto"), iar split-ul le rupea în bucăți care nu
+ * corespundeau niciunei categorii — selectarea lor golea catalogul. Fiecare
+ * valoare are propria apariție în URL (`?category=A&category=B`).
+ */
 export function parseSelectedFilters(
   sp: Record<string, string | string[] | undefined>
 ): SelectedFilters {
   const get = (k: FilterKey): string[] => {
     const v = sp[k]
-    const raw = Array.isArray(v) ? v.join(",") : v ?? ""
-    return raw
-      .split(",")
+    return (Array.isArray(v) ? v : v == null ? [] : [v])
       .map((s) => s.trim())
       .filter(Boolean)
   }

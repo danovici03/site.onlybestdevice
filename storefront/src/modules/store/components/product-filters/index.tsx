@@ -57,8 +57,10 @@ const ProductFilters = ({ facets, selected, resultCount }: ProductFiltersProps) 
   const pushFilters = (next: SelectedFilters) => {
     const params = new URLSearchParams(searchParams)
     for (const k of FILTER_KEYS) {
-      if (next[k].length) params.set(k, next[k].join(","))
-      else params.delete(k)
+      // O apariție per valoare, nu o listă separată prin virgulă: numele de
+      // categorii conțin virgule („Console, Jocuri") și s-ar rupe la citire.
+      params.delete(k)
+      for (const v of next[k]) params.append(k, v)
     }
     const priceStr = serializePrice(next.price)
     if (priceStr) params.set("price", priceStr)
