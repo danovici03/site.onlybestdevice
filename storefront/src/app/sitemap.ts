@@ -1,6 +1,7 @@
 import { MetadataRoute } from "next"
 import { listProducts } from "@lib/data/products"
 import { listCategories } from "@lib/data/categories"
+import { categorySlug } from "@lib/util/category-slug"
 
 const BASE = (
   process.env.NEXT_PUBLIC_BASE_URL || "https://onlybestdevice.ro"
@@ -31,10 +32,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const cats = await listCategories()
+    // Calea canonică, nu handle-ul: `apple-tablete` redirectează 308 către
+    // `tablete/apple`, iar un sitemap plin de redirecturi irosește crawl budget.
+    const byId = new Map(cats.map((c) => [c.id, c]))
     for (const c of cats) {
-      if (c.handle)
+      const path: string[] = []
+      const seen = new Set<string>()
+      let cur: (typeof cats)[number] | undefined = c
+      while (cur && !seen.has(cur.id)) {
+        seen.add(cur.id)
+        path.unshift(categorySlug(cur.name ?? ""))
+        cur = cur.parent_category?.id
+          ? byId.get(cur.parent_category.id)
+          : undefined
+      }
+      if (path.length && path.every(Boolean))
         entries.push({
-          url: `${BASE}/${REGION}/categories/${c.handle}`,
+          url: `${BASE}/${REGION}/categories/${path.join("/")}`,
           changeFrequency: "weekly",
           priority: 0.7,
         })

@@ -35,8 +35,8 @@ type Props = {
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   "/categories/telefoane-mobile": DeviceMobile,
   "/categories/tablete": DeviceTablet,
-  "/categories/incarcatoare-acccesorii": Plug,
-  "/categories/smartatch-si-wearables": Watch,
+  "/categories/incarcatoare-accesorii": Plug,
+  "/categories/smartwatch-wearables": Watch,
   "/categories/console-jocuri": GameController,
   "/categories/laptop": Laptop,
   "/categories/desktop-pc-periferice": Desktop,

@@ -8,16 +8,21 @@ import MobileSortFab from "@modules/store/components/mobile-sort-fab"
 import RefinementBar from "@modules/store/components/refinement-bar"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import PaginatedProducts from "@modules/store/templates/paginated-products"
+import type { CategoryCrumb } from "@lib/data/categories"
+import { categorySlug } from "@lib/util/category-slug"
 import type { SelectedFilters } from "@lib/util/product-filters"
 
 export default function CategoryTemplate({
   category,
+  path = [],
   sortBy,
   page,
   countryCode,
   filters,
 }: {
   category: HttpTypes.StoreProductCategory
+  /** Calea de la rădăcină până la categoria curentă, inclusiv. */
+  path?: CategoryCrumb[]
   sortBy?: SortOptions
   page?: string
   countryCode: string
@@ -28,17 +33,29 @@ export default function CategoryTemplate({
 
   if (!category || !countryCode) notFound()
 
-  const parents: HttpTypes.StoreProductCategory[] = []
-  const collectParents = (cat: HttpTypes.StoreProductCategory) => {
-    if (cat.parent_category) {
-      parents.unshift(cat.parent_category)
-      collectParents(cat.parent_category)
-    }
-  }
-  collectParents(category)
+  // Strămoșii cu URL-ul lor ierarhic: fiecare crumb linkează calea de la
+  // rădăcină până la el, nu doar handle-ul propriu.
+  const ancestors = path.slice(0, -1).map((crumb, i) => ({
+    ...crumb,
+    href: `/categories/${path
+      .slice(0, i + 1)
+      .map((c) => c.slug)
+      .join("/")}`,
+  }))
 
-  const directParent = parents[parents.length - 1]
-  const eyebrow = directParent ? directParent.name : "Stanza"
+  const directParent = ancestors[ancestors.length - 1]
+  const eyebrow = directParent ? directParent.name : "Catalog"
+
+  // Slug-uri, nu handle-uri: URL-ul canonic al unei subcategorii e
+  // /categories/tablete/apple, nu /categories/tablete/apple-tablete.
+  const currentPath = path.length
+    ? path.map((c) => c.slug)
+    : [categorySlug(category.name ?? "")]
+
+  const children = (category.category_children ?? []).filter(
+    (c): c is HttpTypes.StoreProductCategory & { name: string } =>
+      Boolean(c?.name)
+  )
 
   const collectDescendantIds = (
     cat: HttpTypes.StoreProductCategory
@@ -66,11 +83,11 @@ export default function CategoryTemplate({
         >
           Catalog
         </LocalizedClientLink>
-        {parents.map((parent) => (
-          <span key={parent.id} className="flex items-center gap-2">
+        {ancestors.map((parent) => (
+          <span key={parent.handle} className="flex items-center gap-2">
             <span className="text-brand-dark/30">/</span>
             <LocalizedClientLink
-              href={`/categories/${parent.handle}`}
+              href={parent.href}
               className="hover:text-brand-dark transition-colors"
             >
               {parent.name}
@@ -105,6 +122,27 @@ export default function CategoryTemplate({
           <RefinementBar sortBy={sort} />
         </div>
       </div>
+
+      {children.length > 0 && (
+        <nav
+          aria-label="Subcategorii"
+          className="flex flex-wrap gap-2 mb-5 lg:mb-8"
+          data-testid="subcategory-links"
+        >
+          {children.map((child) => (
+            <LocalizedClientLink
+              key={child.id}
+              href={`/categories/${[
+                ...currentPath,
+                categorySlug(child.name),
+              ].join("/")}`}
+              className="rounded-full border border-brand-dark/15 px-4 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:border-brand-dark/40 hover:text-brand-dark"
+            >
+              {child.name}
+            </LocalizedClientLink>
+          ))}
+        </nav>
+      )}
 
       <MobileSortFab sortBy={sort} />
 
