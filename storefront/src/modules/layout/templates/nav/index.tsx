@@ -18,7 +18,16 @@ import NavInteractive from "./nav-interactive"
 
 export default async function Nav({ countryCode }: { countryCode: string }) {
   const [regions, locales, currentLocale, megaMenu] = await Promise.all([
-    listRegions().then((regions: StoreRegion[]) => regions),
+    // Nav-ul stă în layout, deci se randează pe FIECARE pagină: o eroare aici
+    // scoate tot site-ul, nu doar selectorul de țară. Cât backend-ul repornește
+    // la un deploy, lista de regiuni lipsește pentru câteva secunde — SideMenu
+    // are gardă pe `regions`, așa că degradăm la listă goală.
+    listRegions()
+      .then((regions: StoreRegion[]) => regions)
+      .catch((e) => {
+        console.error("[nav] regiunile n-au putut fi citite:", e?.message ?? e)
+        return [] as StoreRegion[]
+      }),
     listLocales(),
     getLocale(),
     resolveMegaMenu(countryCode),

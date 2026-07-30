@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import { notFound, permanentRedirect } from "next/navigation"
 
 import {
+  CategoriesUnavailableError,
   categoryPathSegments,
   getCategoryByHandle,
   getCategoryPath,
@@ -80,32 +81,42 @@ export async function generateStaticParams() {
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params
+
+  // `notFound()` stă în afara try-ului: el semnalează prin excepție, iar un
+  // catch care înghite tot l-ar transforma exact în ce vrem să evităm.
+  let productCategory
   try {
-    const productCategory = await getCategoryByHandle(params.category)
-
-    if (!productCategory) {
-      notFound()
-    }
-
-    const description =
-      productCategory.description ?? `Categoria ${productCategory.name}.`
-
-    // Canonic e calea ierarhică completă, nu segmentele cerute: forma plată
-    // (`/categories/apple`) rămâne accesibilă, dar nu se indexează separat.
-    const path = await getCategoryPath(productCategory.id)
-
-    return {
-      title: productCategory.name,
-      description,
-      alternates: {
-        canonical: `/categories/${(path.length
-          ? categoryPathSegments(path)
-          : params.category
-        ).join("/")}`,
-      },
-    }
+    productCategory = await getCategoryByHandle(params.category)
   } catch (error) {
+    // Backend-ul inaccesibil NU e un 404: lăsăm eroarea să urce, ca pagina să
+    // răspundă 5xx și crawlerul să revină, în loc să creadă că a dispărut
+    // categoria.
+    if (error instanceof CategoriesUnavailableError) {
+      throw error
+    }
+    productCategory = undefined
+  }
+
+  if (!productCategory) {
     notFound()
+  }
+
+  const description =
+    productCategory.description ?? `Categoria ${productCategory.name}.`
+
+  // Canonic e calea ierarhică completă, nu segmentele cerute: forma plată
+  // (`/categories/apple`) rămâne accesibilă, dar nu se indexează separat.
+  const path = await getCategoryPath(productCategory.id)
+
+  return {
+    title: productCategory.name,
+    description,
+    alternates: {
+      canonical: `/categories/${(path.length
+        ? categoryPathSegments(path)
+        : params.category
+      ).join("/")}`,
+    },
   }
 }
 

@@ -10,21 +10,25 @@ const regionMapCache = {
   regionMapUpdated: Date.now(),
 }
 
-async function getRegionMap(cacheId: string) {
-  const { regionMap, regionMapUpdated } = regionMapCache
-
-  if (!BACKEND_URL) {
-    throw new Error(
-      "Middleware.ts: Error fetching regions. Did you set up regions in your Medusa Admin and define a MEDUSA_BACKEND_URL environment variable? Note that the variable is no longer named NEXT_PUBLIC_MEDUSA_BACKEND_URL."
-    )
-  }
-
-  if (
-    !regionMap.keys().next().value ||
-    regionMapUpdated < Date.now() - 3600 * 1000
-  ) {
-    // Fetch regions from Medusa. We can't use the JS client here because middleware is running on Edge and the client needs a Node environment.
-    const { regions } = await fetch(`${BACKEND_URL}/store/regions`, {
+/**
+ * Cere regiunile de la Medusa, fără să arunce niciodată.
+ *
+ * Middleware-ul rulează înaintea oricărei pagini, deci o excepție aici scoate
+ * tot site-ul cu 500 (`MIDDLEWARE_INVOCATION_FAILED`), nu doar pagina cerută.
+ * S-a văzut la un redeploy de backend: cât containerul repornea, ruta a întors
+ * un corp care nu era JSON, iar `response.json()` a aruncat din middleware.
+ *
+ * De aceea corpul se citește ca text și se parsează manual — un backend care
+ * pornește, un 502 de la reverse proxy sau un răspuns trunchiat sunt lucruri
+ * normale într-o fereastră de deploy, nu motive de cădere.
+ */
+async function fetchRegions(
+  cacheId: string
+): Promise<HttpTypes.StoreRegion[] | null> {
+  try {
+    // Nu putem folosi clientul JS aici: middleware-ul rulează pe Edge, iar
+    // clientul are nevoie de Node.
+    const response = await fetch(`${BACKEND_URL}/store/regions`, {
       headers: {
         "x-publishable-api-key": PUBLISHABLE_API_KEY!,
       },
@@ -33,31 +37,78 @@ async function getRegionMap(cacheId: string) {
         tags: [`regions-${cacheId}`],
       },
       cache: "force-cache",
-    }).then(async (response) => {
-      const json = await response.json()
-
-      if (!response.ok) {
-        throw new Error(json.message)
-      }
-
-      return json
     })
 
-    if (!regions?.length) {
-      throw new Error(
-        "No regions found. Please set up regions in your Medusa Admin."
+    const body = await response.text()
+    let json: any
+    try {
+      json = JSON.parse(body)
+    } catch {
+      console.error(
+        `Middleware: /store/regions a răspuns ${response.status} cu un corp care nu e JSON: ${body.slice(0, 200)}`
       )
+      return null
     }
 
-    // Create a map of country codes to regions.
-    regions.forEach((region: HttpTypes.StoreRegion) => {
-      region.countries?.forEach((c) => {
-        regionMapCache.regionMap.set(c.iso_2 ?? "", region)
-      })
-    })
+    if (!response.ok) {
+      console.error(
+        `Middleware: /store/regions a răspuns ${response.status}: ${json?.message ?? ""}`
+      )
+      return null
+    }
 
-    regionMapCache.regionMapUpdated = Date.now()
+    const regions: HttpTypes.StoreRegion[] = json?.regions ?? []
+    if (!regions.length) {
+      console.error(
+        "Middleware: nicio regiune configurată. Adaugă regiuni în Medusa Admin."
+      )
+      return null
+    }
+
+    return regions
+  } catch (e) {
+    console.error(
+      `Middleware: /store/regions inaccesibil: ${(e as Error)?.message ?? e}`
+    )
+    return null
   }
+}
+
+/**
+ * Harta cod-de-țară → regiune, sau `null` dacă nu avem de unde s-o construim.
+ *
+ * Cât timp există o hartă din cerințele anterioare, o servim mai departe chiar
+ * dacă reîmprospătarea eșuează: o hartă veche de o oră e infinit mai bună decât
+ * un site căzut. `regionMapUpdated` se mișcă doar la succes, ca următoarea
+ * cerere să reîncerce.
+ */
+async function getRegionMap(cacheId: string) {
+  const { regionMap, regionMapUpdated } = regionMapCache
+
+  if (!BACKEND_URL) {
+    console.error(
+      "Middleware: MEDUSA_BACKEND_URL nu e setat, deci nu pot afla regiunile."
+    )
+    return null
+  }
+
+  const isStale = regionMapUpdated < Date.now() - 3600 * 1000
+  if (regionMap.keys().next().value && !isStale) {
+    return regionMap
+  }
+
+  const regions = await fetchRegions(cacheId)
+  if (!regions) {
+    // Harta veche, dacă există; altfel semnalăm apelantului că n-avem nimic.
+    return regionMap.keys().next().value ? regionMap : null
+  }
+
+  regions.forEach((region) => {
+    region.countries?.forEach((c) => {
+      regionMapCache.regionMap.set(c.iso_2 ?? "", region)
+    })
+  })
+  regionMapCache.regionMapUpdated = Date.now()
 
   return regionMapCache.regionMap
 }
@@ -224,7 +275,27 @@ export async function middleware(request: NextRequest) {
 
   const regionMap = await getRegionMap(cacheId)
 
-  const countryCode = regionMap && (await getCountryCode(request, regionMap))
+  // Fără regiuni (backend în plin redeploy, de pildă) NU blocăm tot site-ul.
+  // Dacă url-ul are deja prefix de țară îl lăsăm să treacă — paginile au
+  // fiecare fallback-ul lor — altfel trimitem pe regiunea implicită.
+  //
+  // Redirectul e 307, nu 308: e o stare temporară de degradare, iar un permanent
+  // s-ar lipi în cache-ul browserelor și al CDN-ului mult după ce backend-ul
+  // și-a revenit.
+  if (!regionMap) {
+    const seg = request.nextUrl.pathname.split("/")[1]?.toLowerCase()
+    if ((seg && /^[a-z]{2}$/.test(seg)) || request.nextUrl.pathname.includes(".")) {
+      return NextResponse.next()
+    }
+    const path =
+      request.nextUrl.pathname === "/" ? "" : request.nextUrl.pathname
+    return NextResponse.redirect(
+      `${request.nextUrl.origin}/${DEFAULT_REGION}${path}${request.nextUrl.search}`,
+      307
+    )
+  }
+
+  const countryCode = await getCountryCode(request, regionMap)
 
   const urlHasCountryCode =
     countryCode && request.nextUrl.pathname.split("/")[1] === countryCode

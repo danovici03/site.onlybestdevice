@@ -44,8 +44,14 @@ export type CategoryCrumb = { slug: string; handle: string; name: string }
  * Ruta `/store/product-categories` nu întoarce lanțul de părinți mai adânc de
  * un nivel (`*parent_category.parent_category` e ignorat în silence), așa că
  * ierarhia se reconstruiește local din lista plată.
+ *
+ * Întoarce `null` când backend-ul nu răspunde — deliberat diferit de lista
+ * goală. Cine rezolvă un URL de categorie trebuie să poată deosebi „categoria
+ * nu există" (404 legitim) de „n-am putut întreba" (indisponibilitate
+ * temporară): un 404 servit în fereastra de redeploy scoate pagina din index,
+ * pe când un 5xx e doar reîncercat de crawleri.
  */
-const listCategoryNodes = async (): Promise<CategoryNode[]> => {
+const listCategoryNodes = async (): Promise<CategoryNode[] | null> => {
   const next = {
     ...(await getCacheOptions("categories")),
   }
@@ -59,8 +65,14 @@ const listCategoryNodes = async (): Promise<CategoryNode[]> => {
         cache: "force-cache",
       }
     )
-    .then(({ product_categories }) => product_categories)
-    .catch(() => [])
+    .then(({ product_categories }) => product_categories ?? [])
+    .catch((e) => {
+      console.error(
+        "[categorii] lista de categorii n-a putut fi citită:",
+        e?.message ?? e
+      )
+      return null
+    })
 }
 
 const crumbOf = (n: CategoryNode): CategoryCrumb => ({
@@ -76,7 +88,9 @@ const crumbOf = (n: CategoryNode): CategoryCrumb => ({
 export const getCategoryPath = async (
   categoryId: string
 ): Promise<CategoryCrumb[]> => {
-  const nodes = await listCategoryNodes()
+  // Aici lipsa datelor e recuperabilă: fără cale, apelantul păstrează url-ul
+  // cerut și sare peste breadcrumb — nu merită să pice pagina pentru atât.
+  const nodes = (await listCategoryNodes()) ?? []
   const byId = new Map(nodes.map((n) => [n.id, n]))
 
   const path: CategoryCrumb[] = []
@@ -110,11 +124,26 @@ export const categoryPathSegments = (path: CategoryCrumb[]): string[] =>
  *
  * Un singur segment se caută în toată ierarhia, nu doar între rădăcini: forma
  * plată `/categories/apple-tablete` a fost multă vreme singura care funcționa.
+ *
+ * Aruncă dacă lista de categorii nu poate fi citită. Pare aspru, dar
+ * alternativa e mai rea: apelantul ar da `notFound()`, adică un 404 pe o
+ * categorie care există — exact răspunsul care scoate pagina din index dacă
+ * nimerește un crawler în fereastra de redeploy.
  */
+export class CategoriesUnavailableError extends Error {
+  constructor() {
+    super("Lista de categorii nu e disponibilă (backend inaccesibil).")
+    this.name = "CategoriesUnavailableError"
+  }
+}
+
 const resolveSegments = async (
   segments: string[]
 ): Promise<CategoryNode | undefined> => {
   const nodes = await listCategoryNodes()
+  if (nodes === null) {
+    throw new CategoriesUnavailableError()
+  }
   if (!nodes.length || !segments.length) {
     return undefined
   }
