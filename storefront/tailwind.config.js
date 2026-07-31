@@ -170,6 +170,23 @@ module.exports = {
           "0%": { opacity: "0", transform: "translateY(8px) scale(0.95)" },
           "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
         },
+        // Intro-ul de hero, în stilul paginii de produs Apple: ecranul pornește
+        // negru, lumina „se aprinde" peste imagine și camera se retrage ușor.
+        // Voalul e un simplu negru cu opacity (compozitat pe GPU) — nu folosim
+        // filter: brightness, care sacadează pe mobil pe imagini full-screen.
+        "hero-intro-veil": {
+          "0%": { opacity: "1" },
+          "30%": { opacity: "0.9" },
+          "100%": { opacity: "0" },
+        },
+        "hero-intro-zoom": {
+          "0%": { transform: "scale(1.16)" },
+          "100%": { transform: "scale(1)" },
+        },
+        "hero-intro-title": {
+          "0%": { opacity: "0", transform: "translateY(24px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         ring: "ring 2.2s cubic-bezier(0.5, 0, 0.5, 1) infinite",
@@ -189,6 +206,14 @@ module.exports = {
         "wa-pulse": "wa-pulse 2s ease-out 3",
         "fade-in-up":
           "fade-in-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "hero-intro-veil":
+          "hero-intro-veil 1.9s cubic-bezier(0.33, 1, 0.68, 1) forwards",
+        "hero-intro-zoom":
+          "hero-intro-zoom 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        // `both` ține titlul ascuns pe durata delay-ului, ca să intre abia după
+        // ce imaginea s-a luminat.
+        "hero-intro-title":
+          "hero-intro-title 1s cubic-bezier(0.16, 1, 0.3, 1) 1.15s both",
       },
     },
   },
