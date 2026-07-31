@@ -14,6 +14,7 @@ const STATIC_PATHS = [
   "/livrare",
   "/retur",
   "/garantie",
+  "/service",
   "/contact",
   "/suport",
   "/faq",

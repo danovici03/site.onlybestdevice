@@ -21,6 +21,7 @@ const SUPPORT_LINKS = [
   { label: "Livrarea comenzilor", href: "/livrare" },
   { label: "Retur produse", href: "/retur" },
   { label: "Garanție și service", href: "/garantie" },
+  { label: "Formular de service", href: "/service" },
   { label: "Suport clienți", href: "/suport" },
 ]
 
