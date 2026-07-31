@@ -8,9 +8,11 @@
  *  - variantele (simple => 1 variantă; variabile => din WC variations)
  *  - prețuri în RON (unități majore, ex. 2999 = 2999 RON)
  *
- * Idempotent: sare peste produsele al căror handle există deja.
+ * Idempotent: sare peste produsele al căror handle există deja și nu reînvie
+ * produsele/categoriile șterse în Medusa (`RESTORE_DELETED=1` le aduce înapoi).
  * Rulare:  cd backend && yarn medusa exec ./src/scripts/import-woocommerce.ts
  *   Opțional: WC_EXPORT=/cale/altfel.json IMPORT_CURRENCY=ron PUBLISH=1
+ *             RESTORE_DELETED=1
  */
 import fs from "node:fs"
 import path from "node:path"
@@ -41,6 +43,10 @@ const statusOf = (wcStatus?: string) =>
       ? ProductStatus.PUBLISHED
       : ProductStatus.DRAFT
 const BATCH = Number(process.env.IMPORT_BATCH || "50")
+// Implicit, ce a fost șters în Medusa rămâne șters (ștergerea e „soft", iar
+// indexul de unicitate pe handle ignoră rândurile șterse — fără verificarea
+// asta, orice re-import reînvie categorii și produse curățate intenționat).
+const RESTORE_DELETED = !!process.env.RESTORE_DELETED
 
 type WcImage = { src: string }
 type WcAttr = { name: string; options?: string[]; variation?: boolean }
@@ -137,16 +143,37 @@ export default async function importWoocommerce({ container }: ExecArgs) {
   if (!shippingProfile) throw new Error("Lipsește shipping profile. Rulează seed-ul.")
 
   // ── Categorii: mirror după WC (handle = slug WC), idempotent, cu ierarhie ──
-  const { data: existingCats } = await query.graph({
+  // Indexul de unicitate pe handle e parțial (`where deleted_at is null`), deci
+  // nimic nu oprește re-crearea a ceva șters. Citim și rândurile șterse ca să nu
+  // reînviem categorii curățate intenționat în Medusa (ex. „Fără categorie").
+  const { data: allCats } = await query.graph({
     entity: "product_category",
-    fields: ["id", "handle"],
-  })
+    fields: ["id", "handle", "deleted_at"],
+    withDeleted: true,
+  } as any)
   const catHandleToId = new Map<string, string>(
-    existingCats.map((c: any) => [c.handle, c.id])
+    (allCats as any[]).filter((c) => !c.deleted_at).map((c) => [c.handle, c.id])
+  )
+  const deletedCatHandles = new Set<string>(
+    (allCats as any[]).filter((c) => c.deleted_at).map((c) => c.handle)
   )
   const wcCatById = new Map(exp.categories.map((c) => [c.id, c]))
   const wcCatIdToSlug = new Map(exp.categories.map((c) => [c.id, c.slug]))
-  const missingCats = exp.categories.filter((c) => !catHandleToId.has(c.slug))
+  const skippedDeletedCats = exp.categories.filter(
+    (c) => !catHandleToId.has(c.slug) && deletedCatHandles.has(c.slug)
+  )
+  if (skippedDeletedCats.length && !RESTORE_DELETED) {
+    logger.warn(
+      `${skippedDeletedCats.length} categorii din export sunt șterse în Medusa — nu le reînviu ` +
+        `(${skippedDeletedCats.slice(0, 5).map((c) => c.slug).join(", ")}` +
+        `${skippedDeletedCats.length > 5 ? ", …" : ""}). ` +
+        `Produsele lor se importă fără categoria asta. RESTORE_DELETED=1 forțează re-crearea.`
+    )
+  }
+  const missingCats = exp.categories.filter(
+    (c) =>
+      !catHandleToId.has(c.slug) && (RESTORE_DELETED || !deletedCatHandles.has(c.slug))
+  )
   if (missingCats.length) {
     logger.info(`Creez ${missingCats.length} categorii noi…`)
     // Iterativ: la fiecare trecere creează categoriile al căror părinte e deja
@@ -184,12 +211,28 @@ export default async function importWoocommerce({ container }: ExecArgs) {
   const handles = exp.products.map(handleOf).filter(Boolean)
   const { data: existing } = await query.graph({
     entity: "product",
-    fields: ["id", "handle"],
+    fields: ["id", "handle", "deleted_at"],
     filters: { handle: handles },
     pagination: { take: handles.length + 100 },
+    withDeleted: true,
   } as any)
-  const existingHandles = new Set(existing.map((p: any) => p.handle))
+  const existingHandles = new Set(
+    (existing as any[]).filter((p) => !p.deleted_at).map((p) => p.handle)
+  )
+  // Ca la categorii: un produs șters în Medusa nu se re-creează la următorul
+  // import (ar apărea ca produs nou, duplicat, fiindcă indexul e parțial).
+  const deletedHandles = new Set(
+    (existing as any[])
+      .filter((p) => p.deleted_at && !existingHandles.has(p.handle))
+      .map((p) => p.handle)
+  )
   if (existingHandles.size) logger.info(`Sar peste ${existingHandles.size} produse existente.`)
+  if (deletedHandles.size && !RESTORE_DELETED) {
+    logger.warn(
+      `Sar peste ${deletedHandles.size} produse șterse în Medusa — nu le reînviu. ` +
+        `RESTORE_DELETED=1 le importă din nou.`
+    )
+  }
 
   const toCreate: any[] = []
   let skipped = 0
@@ -202,6 +245,7 @@ export default async function importWoocommerce({ container }: ExecArgs) {
       continue
     }
     if (existingHandles.has(handle)) continue
+    if (!RESTORE_DELETED && deletedHandles.has(handle)) continue
 
     const category_ids = (p.categories || [])
       .map((c) => catHandleToId.get(wcCatIdToSlug.get(c.id) || ""))
