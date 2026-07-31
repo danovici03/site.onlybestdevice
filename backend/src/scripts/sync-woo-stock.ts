@@ -1,5 +1,14 @@
 /**
- * Sincronizează stocul WooCommerce → Medusa.
+ * Sincronizează stocul WooCommerce → Medusa. UNEALTĂ DE MIGRARE, nu de rutină.
+ *
+ * ATENȚIE: sursa de adevăr pentru stoc este gestiunea Laravel, care împinge
+ * cantitățile prin `POST /admin/erp/stock` (vezi src/lib/erp/README.md). Scriptul
+ * ăsta e bootstrap-ul dinaintea ei: a pornit `manage_inventory` pe catalogul
+ * migrat din WooCommerce și a adus cantitățile inițiale. Nu-l rula periodic —
+ * ar suprascrie cifrele gestiunii, și cu o convenție diferită: ERP-ul scrie
+ * `cantitate + reserved_quantity` (ca rezervările comenzilor neonorate să nu se
+ * scadă de două ori), pe când aici scriem cantitatea plată din WooCommerce.
+ * De folosit doar cât timp WooCommerce mai ține evidența unor produse.
  *
  * Citește snapshot-ul produs de `migration/wc-stock-pull.mjs`
  * (migration/data/wc-stock-<data>.json — implicit cel mai recent) și aliniază
