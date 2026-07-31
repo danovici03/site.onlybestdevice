@@ -31,20 +31,36 @@ export const COMPANY = {
     paese: "România",
   },
 
-  // Punct de lucru / contact clienți (TODO: stradă + cod poștal reale)
+  // Punct de lucru / magazin: aceeași locație ca adresa de retur și de
+  // ridicare personală (vezi STORE_PICKUP_ADDRESS din backend/.env).
   sedeOperativa: {
-    via: "Str. Exemplu nr. 1",
-    cap: "420000",
+    via: "Bulevardul Independenței nr. 19, Spațiu Comercial 2",
+    cap: "420170",
     citta: "Bistrița",
     provincia: "BN",
     paese: "România",
   },
 
+  // Adresa la care se expediază retururile și produsele pentru service
+  // (comunicată de client, e reală — spre deosebire de sediul social de mai
+  // sus, rămas placeholder).
+  adresaRetur: {
+    via: "Bulevardul Independenței nr. 19",
+    spatiu: "Spațiu Comercial 2",
+    cap: "420170",
+    citta: "Bistrița",
+    provincia: "BN",
+    judet: "Bistrița-Năsăud",
+    paese: "România",
+  },
+
   // Contacte
-  email: "contact@onlybestdevice.ro",
+  email: "office@onlybestdevice.ro",
   emailPec: "",
-  telefono: "+40 700 000 000",
-  whatsapp: "+40 700 000 000",
+  telefono: "0785 866 866",
+  // Format internațional: linkurile wa.me se construiesc din cifrele acestui
+  // câmp, iar wa.me nu acceptă prefixul național „0".
+  whatsapp: "+40 785 866 866",
 
   // Program serviciu clienți
   orari: "Luni–Vineri 9:00–18:00",
@@ -80,6 +96,10 @@ export function indirizzoLegale(): string {
 
 export function indirizzoOperativo(): string {
   return format(COMPANY.sedeOperativa)
+}
+
+export function indirizzoRetur(): string {
+  return format(COMPANY.adresaRetur)
 }
 
 /** @deprecated Folosește `indirizzoLegale()` sau `indirizzoOperativo()` — această funcție trimite la sediul social pentru retro-compatibilitate. */

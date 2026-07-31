@@ -5,6 +5,7 @@ import {
   Truck,
   ArrowsClockwise,
   ShieldCheck,
+  Wrench,
   Scroll,
   Lock,
   Cookie,
@@ -53,6 +54,13 @@ const CARDS = [
     title: "Garanție",
     description:
       "Garanție legală de conformitate de 24 de luni la toate produsele.",
+  },
+  {
+    href: "/service",
+    icon: <Wrench size={22} />,
+    title: "Formular de service",
+    description:
+      "Trimiți un produs defect în service: completezi cererea, apoi chemi curierul.",
   },
   {
     href: "/termeni",

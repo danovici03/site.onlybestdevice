@@ -27,7 +27,7 @@ const COMPANY = {
   rea: "Reg. Com. J06/26/2021",
   sedeLegale: "Sediu social: Bistrița (BN)",
   sedeOperativa: "Punct de lucru: Bistrița (BN)",
-  email: "contact@onlybestdevice.ro",
+  email: "office@onlybestdevice.ro",
   website: "onlybestdevice.ro",
 }
 
