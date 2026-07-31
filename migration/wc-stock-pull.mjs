@@ -2,6 +2,11 @@
 /**
  * Trage stocul curent din WooCommerce și îl compară cu snapshot-ul anterior.
  *
+ * Parte din migrarea WooCommerce → Medusa, nu din fluxul zilnic: stocul curent
+ * vine din gestiunea Laravel (backend/src/lib/erp/README.md). Folosește-l cât
+ * timp WooCommerce mai e sursa pentru unele produse, împreună cu
+ * backend/src/scripts/sync-woo-stock.ts.
+ *
  * Spre deosebire de `wc-export.mjs` (export complet, pentru migrare), ăsta ia
  * doar ce ne trebuie pentru sincronizarea stocului: id, slug, sku, nume, preț,
  * stock_status, stock_quantity, manage_stock. Nu atinge pozele — catalogul
