@@ -61,6 +61,17 @@ services:
       AUTH_CORS: ${AUTH_CORS:?set AUTH_CORS}
       MEDUSA_BACKEND_URL: ${MEDUSA_BACKEND_URL:?set MEDUSA_BACKEND_URL}
 
+      # ── ERP (gestiunea Laravel) ──
+      # Goale = subscriberul `erp-order-sync` se autodezactivează și comenzile NU
+      # ajung în gestiune. Fără liniile astea, ce setezi în Dokploy rămâne în
+      # .env-ul de lângă compose și nu intră niciodată în container: compose
+      # pasează doar ce e enumerat aici.
+      # ERP_WEBHOOK_SECRET trebuie să fie identic cu MEDUSA_WEBHOOK_SECRET din
+      # env-ul gestiunii.
+      ERP_WEBHOOK_URL: ${ERP_WEBHOOK_URL:-}
+      ERP_WEBHOOK_SECRET: ${ERP_WEBHOOK_SECRET:-}
+      ERP_STOCK_LOCATION_ID: ${ERP_STOCK_LOCATION_ID:-}
+
       # ── Migrații + admin bootstrap (entrypoint) ──
       RUN_MIGRATIONS: "true"
       CREATE_ADMIN_EMAIL: ${CREATE_ADMIN_EMAIL:-}
