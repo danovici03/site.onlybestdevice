@@ -11,6 +11,12 @@ import {
   ShieldCheck,
   Truck,
 } from "@phosphor-icons/react/dist/ssr"
+import {
+  COURIER_NAME,
+  COURIER_PAID_EXPLAINER,
+  COURIER_PAID_NOTE,
+  COURIER_TARIFF_FROM,
+} from "@lib/util/shipping-tariff"
 
 type SummaryProps = {
   cart: HttpTypes.StoreCart & {
@@ -47,7 +53,11 @@ const Summary = ({ cart }: SummaryProps) => {
 
         <div className="border-t border-brand-dark/10" />
 
-        <CartTotals totals={cart} />
+        <CartTotals totals={cart} shippingNote="Plata la curier" />
+
+        <p className="-mt-2 text-xs leading-relaxed text-brand-dark/55">
+          {COURIER_PAID_EXPLAINER}
+        </p>
 
         <LocalizedClientLink
           href={"/checkout?step=" + step}
@@ -72,8 +82,8 @@ const Summary = ({ cart }: SummaryProps) => {
         {[
           {
             Icon: Truck,
-            title: "Livrare gratuită în România",
-            note: "Pentru comenzi peste 1.000 lei",
+            title: `Livrare prin ${COURIER_NAME}`,
+            note: `Transport ${COURIER_TARIFF_FROM}, ${COURIER_PAID_NOTE}`,
           },
           {
             Icon: ArrowUUpLeft,

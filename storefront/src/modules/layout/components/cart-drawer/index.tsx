@@ -11,6 +11,7 @@ import { deleteLineItem, updateLineItem } from "@lib/data/cart"
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { convertToLocale } from "@lib/util/money"
 import { warrantyTargetTitle } from "@lib/util/warranty"
+import { COURIER_TARIFF_FROM } from "@lib/util/shipping-tariff"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -196,8 +197,8 @@ const CartDrawer = ({ cart }: CartDrawerProps) => {
                       </span>
                     </div>
                     <p className="-mt-2 text-xs text-brand-dark/50">
-                      Transportul și eventualele reduceri se calculează la
-                      finalizare.
+                      Reducerile se aplică la finalizare. Transportul (
+                      {COURIER_TARIFF_FROM}) se achită curierului la livrare.
                     </p>
 
                     <LocalizedClientLink

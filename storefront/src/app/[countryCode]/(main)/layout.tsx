@@ -1,9 +1,8 @@
 import { Metadata } from "next"
 
-import { listCartOptions, retrieveCart } from "@lib/data/cart"
+import { retrieveCart } from "@lib/data/cart"
 import { retrieveCustomer } from "@lib/data/customer"
 import { getBaseURL } from "@lib/util/env"
-import { StoreCartShippingOption } from "@medusajs/types"
 import { ConsentProvider } from "@lib/context/consent-context"
 import { CartDrawerProvider } from "@lib/context/cart-drawer-context"
 import BottomNav from "@modules/layout/components/bottom-nav"
@@ -14,7 +13,6 @@ import WhatsAppWidget from "@modules/layout/components/whatsapp-widget"
 import TopBar from "@modules/layout/components/top-bar"
 import Footer from "@modules/layout/templates/footer"
 import Nav from "@modules/layout/templates/nav"
-import FreeShippingPriceNudge from "@modules/shipping/components/free-shipping-price-nudge"
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseURL()),
@@ -27,13 +25,6 @@ export default async function PageLayout(props: {
   const { countryCode } = await props.params
   const customer = await retrieveCustomer()
   const cart = await retrieveCart()
-  let shippingOptions: StoreCartShippingOption[] = []
-
-  if (cart) {
-    const { shipping_options } = await listCartOptions()
-
-    shippingOptions = shipping_options
-  }
 
   return (
     <ConsentProvider>
@@ -44,13 +35,6 @@ export default async function PageLayout(props: {
           <CartMismatchBanner customer={customer} cart={cart} />
         )}
 
-        {cart && (
-          <FreeShippingPriceNudge
-            variant="popup"
-            cart={cart}
-            shippingOptions={shippingOptions}
-          />
-        )}
         {props.children}
         <Footer />
         <div

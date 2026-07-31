@@ -1,4 +1,8 @@
 /**
+ * ISTORIC — nu-l mai rula. Transportul nu se mai încasează prin site (se achită
+ * curierului), deci acest script ar reintroduce prețuri pe opțiunile de livrare.
+ * Vezi shipping-fan-curier.ts.
+ *
  * Aduce opțiunile de livrare RO la denumirile/prețurile curente:
  *  - „Livrare express" → „Livrare prioritară", preț = livrare standard + 5.99 lei
  *  - „Ridicare personală" → „Ridicare personală de la locația magazinului",

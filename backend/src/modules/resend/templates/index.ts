@@ -16,7 +16,7 @@ const BRAND = "onlybestdevice"
 const LEGAL = "ONLY BEST DEVICE S.R.L."
 const CUI = "43546040"
 const REG_COM = "J06/26/2021"
-const SUPPORT_EMAIL = "contact@onlybestdevice.ro"
+const SUPPORT_EMAIL = "office@onlybestdevice.ro"
 const SUPPORT_HOURS = "Luni–Vineri 9:00–18:00"
 const STOREFRONT_FALLBACK = "https://onlybestdevice.ro"
 // Prefixul de limbă folosit în linkurile către storefront (middleware-ul
@@ -184,15 +184,24 @@ const renderOrderItems = (
     </table>`
 }
 
+/** Ridicarea din magazin e singura opțiune fără taxă de curier. */
+const isPickupOrder = (order: Record<string, any>) =>
+  (order.shipping_methods ?? []).some((m: any) => /ridicare/i.test(m?.name ?? ""))
+
 const orderPlacedCustomer: Renderer = ({ order, storefront_url }) => {
   const display = order.display_id ?? order.id
   const orderUrl = `${resolveStorefrontUrl(storefront_url)}/${locale()}/order/${order.id}/confirmed`
   const firstName = order.shipping_address?.first_name
+  // Totalul comenzii nu conține transportul — clientul îl dă curierului.
+  const courierNote = isPickupOrder(order)
+    ? ""
+    : `<p style="margin:0 0 16px;font-size:13px;color:${COLOR.muted};">Taxa de transport nu este inclusă în acest total: o achiți direct curierului, la primirea coletului.</p>`
   const body = `
     ${greeting(firstName)}
     <p style="margin:0 0 16px;">îți mulțumim pentru comanda <strong>#${escape(display)}</strong>. Am primit-o cu bine și o pregătim.</p>
     ${renderOrderItems(order.items, storefront_url)}
     <p style="margin:16px 0;font-size:16px;"><strong>Total: ${money(order.total, order.currency_code)}</strong></p>
+    ${courierNote}
     ${button(orderUrl, "Vezi comanda")}
     <p style="margin:16px 0 0;color:${COLOR.muted};">Îți scriem din nou imediat ce comanda pleacă spre tine.</p>`
   return {
