@@ -1,23 +1,22 @@
 /**
  * Configurează livrarea pentru România:
  *  - șterge opțiunile demo din seed
- *  - creează: Curier standard (20 lei), Livrare prioritară (standard + 5.99 lei), Ridicare personală (0 lei)
- *  - creează o promoție automată „transport gratuit peste 1000 lei"
+ *  - creează: Fan Curier standard, Fan Curier prioritar, Ridicare personală
+ *
+ * Toate au preț 0 în Medusa: taxa de transport nu trece prin site, clientul o
+ * achită direct curierului la primirea coletului. Cifrele afișate clientului
+ * stau în storefront/src/lib/util/shipping-tariff.ts.
  *
  * Rulare: cd backend && yarn medusa exec ./src/scripts/configure-shipping-ro.ts
  */
 import { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
-import {
-  createShippingOptionsWorkflow,
-  createPromotionsWorkflow,
-} from "@medusajs/medusa/core-flows"
+import { createShippingOptionsWorkflow } from "@medusajs/medusa/core-flows"
 
-const FREE_SHIPPING_THRESHOLD = 1000 // lei
-const STANDARD_PRICE = 20 // lei
-const PRIORITY_SURCHARGE = 5.99 // lei peste livrarea standard
-// Rotunjire explicită: 20 + 5.99 dă 25.990000000000002 în virgulă mobilă.
-const PRIORITY_PRICE = Number((STANDARD_PRICE + PRIORITY_SURCHARGE).toFixed(2))
+// Nu încasăm transportul, deci opțiunile intră în coș pe 0.
+const SHIPPING_PRICE = 0
+const COURIER_NOTE =
+  "Taxa de transport se achită direct curierului, la primirea coletului."
 
 export default async function configureShippingRo({ container }: ExecArgs) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
@@ -76,18 +75,19 @@ export default async function configureShippingRo({ container }: ExecArgs) {
   await createShippingOptionsWorkflow(container).run({
     input: [
       opt(
-        "Livrare prin curier (Cargus / Sameday / DPD)",
+        "Livrare prin Fan Curier",
         "standard",
         "Standard",
-        "Livrare prin curier în 1-3 zile lucrătoare.",
-        STANDARD_PRICE
+        `Livrare în 1–3 zile lucrătoare. ${COURIER_NOTE}`,
+        SHIPPING_PRICE
       ),
       opt(
-        "Livrare prioritară",
+        "Livrare prioritară prin Fan Curier",
         "priority",
         "Prioritară",
-        "Comanda ta e procesată și expediată cu prioritate, înaintea celorlalte.",
-        PRIORITY_PRICE
+        "Comanda ta e procesată și expediată cu prioritate, înaintea " +
+          `celorlalte. ${COURIER_NOTE}`,
+        SHIPPING_PRICE
       ),
       opt(
         "Ridicare personală de la locația magazinului",
@@ -100,51 +100,6 @@ export default async function configureShippingRo({ container }: ExecArgs) {
     ],
   })
   logger.info("Create 3 opțiuni de livrare RO.")
-
-  // Promoție automată: transport gratuit peste prag.
-  const { data: existingPromos } = await query.graph({
-    entity: "promotion",
-    fields: ["id", "code"],
-    filters: { code: "TRANSPORT-GRATUIT" },
-  })
-  if (existingPromos.length) {
-    logger.info("Promoția de transport gratuit există deja — o sar.")
-  } else
-  try {
-    await createPromotionsWorkflow(container).run({
-      input: {
-        promotionsData: [
-          {
-            code: "TRANSPORT-GRATUIT",
-            is_automatic: true,
-            status: "active",
-            type: "standard",
-            application_method: {
-              type: "percentage",
-              target_type: "shipping_methods",
-              allocation: "each",
-              value: 100,
-              currency_code: "ron",
-              max_quantity: 1,
-            },
-            rules: [
-              {
-                attribute: "items.total",
-                operator: "gte",
-                values: [String(FREE_SHIPPING_THRESHOLD)],
-              },
-            ],
-          } as any,
-        ],
-      },
-    })
-    logger.info(`Promoție automată „transport gratuit peste ${FREE_SHIPPING_THRESHOLD} lei" creată.`)
-  } catch (e: any) {
-    logger.warn(
-      `Nu am putut crea automat promoția de transport gratuit (${e?.message?.slice(0, 140)}). ` +
-        `O poți crea manual din Admin → Promotions (free shipping, automatic, regulă cart total ≥ ${FREE_SHIPPING_THRESHOLD}).`
-    )
-  }
 
   logger.info("✓ Configurare livrare RO completă.")
 }

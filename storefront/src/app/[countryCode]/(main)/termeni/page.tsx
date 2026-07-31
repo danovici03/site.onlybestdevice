@@ -59,8 +59,10 @@ export default function TermeniPage() {
 
       <h2>4. Prețuri și plăți</h2>
       <p>
-        Toate prețurile sunt exprimate în lei (RON) și includ TVA. Eventualele
-        costuri de livrare sunt indicate separat în coș, înainte de plată. Sunt
+        Toate prețurile sunt exprimate în lei (RON) și includ TVA. Taxa de
+        transport este afișată separat în coș, înainte de plasarea comenzii, dar
+        nu este inclusă în totalul plătit către noi: ea se achită direct
+        curierului, la primirea coletului. Sunt
         acceptate metodele de plată afișate la finalizarea comenzii (card
         bancar, plata în rate prin partenerii noștri, plata la livrare/ramburs).
         Plățile cu cardul sunt procesate de furnizori autorizați, cu
@@ -71,7 +73,10 @@ export default function TermeniPage() {
       <p>
         Modalitățile, termenele și costurile de livrare sunt descrise pe pagina{" "}
         <a href="/livrare">Livrarea comenzilor</a> și sunt comunicate înainte de
-        încheierea contractului. Eventualele întârzieri cauzate de forță majoră
+        încheierea contractului. Taxa de transport se achită curierului la
+        primirea coletului, iar documentul fiscal pentru serviciul de transport
+        este emis de firma de curierat. Eventualele întârzieri cauzate de forță
+        majoră
         (greve ale curierilor, evenimente naturale, restricții administrative)
         nu constituie neexecutare.
       </p>

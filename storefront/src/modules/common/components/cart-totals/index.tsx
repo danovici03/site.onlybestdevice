@@ -13,9 +13,14 @@ type CartTotalsProps = {
     shipping_subtotal?: number | null
     discount_subtotal?: number | null
   }
+  /**
+   * Ce scriem pe rândul „Livrare" când transportul e 0 în Medusa fiindcă se
+   * achită curierului. Fără el rândul ar rămâne pe „Se calculează" la infinit.
+   */
+  shippingNote?: string
 }
 
-const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
+const CartTotals: React.FC<CartTotalsProps> = ({ totals, shippingNote }) => {
   const {
     currency_code,
     total,
@@ -50,7 +55,7 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
                   amount: shipping_subtotal,
                   currency_code,
                 })
-              : "Se calculează"}
+              : shippingNote ?? "Se calculează"}
           </span>
         </div>
         {!!discount_subtotal && (

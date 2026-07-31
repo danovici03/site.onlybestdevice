@@ -1,6 +1,12 @@
 import { Metadata } from "next"
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
 import { COMPANY } from "@lib/util/company-info"
+import {
+  COURIER_NAME,
+  COURIER_SURCHARGE_PRIORITY,
+  COURIER_TARIFF_PRIORITY_BREAKDOWN,
+  COURIER_TARIFF_STANDARD,
+} from "@lib/util/shipping-tariff"
 
 export const metadata: Metadata = {
   title: "Livrarea comenzilor | onlybestdevice",
@@ -30,25 +36,41 @@ export default function LivrarePage() {
       <h2>Modalități și costuri</h2>
       <ul>
         <li>
-          <strong>Livrare prin curier (Cargus / Sameday / DPD)</strong> — 20 lei,
-          1–3 zile lucrătoare;
+          <strong>Livrare prin {COURIER_NAME}</strong> —{" "}
+          {COURIER_TARIFF_STANDARD}, 1–3 zile lucrătoare;
         </li>
         <li>
-          <strong>Livrare prioritară</strong> — 25,99 lei, comanda este
-          procesată și expediată cu prioritate;
+          <strong>Livrare prioritară prin {COURIER_NAME}</strong> —{" "}
+          {COURIER_TARIFF_PRIORITY_BREAKDOWN} (tariful standard plus{" "}
+          {COURIER_SURCHARGE_PRIORITY} pentru prioritate), comanda este
+          procesată și expediată înaintea celorlalte;
         </li>
         <li>
           <strong>Ridicare personală de la locația magazinului</strong> —
           gratuit, termen de procesare 1–2 zile lucrătoare; te anunțăm pe email
-          când comanda este disponibilă în magazin;
-        </li>
-        <li>
-          <strong>Transport gratuit</strong> pentru comenzile de peste{" "}
-          <strong>1.000 lei</strong>.
+          când comanda este disponibilă în magazin.
         </li>
       </ul>
+
+      <h2>Cum se plătește transportul</h2>
       <p>
-        Costurile sunt afișate întotdeauna transparent în coș, înainte de plată.
+        <strong>
+          Taxa de transport nu este încasată de noi și nu este inclusă în totalul
+          comenzii.
+        </strong>{" "}
+        O achiți direct curierului {COURIER_NAME}, la primirea coletului, odată
+        cu semnarea de primire. Tariful este afișat în coș și în pagina de
+        finalizare a comenzii, înainte să plasezi comanda, iar suma pe care o
+        plătești online (sau prin rate) acoperă doar produsele.
+      </p>
+      <p>
+        Dacă alegi <strong>plata la livrare (ramburs)</strong>, curierul
+        încasează într-o singură tranzacție atât contravaloarea produselor, cât
+        și taxa de transport.
+      </p>
+      <p>
+        Pentru transport, documentul fiscal îl emite {COURIER_NAME}; factura
+        noastră cuprinde doar produsele comandate.
       </p>
 
       <h2>Verificarea coletului la livrare</h2>
@@ -79,8 +101,8 @@ export default function LivrarePage() {
 
       <hr />
       <p className="text-xs text-brand-dark/50">
-        TODO: confirmați curierii, tarifele și zonele deservite reale înainte de
-        lansare.
+        TODO: confirmați zonele deservite și eventualele suprataxe {COURIER_NAME}{" "}
+        (localități izolate, colete voluminoase) înainte de lansare.
       </p>
     </InfoPageLayout>
   )

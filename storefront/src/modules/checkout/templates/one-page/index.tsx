@@ -16,6 +16,8 @@ import {
   isCod,
   isTbi,
   isNetopia,
+  codAvailable,
+  COD_MAX_AMOUNT,
 } from "@lib/constants"
 import {
   initiatePaymentSession,
@@ -52,6 +54,15 @@ import CartTotals from "@modules/common/components/cart-totals"
 import Input from "@modules/common/components/input"
 import CountySelect from "@modules/common/components/county-select"
 import { matchCounty } from "@lib/util/counties"
+import {
+  COURIER_NAME,
+  COURIER_PAID_EXPLAINER,
+  COURIER_PAID_NOTE,
+  COURIER_TARIFF_FROM,
+  courierTariff,
+  courierTariffForMethodName,
+  courierTariffLabel,
+} from "@lib/util/shipping-tariff"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Installments from "@modules/products/components/installments"
 import SkeletonCardDetails from "@modules/skeletons/components/skeleton-card-details"
@@ -150,8 +161,7 @@ const methodMeta = (
   if (isCod(id)) {
     return {
       title: "Numerar la livrare (ramburs)",
-      description:
-        "Plătești curierului, în numerar sau cu cardul, la primirea coletului.",
+      description: `Plătești curierului în numerar, la primirea coletului. Disponibil pentru comenzi de până la ${COD_MAX_AMOUNT.toLocaleString("ro-RO")} lei.`,
       badges: <CashBadge />,
     }
   }
@@ -466,18 +476,41 @@ const OnePageCheckout = ({
       ? creditMonths
       : financingTerms[financingTerms.length - 1]
 
+  /** Ramburs-ul cade peste plafonul legal de numerar (Legea 70/2015). */
+  const cashAllowed = codAvailable(cartTotal, cart?.currency_code)
+
   const visibleMethods = useMemo(() => {
     const filtered = paymentMethods
       .filter((pm) => !pm.id.startsWith("pp_stripe-")) // sub-providerii Stripe
       .filter((pm) => !isUnicredit(pm.id) || financeable)
+      .filter((pm) => !isCod(pm.id) || cashAllowed)
     return filtered.sort((a, b) => {
       const ia = METHOD_ORDER.indexOf(a.id)
       const ib = METHOD_ORDER.indexOf(b.id)
       return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
     })
-  }, [paymentMethods, financeable])
+  }, [paymentMethods, financeable, cashAllowed])
+
+  /**
+   * Coșul poate depăși plafonul după ce clientul alesese deja ramburs-ul
+   * (adaugă produse din rezumat, pică o reducere). Metoda dispare din listă,
+   * deci selecția trebuie curățată — altfel `canPlace` ar trece cu un provider
+   * pe care backend-ul îl respinge la finalizare.
+   */
+  useEffect(() => {
+    if (selectedPayment && isCod(selectedPayment) && !cashAllowed) {
+      setSelectedPayment("")
+      setPaymentError(
+        `Plata la livrare este disponibilă doar pentru comenzi de până la ${COD_MAX_AMOUNT.toLocaleString("ro-RO")} lei. Alege altă metodă de plată.`
+      )
+    }
+  }, [cashAllowed, selectedPayment])
 
   const hasTbi = paymentMethods.some((pm) => pm.id.startsWith("pp_tbi"))
+
+  /** Providerul e activ pe regiune, dar plafonul îl scoate din listă. */
+  const hasCod = paymentMethods.some((pm) => isCod(pm.id))
+  const hasInstallments = financeable || hasTbi
 
   const choosePayment = async (id: string) => {
     setPaymentError(null)
@@ -841,6 +874,11 @@ const OnePageCheckout = ({
                 option.price_type === "flat"
                   ? option.amount
                   : calculatedPrices[option.id]
+              // Fallback pe nume: dacă API-ul n-ar întoarce codul tipului, o
+              // opțiune de curier ar apărea „Gratuit" — exact ce nu vrem.
+              const tariff =
+                courierTariff(option.type?.code) ??
+                courierTariffForMethodName(option.name)
               return (
                 <Radio
                   key={option.id}
@@ -875,20 +913,37 @@ const OnePageCheckout = ({
                       )}
                     </span>
                   </span>
-                  <span className="text-sm font-bold text-brand-dark shrink-0">
-                    {typeof amount === "number"
-                      ? amount === 0
-                        ? "Gratuit"
-                        : convertToLocale({
-                            amount,
-                            currency_code: cart?.currency_code,
-                          })
-                      : "—"}
-                  </span>
+                  {/* Transportul nu e încasat de noi: pentru opțiunile de
+                      curier afișăm tariful informativ, nu prețul (0) din
+                      Medusa. */}
+                  {tariff ? (
+                    <span className="flex flex-col items-end shrink-0 text-right">
+                      <span className="text-sm font-bold text-brand-dark">
+                        {courierTariffLabel(tariff).main}
+                      </span>
+                      <span className="text-[11px] text-brand-dark/55 leading-tight">
+                        {courierTariffLabel(tariff).sub}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-sm font-bold text-brand-dark shrink-0">
+                      {typeof amount === "number"
+                        ? amount === 0
+                          ? "Gratuit"
+                          : convertToLocale({
+                              amount,
+                              currency_code: cart?.currency_code,
+                            })
+                        : "—"}
+                    </span>
+                  )}
                 </Radio>
               )
             })}
           </RadioGroup>
+          <p className="mt-2 text-xs leading-relaxed text-brand-dark/55">
+            {COURIER_PAID_EXPLAINER}
+          </p>
           <ErrorMessage
             error={shippingError}
             data-testid="delivery-option-error-message"
@@ -1039,6 +1094,18 @@ const OnePageCheckout = ({
               </div>
             )}
           </RadioGroup>
+          {/* Fără explicație, dispariția ramburs-ului peste plafon arată ca un bug. */}
+          {!cashAllowed && hasCod && (
+            <p
+              className="mt-3 text-xs leading-relaxed text-brand-dark/55"
+              data-testid="cod-limit-notice"
+            >
+              Plata la livrare este disponibilă doar pentru comenzi de până la{" "}
+              {COD_MAX_AMOUNT.toLocaleString("ro-RO")} lei — plafonul legal
+              pentru încasările în numerar. Comanda ta se poate plăti online cu
+              cardul{hasInstallments ? " sau în rate" : ""}.
+            </p>
+          )}
           <ErrorMessage
             error={paymentError}
             data-testid="payment-method-error-message"
@@ -1064,7 +1131,7 @@ const OnePageCheckout = ({
 
           <div className="border-t border-brand-dark/10" />
 
-          <CartTotals totals={cart} />
+          <CartTotals totals={cart} shippingNote="Plata la curier" />
 
           <label className="flex items-start gap-2.5 text-xs leading-relaxed text-brand-dark/70 cursor-pointer">
             <input
@@ -1133,8 +1200,8 @@ const OnePageCheckout = ({
           {[
             {
               Icon: Truck,
-              title: "Livrare gratuită în România",
-              note: "Pentru comenzi peste 1.000 lei",
+              title: `Livrare prin ${COURIER_NAME}`,
+              note: `Transport ${COURIER_TARIFF_FROM}, ${COURIER_PAID_NOTE}`,
             },
             {
               Icon: ArrowUUpLeft,
