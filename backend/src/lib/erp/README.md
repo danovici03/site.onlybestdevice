@@ -10,7 +10,7 @@ Medusa ────────────────────────�
 
       stoc disponibil (absolut, nu delta)
 Medusa ◄───────────────────────────── Laravel   POST /admin/erp/stock
-                                                (x-medusa-access-token)
+                                                (HTTP Basic cu Secret API Key)
 ```
 
 ## Config

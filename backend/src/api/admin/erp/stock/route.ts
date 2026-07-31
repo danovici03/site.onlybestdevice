@@ -15,7 +15,8 @@ import { applyStock, type StockInput } from "../../../../lib/erp/stock"
  * intr-un singur apel, ca ERP-ul sa nu ramana la jumatate daca pica un request.
  *
  * Autentificare: ruta e sub /admin, deci cere un Secret API Key trimis in
- * `x-medusa-access-token` (Admin → Settings → API Key Management).
+ * HTTP Basic cu cheia pe post de username, parola goala (Admin → Settings →
+ * API Key Management → Secret API keys).
  */
 
 const MAX_ITEMS = 500
