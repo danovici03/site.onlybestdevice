@@ -65,6 +65,24 @@ export const isCod = (providerId?: string) => {
   return providerId?.startsWith("pp_cod")
 }
 
+/**
+ * Plafonul legal pentru încasările în numerar de la persoane fizice
+ * (Legea 70/2015): 5.000 lei/persoană/zi. Curierul încasează exclusiv cash,
+ * deci peste prag ramburs-ul nu e o opțiune.
+ *
+ * ATENȚIE: dublat în backend (`src/modules/manual-payments/service.ts`), unde
+ * respinge sesiunea chiar dacă cineva ocolește interfața. Se schimbă în ambele.
+ */
+export const COD_MAX_AMOUNT = 5000
+
+/** Moneda pe care e activ ramburs-ul; plafonul e o normă fiscală românească. */
+const COD_CURRENCY = "ron"
+
+/** Ramburs-ul e disponibil doar sub plafonul de numerar, și doar în lei. */
+export const codAvailable = (total: number, currencyCode?: string) => {
+  return currencyCode?.toLowerCase() === COD_CURRENCY && total <= COD_MAX_AMOUNT
+}
+
 /** Rate prin TBI Bank (eCommerce API) — flux redirect + callback criptat. */
 export const isTbi = (providerId?: string) => {
   return providerId?.startsWith("pp_tbi")
