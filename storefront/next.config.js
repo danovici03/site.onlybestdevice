@@ -72,6 +72,12 @@ const nextConfig = {
         pathname: "/wp-content/uploads/**",
         search: "",
       },
+      // Produsele demo din seed-onlybestdevice.ts au poze de pe Unsplash; fără
+      // hostname aici, orice pagină care le afișează crapă cu „Invalid src prop".
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
       ...(S3_HOSTNAME && S3_PATHNAME
         ? [
             {

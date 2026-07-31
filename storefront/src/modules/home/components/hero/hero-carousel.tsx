@@ -3,7 +3,8 @@
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react/dist/ssr"
 import Autoplay from "embla-carousel-autoplay"
 import useEmblaCarousel from "embla-carousel-react"
-import Image from "next/image"
+import Image from "@modules/common/components/image"
+import { useEffect, useState } from "react"
 
 import { unsplashLoader } from "@lib/util/unsplash-loader"
 import {
@@ -23,6 +24,11 @@ export type Slide = {
 
 const AUTOPLAY_MS = 6000
 
+// Cât ține intro-ul (voal 1.9s + titlu care intră la 1.15s și durează 1s).
+// După el scoatem clasele de animație, ca `forwards`/`both` să nu blocheze
+// opacitatea titlului pe primul slide când caruselul trece mai departe.
+const INTRO_MS = 2300
+
 // Imaginile placeholder vin de pe Unsplash (au nevoie de loader-ul cu query
 // params). Cele administrate din admin vin din storage-ul propriu (S3/local)
 // și folosesc optimizatorul implicit Next.
@@ -35,6 +41,23 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
   )
   const { selectedIndex } = useDotButton(emblaApi)
   const { onPrevButtonClick, onNextButtonClick } = usePrevNextButtons(emblaApi)
+  const [intro, setIntro] = useState(true)
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setIntro(false)
+      return
+    }
+
+    const timeout = setTimeout(() => {
+      setIntro(false)
+      // Repornim cronometrul de autoplay ca primul slide să fie vizibil 6s
+      // *după* intro, nu 6s din care 2 au fost negre.
+      emblaApi?.plugins()?.autoplay?.reset()
+    }, INTRO_MS)
+
+    return () => clearTimeout(timeout)
+  }, [emblaApi])
 
   if (slides.length === 0) {
     return null
@@ -62,7 +85,11 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
                   priority={index === 0}
                   fetchPriority={index === 0 ? "high" : "auto"}
                   draggable={false}
-                  className="object-cover"
+                  className={`object-cover ${
+                    intro && index === 0
+                      ? "animate-hero-intro-zoom motion-reduce:animate-none"
+                      : ""
+                  }`}
                 />
                 {/* Întunecare generală pentru lizibilitate */}
                 <div className="absolute inset-0 bg-black/20" />
@@ -77,6 +104,10 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
                     index === selectedIndex
                       ? "opacity-100"
                       : "opacity-0 pointer-events-none"
+                  } ${
+                    intro && index === 0
+                      ? "animate-hero-intro-title motion-reduce:animate-none"
+                      : ""
                   }`}
                   aria-hidden={index !== selectedIndex}
                 >
@@ -109,6 +140,17 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
           ))}
         </div>
       </div>
+
+      {/* Voalul de intro — acoperă tot hero-ul (imagine, gradiente, săgeți) și
+          se stinge peste ~2s, ca imaginea să pară că „se aprinde". z-40 ca să
+          fie peste săgeți/dots (z-30); pointer-events-none ca să nu blocheze
+          clickurile în timp ce se stinge. */}
+      {intro && (
+        <div
+          aria-hidden
+          className="absolute inset-0 z-40 bg-black pointer-events-none animate-hero-intro-veil motion-reduce:hidden"
+        />
+      )}
 
       {/* Săgeți — pe lateral, centrate vertical. Ascunse când e un singur slide. */}
       {slides.length > 1 && (
