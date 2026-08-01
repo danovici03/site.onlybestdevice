@@ -1,4 +1,5 @@
 import { deleteLineItem } from "@lib/data/cart"
+import { useSessionRefresh } from "@lib/context/session-context"
 import { Spinner, Trash } from "@medusajs/icons"
 import { clx } from "@medusajs/ui"
 import { useState } from "react"
@@ -12,6 +13,7 @@ const DeleteButton = ({
   children?: React.ReactNode
   className?: string
 }) => {
+  const refresh = useSessionRefresh()
   const [isDeleting, setIsDeleting] = useState(false)
 
   const handleDelete = async (id: string) => {
@@ -19,6 +21,7 @@ const DeleteButton = ({
     await deleteLineItem(id).catch((err) => {
       setIsDeleting(false)
     })
+    await refresh()
   }
 
   return (

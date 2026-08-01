@@ -2,6 +2,7 @@
 
 import { Table, Text } from "@medusajs/ui"
 import { deleteLineItem, updateLineItem } from "@lib/data/cart"
+import { useSessionRefresh } from "@lib/context/session-context"
 import { HttpTypes } from "@medusajs/types"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import LineItemOptions from "@modules/common/components/line-item-options"
@@ -35,6 +36,7 @@ const Item = ({
   offerWarranty,
   removable,
 }: ItemProps) => {
+  const refresh = useSessionRefresh()
   const [updating, setUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -52,11 +54,15 @@ const Item = ({
     await updateLineItem({ lineId: item.id, quantity })
       .catch((err) => setError(err.message))
       .finally(() => setUpdating(false))
+    // Ține bulina din header sincronizată: pagina de coș se re-randează singură
+    // pe server, dar header-ul își ia acum coșul din browser.
+    await refresh()
   }
 
   const handleDelete = async () => {
     setDeleting(true)
     await deleteLineItem(item.id).catch(() => setDeleting(false))
+    await refresh()
   }
 
   if (type === "preview") {

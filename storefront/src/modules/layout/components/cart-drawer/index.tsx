@@ -9,6 +9,7 @@ import {
 } from "@headlessui/react"
 import { deleteLineItem, updateLineItem } from "@lib/data/cart"
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
+import { useSession } from "@lib/context/session-context"
 import { convertToLocale } from "@lib/util/money"
 import { warrantyTargetTitle } from "@lib/util/warranty"
 import { COURIER_TARIFF_FROM } from "@lib/util/shipping-tariff"
@@ -36,12 +37,9 @@ function getCheckoutStep(cart: HttpTypes.StoreCart) {
   return "payment"
 }
 
-type CartDrawerProps = {
-  cart?: HttpTypes.StoreCart | null
-}
-
-const CartDrawer = ({ cart }: CartDrawerProps) => {
+const CartDrawer = () => {
   const { isOpen, open, close } = useCartDrawer()
+  const { cart, ready, refresh } = useSession()
   const pathname = usePathname()
   const [justAdded, setJustAdded] = useState(false)
 
@@ -59,6 +57,11 @@ const CartDrawer = ({ cart }: CartDrawerProps) => {
   // Dacă panoul e deja deschis, creșterea vine de la „+” din interior — nu e o
   // adăugare nouă, deci nu arătăm confirmarea verde.
   useEffect(() => {
+    // Cât coșul încă se citește, saltul de la „gol” la coșul real nu e o
+    // adăugare, e prima încărcare. Fără garda asta, oricine are deja coș ar
+    // vedea panoul deschizându-se singur la fiecare intrare pe site.
+    if (!ready) return
+
     const prev = prevTotal.current
     prevTotal.current = totalItems
 
@@ -66,12 +69,10 @@ const CartDrawer = ({ cart }: CartDrawerProps) => {
 
     setJustAdded(true)
     open()
-  }, [totalItems, onCartRoute, isOpen, open])
+  }, [ready, totalItems, onCartRoute, isOpen, open])
 
-  // Panoul nu supraviețuiește navigării — altfel rămâne deschis peste pagina nouă.
-  useEffect(() => {
-    close()
-  }, [pathname, close])
+  // Închiderea la navigare stă în CartDrawerProvider — componenta asta se
+  // remontează la refresh-urile RSC și ar închide/ar rata închiderea.
 
   useEffect(() => {
     if (!isOpen) setJustAdded(false)
@@ -247,20 +248,26 @@ type DrawerItemProps = {
 }
 
 const DrawerItem = ({ item, currencyCode, onNavigate }: DrawerItemProps) => {
+  const { refresh } = useSession()
   const [updating, setUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const warrantyFor = warrantyTargetTitle(item)
 
+  // Acțiunile de server nu mai re-randează layout-ul cu un coș nou, pentru că
+  // acesta nu mai citește coșul. Fiecare modificare trebuie să ceară explicit
+  // starea nouă.
   const changeQuantity = async (quantity: number) => {
     setUpdating(true)
     await updateLineItem({ lineId: item.id, quantity })
       .catch(() => {})
       .finally(() => setUpdating(false))
+    await refresh()
   }
 
   const handleDelete = async () => {
     setDeleting(true)
     await deleteLineItem(item.id).catch(() => setDeleting(false))
+    await refresh()
   }
 
   const busy = updating || deleting

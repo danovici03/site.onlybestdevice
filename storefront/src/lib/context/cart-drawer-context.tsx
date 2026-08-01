@@ -1,10 +1,13 @@
 "use client"
 
+import { usePathname } from "next/navigation"
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react"
 
@@ -31,6 +34,20 @@ export function CartDrawerProvider({
 
   const open = useCallback(() => setIsOpen(true), [])
   const close = useCallback(() => setIsOpen(false), [])
+
+  // Panoul nu supraviețuiește navigării. Închiderea stă AICI, nu în CartDrawer:
+  // componenta se remontează la refresh-urile RSC de după acțiunile de coș și
+  // orice logică bazată pe ref-uri de acolo se reinițializează. Providerul
+  // rămâne montat între navigări; dacă totuși se remontează, isOpen pornește
+  // oricum pe false.
+  const pathname = usePathname()
+  const prevPathname = useRef(pathname)
+  useEffect(() => {
+    if (prevPathname.current !== pathname) {
+      prevPathname.current = pathname
+      setIsOpen(false)
+    }
+  }, [pathname])
 
   const value = useMemo(() => ({ isOpen, open, close }), [isOpen, open, close])
 

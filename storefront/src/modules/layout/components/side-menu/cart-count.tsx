@@ -1,7 +1,9 @@
-import { retrieveCart } from "@lib/data/cart"
+"use client"
 
-export default async function SideMenuCartCount() {
-  const cart = await retrieveCart().catch(() => null)
+import { useSession } from "@lib/context/session-context"
+
+export default function SideMenuCartCount() {
+  const { cart } = useSession()
   const total =
     cart?.items?.reduce((acc, item) => acc + item.quantity, 0) || 0
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { addToCart } from "@lib/data/cart"
+import { useSessionRefresh } from "@lib/context/session-context"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { WARRANTY_FOR, WARRANTY_FOR_TITLE } from "@lib/util/warranty"
 import { HttpTypes } from "@medusajs/types"
@@ -28,6 +29,7 @@ type WarrantyOfferProps = {
  */
 const WarrantyOffer = ({ warranty, item, compact }: WarrantyOfferProps) => {
   const countryCode = useParams().countryCode as string
+  const refresh = useSessionRefresh()
   const [addingId, setAddingId] = useState<string | null>(null)
   const [error, setError] = useState(false)
 
@@ -47,6 +49,7 @@ const WarrantyOffer = ({ warranty, item, compact }: WarrantyOfferProps) => {
           [WARRANTY_FOR_TITLE]: item.product_title,
         },
       })
+      await refresh()
     } catch {
       setError(true)
     } finally {

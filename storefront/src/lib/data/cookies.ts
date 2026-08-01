@@ -48,6 +48,25 @@ export const getCacheOptions = async (
   return { tags: cacheTag ? [cacheTag, tag] : [tag] }
 }
 
+/**
+ * Cookie martor, citibil din client. `_medusa_jwt` și `_medusa_cart_id` sunt
+ * httpOnly, deci browserul nu poate ști singur dacă vizitatorul are cont sau
+ * coș. Fără martor, `SessionProvider` ar cere `/api/session` la fiecare
+ * vizitator — inclusiv la cei veniți prima dată și la crawlere, care sunt
+ * majoritatea traficului. Nu conține nimic secret: doar „1”.
+ */
+const SESSION_MARKER = "_medusa_session"
+
+const setSessionMarker = async (present: boolean) => {
+  const cookies = await nextCookies()
+  cookies.set(SESSION_MARKER, present ? "1" : "", {
+    maxAge: present ? 60 * 60 * 24 * 7 : -1,
+    httpOnly: false, // trebuie citit din browser
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+  })
+}
+
 export const setAuthToken = async (token: string) => {
   const cookies = await nextCookies()
   cookies.set("_medusa_jwt", token, {
@@ -56,6 +75,7 @@ export const setAuthToken = async (token: string) => {
     sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
   })
+  await setSessionMarker(true)
 }
 
 export const removeAuthToken = async () => {
@@ -63,6 +83,8 @@ export const removeAuthToken = async () => {
   cookies.set("_medusa_jwt", "", {
     maxAge: -1,
   })
+  // Martorul acoperă și contul, și coșul: rămâne pus dacă mai există coș.
+  await setSessionMarker(!!cookies.get("_medusa_cart_id")?.value)
 }
 
 export const getCartId = async () => {
@@ -78,6 +100,7 @@ export const setCartId = async (cartId: string) => {
     sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
   })
+  await setSessionMarker(true)
 }
 
 export const removeCartId = async () => {
@@ -85,4 +108,5 @@ export const removeCartId = async () => {
   cookies.set("_medusa_cart_id", "", {
     maxAge: -1,
   })
+  await setSessionMarker(!!cookies.get("_medusa_jwt")?.value)
 }

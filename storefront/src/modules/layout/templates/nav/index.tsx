@@ -1,27 +1,26 @@
-import { Suspense } from "react"
-
 import { listRegions } from "@lib/data/regions"
 import { listLocales } from "@lib/data/locales"
-import { getLocale } from "@lib/data/locale-actions"
 import { StoreRegion } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import CartButton from "@modules/layout/components/cart-button"
 import SideMenu from "@modules/layout/components/side-menu"
 import SideMenuCartCount from "@modules/layout/components/side-menu/cart-count"
-import {
-  MagnifyingGlass,
-  ShoppingBag,
-  User,
-} from "@phosphor-icons/react/dist/ssr"
+import { MagnifyingGlass, User } from "@phosphor-icons/react/dist/ssr"
 import { resolveMegaMenu } from "@modules/layout/components/mega-menu/resolve"
 import NavInteractive from "./nav-interactive"
 
+/**
+ * Nav-ul stă în layout, deci se randează deasupra fiecărei pagini. Nu are voie
+ * să citească cookie-uri: ar face tot catalogul dinamic. De aceea limba curentă
+ * se citește în `LanguageSelect`, din browser, iar coșul vine din
+ * `SessionProvider`.
+ */
 export default async function Nav({ countryCode }: { countryCode: string }) {
-  const [regions, locales, currentLocale, megaMenu] = await Promise.all([
-    // Nav-ul stă în layout, deci se randează pe FIECARE pagină: o eroare aici
-    // scoate tot site-ul, nu doar selectorul de țară. Cât backend-ul repornește
-    // la un deploy, lista de regiuni lipsește pentru câteva secunde — SideMenu
-    // are gardă pe `regions`, așa că degradăm la listă goală.
+  const [regions, locales, megaMenu] = await Promise.all([
+    // O eroare aici scoate tot site-ul, nu doar selectorul de țară. Cât
+    // backend-ul repornește la un deploy, lista de regiuni lipsește pentru
+    // câteva secunde — SideMenu are gardă pe `regions`, așa că degradăm la
+    // listă goală.
     listRegions()
       .then((regions: StoreRegion[]) => regions)
       .catch((e) => {
@@ -29,7 +28,6 @@ export default async function Nav({ countryCode }: { countryCode: string }) {
         return [] as StoreRegion[]
       }),
     listLocales(),
-    getLocale(),
     resolveMegaMenu(countryCode),
   ])
 
@@ -39,12 +37,7 @@ export default async function Nav({ countryCode }: { countryCode: string }) {
         <SideMenu
           regions={regions}
           locales={locales}
-          currentLocale={currentLocale}
-          cartIndicator={
-            <Suspense fallback={null}>
-              <SideMenuCartCount />
-            </Suspense>
-          }
+          cartIndicator={<SideMenuCartCount />}
         />
       </div>
       <LocalizedClientLink
@@ -77,23 +70,7 @@ export default async function Nav({ countryCode }: { countryCode: string }) {
       >
         <User size={26} weight="light" />
       </LocalizedClientLink>
-      <Suspense
-        fallback={
-          <LocalizedClientLink
-            href="/cart"
-            className="hover:text-brand-accent transition-colors relative"
-            data-testid="nav-cart-link"
-            aria-label="Coș"
-          >
-            <ShoppingBag size={26} weight="light" />
-            <span className="absolute -top-1 -right-1 bg-brand-dark text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-              0
-            </span>
-          </LocalizedClientLink>
-        }
-      >
-        <CartButton />
-      </Suspense>
+      <CartButton />
     </>
   )
 

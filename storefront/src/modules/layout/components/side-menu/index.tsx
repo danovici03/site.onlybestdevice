@@ -23,16 +23,10 @@ import { FLAT_LINKS, MEGA_MENU } from "@modules/layout/components/mega-menu/data
 type SideMenuProps = {
   regions: HttpTypes.StoreRegion[] | null
   locales: Locale[] | null
-  currentLocale: string | null
   cartIndicator?: ReactNode
 }
 
-const SideMenu = ({
-  regions,
-  locales,
-  currentLocale,
-  cartIndicator,
-}: SideMenuProps) => {
+const SideMenu = ({ regions, locales, cartIndicator }: SideMenuProps) => {
   const [open, setOpen] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(MEGA_MENU[0]?.key ?? null)
   const countryToggleState = useToggleState()
@@ -232,7 +226,6 @@ const SideMenu = ({
                   <LanguageSelect
                     toggleState={languageToggleState}
                     locales={locales}
-                    currentLocale={currentLocale}
                   />
                   <ArrowRightMini
                     className={clx(

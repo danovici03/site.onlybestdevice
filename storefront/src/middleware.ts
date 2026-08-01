@@ -261,6 +261,31 @@ function legacyRedirect(request: NextRequest): NextResponse | null {
   return null
 }
 
+/**
+ * Ține cookie-ul martor `_medusa_session` sincron cu sesiunea reală. Coșul și
+ * JWT-ul sunt httpOnly, deci `SessionProvider` (client) nu le poate vedea și
+ * se bazează pe martor ca să știe dacă merită să ceară `/api/session`.
+ * Martorul e pus la crearea coșului/login, dar vizitatorii cu coșuri de
+ * dinaintea introducerii lui nu-l au — fără corecția de aici, coșul lor ar
+ * exista dar n-ar mai apărea în header.
+ */
+const syncSessionMarker = (request: NextRequest, response: NextResponse) => {
+  const hasSession =
+    request.cookies.has("_medusa_cart_id") || request.cookies.has("_medusa_jwt")
+  const hasMarker = request.cookies.has("_medusa_session")
+
+  if (hasSession && !hasMarker) {
+    response.cookies.set("_medusa_session", "1", {
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    })
+  } else if (!hasSession && hasMarker) {
+    response.cookies.set("_medusa_session", "", { maxAge: -1 })
+  }
+  return response
+}
+
 export async function middleware(request: NextRequest) {
   const legacy = legacyRedirect(request)
   if (legacy) return legacy
@@ -302,7 +327,7 @@ export async function middleware(request: NextRequest) {
 
   // if one of the country codes is in the url and the cache id is set, return next
   if (urlHasCountryCode && cacheIdCookie) {
-    return NextResponse.next()
+    return syncSessionMarker(request, NextResponse.next())
   }
 
   // Url-ul are country code, dar lipsește cookie-ul: îl setăm și lăsăm cererea
@@ -323,7 +348,7 @@ export async function middleware(request: NextRequest) {
       maxAge: 60 * 60 * 24,
     })
 
-    return nextResponse
+    return syncSessionMarker(request, nextResponse)
   }
 
   // check if the url is a static asset

@@ -39,7 +39,23 @@ const getCountryCodeFromLocale = (localeCode: string): string => {
 type LanguageSelectProps = {
   toggleState: StateType
   locales: Locale[]
-  currentLocale: string | null
+}
+
+const LOCALE_COOKIE_NAME = "_medusa_locale"
+
+/**
+ * Limba curentă se citea pe server, în nav — adică în layout — și un singur
+ * cookie citit acolo face tot catalogul dinamic. Cookie-ul e pus cu
+ * `httpOnly: false` tocmai ca să poată fi citit de aici.
+ */
+function readLocaleCookie(): string | null {
+  if (typeof document === "undefined") return null
+  const hit = document.cookie
+    .split("; ")
+    .find((c) => c.startsWith(`${LOCALE_COOKIE_NAME}=`))
+  return hit
+    ? decodeURIComponent(hit.slice(LOCALE_COOKIE_NAME.length + 1))
+    : null
 }
 
 /**
@@ -68,14 +84,16 @@ const DEFAULT_OPTION: LanguageOption = {
   countryCode: "",
 }
 
-const LanguageSelect = ({
-  toggleState,
-  locales,
-  currentLocale,
-}: LanguageSelectProps) => {
+const LanguageSelect = ({ toggleState, locales }: LanguageSelectProps) => {
   const [current, setCurrent] = useState<LanguageOption | undefined>(undefined)
+  const [currentLocale, setCurrentLocale] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+
+  // `document` nu există la randarea de pe server, deci citirea stă în efect.
+  useEffect(() => {
+    setCurrentLocale(readLocaleCookie())
+  }, [])
 
   const { state, close } = toggleState
 
@@ -107,6 +125,8 @@ const LanguageSelect = ({
   const handleChange = (option: LanguageOption) => {
     startTransition(async () => {
       await updateLocale(option.code)
+      // Cookie-ul tocmai s-a schimbat, dar efectul de montare nu mai rulează.
+      setCurrentLocale(option.code || null)
       close()
       router.refresh()
     })
