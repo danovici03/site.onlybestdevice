@@ -11,7 +11,7 @@ import {
   type Facets,
   type SelectedFilters,
 } from "@lib/util/product-filters"
-import { getAuthHeaders, getCacheOptions } from "./cookies"
+import { getCacheOptions } from "./cookies"
 import { getRegion, retrieveRegion } from "./regions"
 
 export const listProducts = async ({
@@ -52,9 +52,11 @@ export const listProducts = async ({
     }
   }
 
-  const headers = {
-    ...(await getAuthHeaders()),
-  }
+  // Fără getAuthHeaders(): catalogul e conținut public, iar citirea
+  // cookie-ului de auth la prerender ar face toate paginile dinamice.
+  // Prețurile per-client (customer groups) nu sunt folosite; dacă apar
+  // vreodată, se afișează client-side, nu prin HTML-ul comun.
+  const headers = {}
 
   const next = {
     ...(await getCacheOptions("products")),
@@ -204,7 +206,7 @@ export const listCatalog = async ({
   const price = serializePrice(selected.price)
   if (price) query.price = price
 
-  const headers = { ...(await getAuthHeaders()) }
+  const headers = {}
   const next = { ...(await getCacheOptions("products")) }
 
   return sdk.client

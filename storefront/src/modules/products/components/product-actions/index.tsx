@@ -1,6 +1,7 @@
 "use client"
 
 import { addToCart } from "@lib/data/cart"
+import { useSession } from "@lib/context/session-context"
 import { useIntersection } from "@lib/hooks/use-in-view"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { HttpTypes } from "@medusajs/types"
@@ -34,7 +35,7 @@ import ProductUpgrades, {
   UpgradeSelection,
 } from "@modules/products/components/product-upgrades"
 import { isEqual } from "lodash"
-import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useParams, usePathname, useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import MobileActions from "./mobile-actions"
 
@@ -66,8 +67,8 @@ export default function ProductActions({
 }: ProductActionsProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
 
+  const { refresh } = useSession()
   const [options, setOptions] = useState<Record<string, string | undefined>>({})
   const [quantity, setQuantity] = useState(1)
   const [isAdding, setIsAdding] = useState(false)
@@ -93,7 +94,10 @@ export default function ProductActions({
     const variants = product.variants ?? []
     if (variants.length === 0) return
 
-    const urlVariantId = searchParams.get("v_id")
+    // Citit din window, nu din useSearchParams(): hook-ul face bailout la
+    // prerender (pagina n-ar mai fi statică), iar efectele rulează oricum
+    // doar în browser, unde window.location e la fel de proaspăt.
+    const urlVariantId = new URLSearchParams(window.location.search).get("v_id")
     const fromUrl = urlVariantId
       ? variants.find((v) => v.id === urlVariantId)
       : undefined
@@ -175,7 +179,7 @@ export default function ProductActions({
   }, [product.options, product.variants, options])
 
   useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(window.location.search)
     const value = isValidVariant ? selectedVariant?.id : null
 
     if (params.get("v_id") === value) {
@@ -290,6 +294,10 @@ export default function ProductActions({
       }
       setUpgradeSelections([])
       setWarrantyVariantId(null)
+      // Coșul nu mai vine din layout, deci nimic nu se reîmprospătează singur.
+      // Tot de aici pornește și deschiderea panoului de coș: panoul reacționează
+      // la creșterea numărului de produse din `SessionProvider`.
+      await refresh()
     } catch (e) {
       setAddError(
         e instanceof Error

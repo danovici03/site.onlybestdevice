@@ -5,9 +5,9 @@ import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { HttpTypes } from "@medusajs/types"
 
 export const listCartPaymentMethods = async (regionId: string) => {
-  const headers = {
-    ...(await getAuthHeaders()),
-  }
+  // Listă publică per regiune — fără getAuthHeaders(): e chemată și de pagina
+  // de produs (TBI în rate), iar cookies() la prerender strică prerandarea.
+  const headers = {}
 
   const next = {
     ...(await getCacheOptions("payment_providers")),

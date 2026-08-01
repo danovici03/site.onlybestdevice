@@ -8,7 +8,7 @@ import { HttpTypes } from "@medusajs/types"
 
 type Props = {
   params: Promise<{ countryCode: string; handle: string }>
-  searchParams: Promise<{ review_sort?: string; review_page?: string }>
+  // Fără `searchParams` în props: citirea lor ar face pagina dinamică.
 }
 
 export async function generateStaticParams() {
@@ -88,7 +88,9 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
 export default async function ProductPage(props: Props) {
   const params = await props.params
-  const searchParams = await props.searchParams
+  // ATENȚIE: nu citi `props.searchParams` aici. O singură citire face TOATE
+  // paginile de produs dinamice (fără prerender, fără cache) — recenziile se
+  // randează cu sortarea implicită, iar sortarea/paginarea lor se face client.
   const region = await getRegion(params.countryCode)
 
   if (!region) {
@@ -193,8 +195,6 @@ export default async function ProductPage(props: Props) {
         upgrades={upgrades}
         warranty={warranty}
         reviewStats={reviewStats}
-        reviewSort={searchParams.review_sort}
-        reviewPage={searchParams.review_page}
       />
     </>
   )

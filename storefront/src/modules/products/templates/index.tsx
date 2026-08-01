@@ -23,8 +23,6 @@ type ProductTemplateProps = {
   upgrades?: HttpTypes.StoreProduct[]
   warranty?: HttpTypes.StoreProduct
   reviewStats?: ReviewStatsDTO
-  reviewSort?: string
-  reviewPage?: string
 }
 
 const ProductTemplate: React.FC<ProductTemplateProps> = ({
@@ -34,8 +32,6 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
   upgrades = [],
   warranty,
   reviewStats,
-  reviewSort,
-  reviewPage,
 }) => {
   if (!product || !product.id) {
     return notFound()
@@ -92,8 +88,6 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
                 <ProductReviews
                   productId={product.id}
                   countryCode={countryCode}
-                  sort={reviewSort}
-                  page={reviewPage}
                 />
               </Suspense>
             }

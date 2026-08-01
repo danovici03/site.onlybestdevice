@@ -18,19 +18,17 @@ export const getAuthHeaders = async (): Promise<
   }
 }
 
+/**
+ * ATENȚIE: fără `cookies()` aici. Tag-urile astea ajung pe fetch-urile din
+ * paginile partajate (catalog), iar orice apel `cookies()` la prerender —
+ * chiar prins în try/catch — marchează ruta dinamică și anulează tot cache-ul.
+ * Vechea variantă lipea `_medusa_cache_id` (per sesiune) de tag; cum fetch-ul
+ * și revalidarea folosesc acum același tag global, invalidarea funcționează
+ * la fel, doar că pentru toți vizitatorii odată — exact ce vrem la un catalog
+ * comun.
+ */
 export const getCacheTag = async (tag: string): Promise<string> => {
-  try {
-    const cookies = await nextCookies()
-    const cacheId = cookies.get("_medusa_cache_id")?.value
-
-    if (!cacheId) {
-      return ""
-    }
-
-    return `${tag}-${cacheId}`
-  } catch (error) {
-    return ""
-  }
+  return tag
 }
 
 export const getCacheOptions = async (
@@ -40,12 +38,7 @@ export const getCacheOptions = async (
     return {}
   }
 
-  const cacheTag = await getCacheTag(tag)
-
-  // Bare `tag` is the global key that backend subscribers revalidate on
-  // category/product/collection events. The session-scoped `cacheTag`
-  // stays for per-visitor invalidation (e.g. region changes).
-  return { tags: cacheTag ? [cacheTag, tag] : [tag] }
+  return { tags: [tag] }
 }
 
 /**

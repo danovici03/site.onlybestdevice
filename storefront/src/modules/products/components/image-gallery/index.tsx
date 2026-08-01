@@ -3,7 +3,7 @@
 import { HttpTypes } from "@medusajs/types"
 import { useSearchParams } from "next/navigation"
 import Image from "@modules/common/components/image"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import useEmblaCarousel from "embla-carousel-react"
 
 import { useDotButton } from "@modules/common/components/carousel/embla-carousel-hooks"
@@ -12,9 +12,29 @@ type ImageGalleryProps = {
   product: HttpTypes.StoreProduct
 }
 
-const ImageGallery = ({ product }: ImageGalleryProps) => {
-  const searchParams = useSearchParams()
-  const variantId = searchParams.get("v_id")
+/**
+ * `useSearchParams()` face bailout la prerender, iar galeria e imaginea LCP —
+ * n-o putem ascunde sub un skeleton. De aceea hook-ul stă izolat aici, sub un
+ * Suspense al cărui fallback e chiar galeria cu setul implicit de poze: la
+ * build nu există `?v_id=` oricum, deci HTML-ul static e identic cu ce ar fi
+ * randat hook-ul. Reactivitatea la v_id (schimbi culoarea → se filtrează
+ * pozele) revine la hidratare.
+ */
+const ImageGallery = ({ product }: ImageGalleryProps) => (
+  <Suspense fallback={<GalleryInner product={product} variantId={null} />}>
+    <GalleryWithParams product={product} />
+  </Suspense>
+)
+
+const GalleryWithParams = ({ product }: ImageGalleryProps) => {
+  const variantId = useSearchParams().get("v_id")
+  return <GalleryInner product={product} variantId={variantId} />
+}
+
+const GalleryInner = ({
+  product,
+  variantId,
+}: ImageGalleryProps & { variantId: string | null }) => {
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: "center" })
   const { selectedIndex } = useDotButton(emblaApi)
 
