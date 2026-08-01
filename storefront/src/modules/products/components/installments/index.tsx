@@ -30,6 +30,12 @@ type InstallmentsProps = {
   initialMonths?: number
   /** Anunță selecția termenului (folosit la checkout). */
   onSelectMonths?: (months: number) => void
+  /**
+   * Providerul TBI e activ pe regiune. Vine din lista reală de metode de plată,
+   * ca nota de mai jos să nu rămână la „în curând” după activare — nici să
+   * anunțe disponibil un provider oprit.
+   */
+  tbiAvailable?: boolean
 }
 
 const Installments = ({
@@ -39,6 +45,7 @@ const Installments = ({
   embedded = false,
   initialMonths,
   onSelectMonths,
+  tbiAvailable = false,
 }: InstallmentsProps) => {
   const terms = useMemo(() => availableTerms(amount), [amount])
 
@@ -144,14 +151,18 @@ const Installments = ({
         )}
       </p>
 
-      {/* TBI fără cifre: până nu avem dobânda/DAE de la ei, nu avem voie să
-          afișăm rate (OUG 50/2010 cere DAE la publicitatea creditelor). */}
+      {/* TBI fără cifre: schemele lor se configurează pe comerciant și diferă
+          pe praguri de valoare, iar API-ul nu întoarce oferte — nu avem
+          dobândă/DAE de afișat, iar OUG 50/2010 le cere la publicitatea
+          creditelor. Cifrele exacte i se arată clientului pe pagina TBI. */}
       {!embedded ? (
         <p className="px-4 pt-2 pb-4 text-xs text-brand-dark/45">
           <span className="mr-1.5 inline-flex items-center rounded bg-black px-1.5 py-0.5 text-[9px] font-bold lowercase text-white">
             tbi bank
           </span>
-          În curând: plata în rate online și prin TBI Bank.
+          {tbiAvailable
+            ? "Poți plăti în rate și prin TBI Bank: alegi TBI la finalizarea comenzii, iar numărul de rate, dobânda și DAE se afișează pe pagina lor înainte de semnare."
+            : "În curând: plata în rate online și prin TBI Bank."}
         </p>
       ) : (
         <div className="px-4 pt-2 pb-3">

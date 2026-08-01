@@ -590,8 +590,13 @@ const OnePageCheckout = ({
         })
         await placeFinancedOrder("unicredit")
       } else if (isTbi(selectedPayment)) {
+        // Selectorul de rate se afișează doar la UniCredit, deci pentru TBI
+        // `creditMonths` e de regulă null — trimitem doar o alegere explicită,
+        // altfel backend-ul pune 12. `selectedCreditMonths` ar da termenul
+        // maxim, pe care clientul nu l-a ales. Oricum îl schimbă la TBI.
         await initiatePaymentSession(cart, {
           provider_id: selectedPayment,
+          data: { credit_period: creditMonths ?? undefined, gdpr: gdprAccepted },
         })
         await placeFinancedOrder("tbi")
       } else if (isNetopia(selectedPayment)) {
@@ -1039,6 +1044,7 @@ const OnePageCheckout = ({
                             compact
                             initialMonths={selectedCreditMonths}
                             onSelectMonths={setCreditMonths}
+                            tbiAvailable={hasTbi}
                           />
                           <label className="flex items-start gap-2.5 rounded-2xl border border-brand-dark/10 bg-white px-4 py-3 text-xs leading-relaxed text-brand-dark/70 cursor-pointer">
                             <input

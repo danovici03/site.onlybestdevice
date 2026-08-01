@@ -27,7 +27,18 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const logger = req.scope.resolve(ContainerRegistrationKeys.LOGGER)
 
   const expected = process.env.TBI_CALLBACK_TOKEN
-  if (expected) {
+  if (!expected) {
+    // Un callback acceptat necondiționat poate captura plăți sau anula
+    // comenzi, deci pe producție refuzăm categoric. Pe uat doar avertizăm,
+    // ca testele să nu se blocheze pe o variabilă lipsă.
+    if ((process.env.TBI_ENV || 'uat') === 'live') {
+      logger.error(
+        '[tbi] TBI_CALLBACK_TOKEN lipsește pe live — callback respins. Setează variabila și repornește.'
+      )
+      return res.status(503).json({ received: false, error: 'callback token not configured' })
+    }
+    logger.warn('[tbi] TBI_CALLBACK_TOKEN nesetat — callback acceptat neverificat (doar uat)')
+  } else {
     const got = (req.query.token as string) || req.headers['x-callback-token']
     if (got !== expected) {
       logger.warn('[tbi] Callback cu token invalid — ignorat')
@@ -103,16 +114,41 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.json({ received: true, duplicate: true })
   }
 
+  const orderModule = req.scope.resolve(Modules.ORDER)
+  const saveStatus = () =>
+    orderModule.updateOrders(order.id, {
+      metadata: {
+        ...meta,
+        tbi: {
+          ...(meta.tbi ?? {}),
+          status: statusName,
+          motiv: payload.motiv ?? meta.tbi?.motiv,
+          status_received_at: new Date().toISOString(),
+        },
+      },
+    })
+
   if (statusName === 'approved') {
     const payment = (order.payment_collections ?? [])
       .flatMap((pc: any) => pc?.payments ?? [])
       .find((p: any) => p?.id)
     if (payment && !payment.captured_at) {
+      // Intenționat înaintea salvării statusului: dacă `capture` aruncă,
+      // răspundem 5xx fără să marcăm „approved”, deci TBI poate reîncerca.
       await capturePaymentWorkflow(req.scope).run({
         input: { payment_id: payment.id },
       })
+    } else if (!payment) {
+      logger.error(
+        `[tbi] Comanda ${order.id} aprobată de TBI, dar nu are payment de capturat — verifică manual.`
+      )
     }
+    await saveStatus()
   } else if (statusName === 'rejected') {
+    // Statusul se scrie ÎNAINTE de anulare: `order.canceled` declanșează
+    // subscriber-ul care retrage cererea la TBI, iar el trebuie să vadă că
+    // cererea e deja respinsă, ca să nu o mai retrimită.
+    await saveStatus()
     try {
       await cancelOrderWorkflow(req.scope).run({
         input: { order_id: order.id },
@@ -122,20 +158,9 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
         `[tbi] Comanda ${order.id} nu a putut fi anulată automat: ${e?.message}`
       )
     }
+  } else {
+    await saveStatus()
   }
-
-  const orderModule = req.scope.resolve(Modules.ORDER)
-  await orderModule.updateOrders(order.id, {
-    metadata: {
-      ...meta,
-      tbi: {
-        ...(meta.tbi ?? {}),
-        status: statusName,
-        motiv: payload.motiv ?? meta.tbi?.motiv,
-        status_received_at: new Date().toISOString(),
-      },
-    },
-  })
 
   res.json({ received: true })
 }

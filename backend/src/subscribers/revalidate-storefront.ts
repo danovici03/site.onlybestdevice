@@ -17,9 +17,12 @@ const EVENT_TO_TAGS: Record<string, string[]> = {
   "product-collection.created": ["collections", "products"],
   "product-collection.updated": ["collections", "products"],
   "product-collection.deleted": ["collections", "products"],
-  "region.created": ["regions"],
-  "region.updated": ["regions"],
-  "region.deleted": ["regions"],
+  // Metodele de plată se activează pe regiune, iar storefront-ul le ține în
+  // cache cu `force-cache` sub tag-ul `payment_providers`. Fără el, un provider
+  // nou activat rămâne invizibil în checkout până expiră cache-ul.
+  "region.created": ["regions", "payment_providers"],
+  "region.updated": ["regions", "payment_providers"],
+  "region.deleted": ["regions", "payment_providers"],
 }
 
 export default async function revalidateStorefront({

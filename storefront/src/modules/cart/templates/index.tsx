@@ -8,9 +8,12 @@ import { HttpTypes } from "@medusajs/types"
 const CartTemplate = ({
   cart,
   customer,
+  tbiAvailable = false,
 }: {
   cart: HttpTypes.StoreCart | null
   customer: HttpTypes.StoreCustomer | null
+  /** Providerul TBI e activ pe regiune — vezi cart/page.tsx. */
+  tbiAvailable?: boolean
 }) => {
   const itemCount =
     cart?.items?.reduce((acc, item) => acc + item.quantity, 0) ?? 0
@@ -44,6 +47,7 @@ const CartTemplate = ({
                 <FinancingOptions
                   amount={cart.total ?? 0}
                   currency={cart.currency_code}
+                  tbiAvailable={tbiAvailable}
                 />
               </div>
 

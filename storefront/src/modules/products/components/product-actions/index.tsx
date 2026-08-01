@@ -44,6 +44,8 @@ type ProductActionsProps = {
   upgrades?: HttpTypes.StoreProduct[]
   warranty?: HttpTypes.StoreProduct
   disabled?: boolean
+  /** Providerul TBI e activ pe regiune — vezi product-actions-wrapper. */
+  tbiAvailable?: boolean
 }
 
 const optionsAsKeymap = (
@@ -60,6 +62,7 @@ export default function ProductActions({
   upgrades = [],
   warranty,
   disabled,
+  tbiAvailable = false,
 }: ProductActionsProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -603,6 +606,7 @@ export default function ProductActions({
           <Installments
             amount={selectedPrice.calculated_price_number}
             currency={selectedPrice.currency_code}
+            tbiAvailable={tbiAvailable}
           />
         ) : null}
 

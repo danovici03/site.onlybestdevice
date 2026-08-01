@@ -22,11 +22,21 @@ type FinancingOptionsProps = {
   /** Totalul coșului în unitatea majoră (lei). */
   amount: number
   currency?: string
+  /**
+   * Providerul TBI e activ pe regiune. Vine din lista reală de metode de plată
+   * (cart/page.tsx), ca textul să nu promită „în curând” după ce l-am activat,
+   * nici să anunțe disponibil un provider oprit.
+   */
+  tbiAvailable?: boolean
 }
 
 type Provider = "ucfin" | "tbi"
 
-const FinancingOptions = ({ amount, currency }: FinancingOptionsProps) => {
+const FinancingOptions = ({
+  amount,
+  currency,
+  tbiAvailable = false,
+}: FinancingOptionsProps) => {
   const [open, setOpen] = useState<Provider | null>("ucfin")
 
   if (!supportsInstallments(currency)) return null
@@ -104,12 +114,16 @@ const FinancingOptions = ({ amount, currency }: FinancingOptionsProps) => {
             <span className="flex-1 min-w-0">
               <span className="flex items-center gap-2 text-sm font-bold text-brand-dark">
                 TBI Bank
-                <span className="rounded-full bg-brand-dark/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-dark/60">
-                  în curând
-                </span>
+                {!tbiAvailable && (
+                  <span className="rounded-full bg-brand-dark/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-dark/60">
+                    în curând
+                  </span>
+                )}
               </span>
               <span className="block text-xs text-brand-dark/55 mt-0.5">
-                Plată în rate 100% online
+                {tbiAvailable
+                  ? "Plată în rate 100% online, fără card de credit"
+                  : "Plată în rate 100% online"}
               </span>
             </span>
             <TbiBadge />
@@ -124,11 +138,22 @@ const FinancingOptions = ({ amount, currency }: FinancingOptionsProps) => {
           </button>
           {open === "tbi" && (
             <div className="border-t border-brand-dark/10 px-4 py-3 text-xs leading-relaxed text-brand-dark/70">
-              În curând vei putea plăti în rate și prin TBI Bank: aplici
-              online direct din finalizarea comenzii, iar aprobarea vine în
-              câteva minute. Ratele, dobânda și DAE se calculează și se
-              afișează pe pagina securizată TBI Bank, înainte de semnarea
-              contractului.
+              {tbiAvailable ? (
+                <>
+                  Alegi „TBI Bank” la finalizarea comenzii și aplici online,
+                  fără card de credit. Numărul de rate, dobânda și DAE se
+                  calculează și se afișează pe pagina securizată TBI Bank,
+                  înainte de semnarea contractului.
+                </>
+              ) : (
+                <>
+                  În curând vei putea plăti în rate și prin TBI Bank: aplici
+                  online direct din finalizarea comenzii, iar aprobarea vine în
+                  câteva minute. Ratele, dobânda și DAE se calculează și se
+                  afișează pe pagina securizată TBI Bank, înainte de semnarea
+                  contractului.
+                </>
+              )}
             </div>
           )}
         </div>

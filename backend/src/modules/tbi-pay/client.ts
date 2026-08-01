@@ -35,12 +35,25 @@ const ENDPOINTS = {
     cancel:
       'https://ecommerce.tbibank.ro/Api/LoanApplication/CanceledByCustomer',
   },
+  // Pachetul de integrare (iulie 2026) documentează pentru UAT doar
+  // CanceledByCustomer; Finalize îl deducem pe aceeași bază.
   uat: {
     finalize:
-      'https://vmrouatftos01.westeurope.cloudapp.azure.com/LoanApplication/Finalize',
+      'https://app-rotbi-api-tbimerchant-fos24-uat-cicd.azurewebsites.net/Api/LoanApplication/Finalize',
     cancel:
-      'https://vmrouatftos01.westeurope.cloudapp.azure.com/LoanApplication/CanceledByCustomer',
+      'https://app-rotbi-api-tbimerchant-fos24-uat-cicd.azurewebsites.net/Api/LoanApplication/CanceledByCustomer',
   },
+}
+
+/**
+ * `promo` = codul promoțional dedus din valoarea comenzii (documentație §4.3).
+ * Ordinea nu e monotonă: 1 sub 2.000 lei, 0 până în 5.000, apoi 2 și 3.
+ */
+export function tbiPromo(orderTotal: number): 0 | 1 | 2 | 3 {
+  if (orderTotal <= 2000) return 1
+  if (orderTotal <= 5000) return 0
+  if (orderTotal <= 10000) return 2
+  return 3
 }
 
 export type TbiOrderPayload = {
@@ -60,7 +73,7 @@ export type TbiOrderPayload = {
     shipping_city: string
     shipping_county: string
     instalments: string
-    promo: 0 | 1
+    promo: 0 | 1 | 2 | 3
   }
   items: {
     name: string
@@ -249,8 +262,19 @@ export function getTbiClient(): TbiClient {
         'Config TBI incompletă — vezi TBI_* în backend/.env (store id, user, parolă, căi chei)'
       )
     }
+    const env = process.env.TBI_ENV || 'uat'
+    // Fără token, /hooks/tbi acceptă statusuri de la oricine — adică oricine
+    // poate captura plăți sau anula comenzi. Pe producție refuzăm să pornim
+    // fluxul; blocăm aici, nu doar în hook, altfel am trimite lui TBI un
+    // `back_ref` pe care apoi tot noi l-am respinge, iar comenzile ar rămâne
+    // veșnic în așteptare.
+    if (env === 'live' && !process.env.TBI_CALLBACK_TOKEN) {
+      throw new TbiError(
+        'TBI_CALLBACK_TOKEN lipsește — obligatoriu când TBI_ENV=live, altfel /hooks/tbi ar accepta statusuri neautentificate'
+      )
+    }
     singleton = new TbiClient({
-      env: process.env.TBI_ENV || 'uat',
+      env,
       storeId,
       username,
       password,
