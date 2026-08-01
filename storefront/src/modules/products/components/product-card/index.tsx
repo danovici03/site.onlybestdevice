@@ -129,7 +129,10 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
       data-testid="product-wrapper"
     >
       <div className="flex h-full flex-col rounded-[1.5rem] border border-brand-dark/[0.07] bg-white p-2.5 sm:p-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-shadow duration-300 hover:shadow-[0_14px_30px_-14px_rgba(16,24,40,0.22)]">
-        <div className="relative aspect-square w-full overflow-hidden rounded-[1.1rem] bg-brand-light">
+        {/* Pe mobil boxul e mai scund decât pătratul, ca să rămână loc pentru
+            text. Thumb-urile din catalog sunt pătrate pe fond alb, deci
+            `object-contain` doar micșorează poza — nu taie din produs. */}
+        <div className="relative aspect-[6/5] sm:aspect-square w-full overflow-hidden rounded-[1.1rem] bg-white sm:bg-brand-light">
           {thumb && (
             <Image
               src={thumb}
@@ -137,7 +140,7 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
               fill
               sizes="(min-width: 1280px) 22vw, (min-width: 640px) 33vw, 50vw"
               priority={priority}
-              className="object-cover transition-transform duration-700 group-hover:scale-105"
+              className="object-contain sm:object-cover transition-transform duration-700 group-hover:scale-105"
             />
           )}
           {badge && (
@@ -152,7 +155,7 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
             </span>
           )}
         </div>
-        <div className="flex flex-1 flex-col gap-1 sm:gap-1.5 px-1 pt-2.5 sm:pt-3">
+        <div className="flex flex-1 flex-col gap-1 sm:gap-1.5 px-1 pt-2 sm:pt-3">
           <span
             className={`inline-flex items-center gap-1.5 text-[11px] font-bold ${
               inStock ? "text-emerald-600" : "text-brand-dark/40"
@@ -166,7 +169,7 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
             {inStock ? "În stoc" : "Stoc epuizat"}
           </span>
           <h3
-            className="text-sm sm:text-base font-bold text-brand-dark leading-tight line-clamp-2 group-hover:text-brand-accent transition-colors"
+            className="mt-0.5 text-sm sm:text-base font-bold text-brand-dark leading-snug line-clamp-2 group-hover:text-brand-accent transition-colors"
             data-testid="product-title"
           >
             {product.title}
@@ -177,7 +180,7 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
             </span>
           )}
           {phoneSwatches.length > 0 ? (
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="flex items-center gap-1.5 mt-1">
               {phoneSwatches.slice(0, 5).map((s) => (
                 <span
                   key={s.color}
@@ -198,7 +201,7 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
               )}
             </div>
           ) : swatches.length > 0 ? (
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="flex items-center gap-1.5 mt-1">
               {swatches.map((s) =>
                 s.image ? (
                   <span
@@ -223,31 +226,35 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
           {/* Livrare + rate, sub culori. Rămân aici (nu în blocul de jos) ca să
               nu concureze vizual cu prețul, care e ancora cardului. */}
           {(inStock || installment) && (
-            <div className="mt-1.5 flex flex-col gap-1">
+            <div className="mt-2 flex flex-col gap-1">
               {inStock && (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-brand-dark/55">
+                <span className="flex items-center gap-1.5 text-[11px] font-medium text-brand-dark/55">
                   <Truck size={13} weight="bold" className="shrink-0" />
-                  {/* Pe mobil cardul e îngust — scurtăm eticheta, nu o tăiem. */}
-                  <span className="truncate">
+                  {/* Pe mobil cardul e îngust — scurtăm eticheta, nu o tăiem.
+                      Textul stă într-un singur nod cu `truncate`, altfel
+                      flexbox îl rupe în cuvinte care se împachetează separat. */}
+                  <span className="min-w-0 truncate">
                     Livrare
                     <span className="hidden sm:inline"> estimativă</span> 24/48 h
                   </span>
                 </span>
               )}
               {installment && (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-brand-dark/55">
+                <span className="flex items-center gap-1.5 text-[11px] font-medium text-brand-dark/55">
                   <CreditCard size={13} weight="bold" className="shrink-0" />
-                  Rate de la{" "}
-                  <span className="font-bold text-brand-dark">
-                    {formatLei(installment.monthly)}
+                  <span className="min-w-0 truncate">
+                    Rate<span className="hidden sm:inline"> de la</span>{" "}
+                    <span className="font-bold text-brand-dark">
+                      {formatLei(installment.monthly)}
+                    </span>
+                    /lună
                   </span>
-                  /lună
                 </span>
               )}
             </div>
           )}
 
-          <div className="mt-auto flex flex-col gap-1 pt-2">
+          <div className="mt-auto flex flex-col gap-1 pt-1.5 sm:pt-2">
             {cheapestPrice && (
               <div className="flex items-baseline gap-2">
                 <span
