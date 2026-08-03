@@ -512,8 +512,10 @@ export async function placeNetopiaOrder(
   }
 
   // redirect() aruncă NEXT_REDIRECT, deci trebuie chemat în afara try-ului.
+  // Ținta e o rută internă, nu direct Netopia: un redirect extern din server
+  // action lasă Next să rerandeze întâi checkout-ul rămas fără coș, adică 404.
   if (redirectUrl) {
-    redirect(redirectUrl)
+    redirect(`/${countryCode}/order/${order.id}/pay`)
   }
 
   return formFields ?? { fallback_url: `/${countryCode}/order/${order.id}/confirmed` }

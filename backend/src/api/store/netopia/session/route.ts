@@ -99,13 +99,18 @@ export const POST = async (
   const currency = (order.currency_code ?? 'ron').toUpperCase()
 
   const orderModule = req.scope.resolve(Modules.ORDER)
-  const markPending = () =>
+  /**
+   * `payment_url` se salvează ca să poată fi reluată plata fără să deschidem
+   * altă sesiune: pagina de handoff din storefront îl citește de aici.
+   */
+  const markPending = (paymentUrl?: string) =>
     orderModule.updateOrders(order.id, {
       metadata: {
         ...((order.metadata ?? {}) as Record<string, unknown>),
         netopia: {
           status: 'pending',
           requested_at: new Date().toISOString(),
+          ...(paymentUrl ? { payment_url: paymentUrl } : {}),
         },
       },
     })
@@ -154,7 +159,7 @@ export const POST = async (
       products,
     })
 
-    await markPending()
+    await markPending(result.paymentUrl)
 
     return res.json({ redirect_url: result.paymentUrl })
   }
