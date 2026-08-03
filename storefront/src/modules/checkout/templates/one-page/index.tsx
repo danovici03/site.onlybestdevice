@@ -120,7 +120,7 @@ const methodMeta = (
     return {
       title: "Plată cu card – debit sau credit",
       description:
-        "Plată securizată prin Netopia Payments. Vei introduce datele cardului pe pagina securizată mobilPay.",
+        "Plată securizată prin Netopia Payments. Pe pagina lor poți plăti cu cardul, Apple Pay, Google Pay sau Click to Pay.",
       badges: (
         <>
           <VisaBadge />
@@ -605,9 +605,13 @@ const OnePageCheckout = ({
           await initiatePaymentSession(cart, { provider_id: selectedPayment })
         }
         const fields = await placeNetopiaOrder()
+        if ("redirect_url" in fields) {
+          window.location.href = fields.redirect_url
+          return // browserul pleacă spre pagina de plată Netopia
+        }
         if ("payment_url" in fields) {
           submitNetopiaForm(fields.payment_url, fields.env_key, fields.data)
-          return // browserul pleacă spre mobilPay
+          return // browserul pleacă spre mobilPay (API v1)
         }
         window.location.href = fields.fallback_url
         return

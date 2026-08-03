@@ -110,6 +110,7 @@ services:
       # ── Netopia mobilPay (card) — gol = provider dezactivat.
       #    Cheile se montează pe server în /opt/onlybestdevice/keys (vezi volumes).
       NETOPIA_ENV: ${NETOPIA_ENV:-}
+      NETOPIA_API_KEY: ${NETOPIA_API_KEY:-}
       NETOPIA_POS_SIGNATURE: ${NETOPIA_POS_SIGNATURE:-}
       NETOPIA_PUBLIC_CER_PATH: ${NETOPIA_PUBLIC_CER_PATH:-}
       NETOPIA_PRIVATE_KEY_PATH: ${NETOPIA_PRIVATE_KEY_PATH:-}

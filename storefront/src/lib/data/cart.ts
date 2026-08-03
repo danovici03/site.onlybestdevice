@@ -433,14 +433,16 @@ export async function saveCheckoutDetails(payload: {
 }
 
 export type NetopiaPaymentFields =
+  | { redirect_url: string }
   | { payment_url: string; env_key: string; data: string }
   | { fallback_url: string }
 
 /**
- * Plasează comanda cu plata „Card prin Netopia" și întoarce câmpurile pentru
- * form POST-ul către mobilPay (browserul clientului trimite formularul, nu
- * serverul). Dacă pregătirea plății eșuează, întoarce URL-ul de confirmare —
- * comanda e plasată, plata se reia din suport.
+ * Plasează comanda cu plata „Card prin Netopia" și întoarce unde trimitem
+ * clientul: pe API v2 un `redirect_url` simplu către pagina lor de plată, pe
+ * v1 câmpurile form POST-ului către mobilPay (browserul trimite formularul,
+ * nu serverul). Dacă pregătirea plății eșuează, întoarce URL-ul de confirmare
+ * — comanda e plasată, plata se reia din suport.
  */
 export async function placeNetopiaOrder(
   cartId?: string
@@ -477,19 +479,27 @@ export async function placeNetopiaOrder(
 
   try {
     const resp = await sdk.client.fetch<{
-      payment_url: string
-      env_key: string
-      data: string
+      redirect_url?: string
+      payment_url?: string
+      env_key?: string
+      data?: string
     }>(`/store/netopia/session`, {
       method: "POST",
       body: { order_id: order.id },
       headers,
     })
+    if (resp?.redirect_url) {
+      return { redirect_url: resp.redirect_url }
+    }
     if (resp?.payment_url && resp?.env_key && resp?.data) {
-      return resp
+      return {
+        payment_url: resp.payment_url,
+        env_key: resp.env_key,
+        data: resp.data,
+      }
     }
   } catch (e) {
-    console.error("[netopia] Pregătirea plății mobilPay a eșuat:", e)
+    console.error("[netopia] Pregătirea plății Netopia a eșuat:", e)
   }
 
   return { fallback_url: `/${countryCode}/order/${order.id}/confirmed` }

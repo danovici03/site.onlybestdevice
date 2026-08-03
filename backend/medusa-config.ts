@@ -85,11 +85,13 @@ if (process.env.STRIPE_API_KEY) {
   })
 }
 
-// Card prin Netopia mobilPay. Se activează când semnătura + cheile există.
+// Card prin Netopia. Pe API v2 e destul cheia API + certificatul public
+// (folosit la verificarea IPN-urilor); pe v1 mai trebuie și cheia privată,
+// cu care se decriptau IPN-urile.
 if (
   process.env.NETOPIA_POS_SIGNATURE &&
   process.env.NETOPIA_PUBLIC_CER_PATH &&
-  process.env.NETOPIA_PRIVATE_KEY_PATH
+  (process.env.NETOPIA_API_KEY || process.env.NETOPIA_PRIVATE_KEY_PATH)
 ) {
   paymentProviders.push({
     resolve: './src/modules/netopia',
