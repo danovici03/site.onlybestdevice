@@ -1,36 +1,25 @@
-import {
-  ContainerRegistrationKeys,
-  Modules,
-} from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import type {
   SubscriberArgs,
   SubscriberConfig,
 } from "@medusajs/framework"
+import {
+  ORDER_EMAIL_FIELDS,
+  awaitsCardPayment,
+  markEmails,
+  sendOrderPlacedEmails,
+} from "../lib/orders/order-emails"
 
 export default async function orderPlacedHandler({
   event,
   container,
 }: SubscriberArgs<{ id: string }>) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const notification = container.resolve(Modules.NOTIFICATION)
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
 
   const { data: orders } = await query.graph({
     entity: "order",
-    fields: [
-      "id",
-      "display_id",
-      "email",
-      "currency_code",
-      "total",
-      "items.*",
-      "items.product_title",
-      "items.product_handle",
-      "items.variant_title",
-      "items.thumbnail",
-      "items.total",
-      "shipping_address.*",
-    ],
+    fields: ORDER_EMAIL_FIELDS,
     filters: { id: event.data.id },
   })
 
@@ -40,37 +29,16 @@ export default async function orderPlacedHandler({
     return
   }
 
-  const storefrontUrl = process.env.STOREFRONT_URL
-  const adminUrl = process.env.MEDUSA_BACKEND_URL || process.env.ADMIN_URL
-  const adminTo = process.env.ADMIN_ORDER_NOTIFICATION_EMAIL
-
-  const sends: Promise<unknown>[] = []
-
-  if (order.email) {
-    sends.push(
-      notification.createNotifications({
-        to: order.email,
-        channel: "email",
-        template: "order-placed-customer",
-        data: { order, storefront_url: storefrontUrl },
-      }),
+  // Card neplătit încă: emailurile pleacă la `payment.captured`, nu acum.
+  if (awaitsCardPayment(order)) {
+    await markEmails(container, order, { order_placed_deferred: true })
+    logger.info(
+      `order.placed: comanda ${order.id} așteaptă plata cu cardul — amân emailurile.`
     )
-  } else {
-    logger.warn(`order.placed: order ${order.id} has no customer email`)
+    return
   }
 
-  if (adminTo) {
-    sends.push(
-      notification.createNotifications({
-        to: adminTo,
-        channel: "email",
-        template: "order-placed-admin",
-        data: { order, admin_url: adminUrl },
-      }),
-    )
-  }
-
-  await Promise.all(sends)
+  await sendOrderPlacedEmails(container, order)
 }
 
 export const config: SubscriberConfig = {

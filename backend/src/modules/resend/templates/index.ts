@@ -419,6 +419,37 @@ const orderCanceledCustomer: Renderer = ({ order, storefront_url }) => {
   }
 }
 
+/**
+ * Plata cu cardul nu a trecut. Comanda rămâne înregistrată, deci îi dăm
+ * clientului drumul înapoi spre pagina de plată în loc să o luăm de la coș.
+ */
+const paymentFailedCustomer: Renderer = ({ order, reason, storefront_url }) => {
+  const display = order?.display_id ?? order?.id ?? ""
+  const retryUrl = `${resolveStorefrontUrl(storefront_url)}/${locale()}/order/${order.id}/pay`
+  const firstName = order?.shipping_address?.first_name
+  const body = `
+    ${greeting(firstName)}
+    <p style="margin:0 0 12px;">plata pentru <strong>comanda #${escape(display)}</strong> nu a fost finalizată, așa că deocamdată comanda e în așteptare. Nu ți s-a reținut nicio sumă.</p>
+    ${
+      reason
+        ? `<p style="margin:0 0 12px;font-size:14px;color:${COLOR.muted};">Motivul transmis de bancă: ${escape(String(reason))}.</p>`
+        : ""
+    }
+    <p style="margin:0 0 12px;">Poți relua plata din butonul de mai jos — produsele rămân rezervate pentru tine.</p>
+    ${button(retryUrl, "Reia plata")}
+    ${renderOrderItems(order?.items, storefront_url)}
+    <p style="margin:16px 0 0;font-size:13px;color:${COLOR.muted};">Dacă preferi altă metodă de plată sau ai nevoie de ajutor, scrie-ne la <a href="mailto:${SUPPORT_EMAIL}" style="color:${COLOR.accent};">${SUPPORT_EMAIL}</a>.</p>`
+  return {
+    subject: `Plata pentru comanda #${display} nu a reușit — ${BRAND}`,
+    html: layout({
+      heading: "Plata nu a reușit",
+      preheader: `Comanda #${display} așteaptă plata. Poți relua oricând.`,
+      bodyHtml: body,
+      storefrontUrl: storefront_url,
+    }),
+  }
+}
+
 const customerWelcome: Renderer = ({ customer, storefront_url }) => {
   const firstName = customer?.first_name
   const storeUrl = `${resolveStorefrontUrl(storefront_url)}/it`
@@ -515,6 +546,7 @@ export const TEMPLATES = {
   "return-requested-admin": returnRequestedAdmin,
   "return-requested-customer": returnRequestedCustomer,
   "order-canceled-customer": orderCanceledCustomer,
+  "payment-failed-customer": paymentFailedCustomer,
   "customer-welcome": customerWelcome,
 } as const
 

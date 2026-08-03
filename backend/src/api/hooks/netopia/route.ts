@@ -17,6 +17,10 @@ import {
   isNetopiaV2Enabled,
   statusToAction,
 } from '../../../modules/netopia/client-v2'
+import {
+  ORDER_EMAIL_FIELDS,
+  sendPaymentFailedEmail,
+} from '../../../lib/orders/order-emails'
 
 /**
  * IPN-ul Netopia, în ambele dialecte:
@@ -238,7 +242,7 @@ async function applyIpn(
       )
     }
   }
-  // paid_pending / credit / fraud / error → doar metadata
+  // paid_pending / credit / fraud / error → doar metadata și, la error, email
 
   const orderModule = req.scope.resolve(Modules.ORDER)
   await orderModule.updateOrders(order.id, {
@@ -254,6 +258,29 @@ async function applyIpn(
       },
     },
   })
+
+  /**
+   * Emailul de plată eșuată se trimite DUPĂ scrierea metadatei: el își pune
+   * propriul flag în `metadata.emails`, iar update-ul de mai sus lucrează cu
+   * metadata citită la începutul funcției și l-ar suprascrie.
+   * Comanda rămâne în picioare — clientul reia plata din linkul primit.
+   */
+  if (action === 'error') {
+    const { data: full } = await query.graph({
+      entity: 'order',
+      fields: ORDER_EMAIL_FIELDS,
+      filters: { id: order.id },
+    })
+    if (full?.[0]) {
+      try {
+        await sendPaymentFailedEmail(req.scope, full[0], facts.errorCode)
+      } catch (e: any) {
+        logger.warn(
+          `[netopia] Nu am putut trimite emailul de plată eșuată pentru ${order.id}: ${e?.message}`
+        )
+      }
+    }
+  }
 
   return { ok: true }
 }
