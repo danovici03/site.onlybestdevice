@@ -5,10 +5,10 @@ import type {
 } from "@medusajs/framework"
 import {
   ORDER_EMAIL_FIELDS,
-  awaitsCardPayment,
   markEmails,
   sendOrderPlacedEmails,
 } from "../lib/orders/order-emails"
+import { awaitsCardPayment } from "../lib/orders/payment-state"
 
 export default async function orderPlacedHandler({
   event,

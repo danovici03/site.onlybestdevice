@@ -31,15 +31,6 @@ export const ORDER_EMAIL_FIELDS = [
   "payment_collections.payment_sessions.provider_id",
 ]
 
-/** Comandă cu plata pe pagina băncii, care încă n-a fost confirmată. */
-export const awaitsCardPayment = (order: any): boolean => {
-  const isNetopia = (order?.payment_collections ?? [])
-    .flatMap((pc: any) => pc?.payment_sessions ?? [])
-    .some((ps: any) => ps?.provider_id?.includes("netopia"))
-  if (!isNetopia) return false
-  return order?.metadata?.netopia?.status !== "confirmed"
-}
-
 const emailsMeta = (order: any) =>
   (order?.metadata?.emails ?? {}) as Record<string, unknown>
 

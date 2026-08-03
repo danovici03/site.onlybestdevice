@@ -3,6 +3,7 @@ import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 
 import { isErpConfigured, postToErp } from "../lib/erp/client"
 import { fetchErpOrderPayload, orderIdForPayment } from "../lib/erp/order-payload"
+import { orderAwaitsCardPayment } from "../lib/orders/payment-state"
 
 /**
  * Trimite comenzile catre ERP-ul din Laravel (gestiunea de stoc si vanzari),
@@ -53,6 +54,20 @@ export default async function erpOrderSync({
 
   if (!orderId) {
     logger.warn(`[erp] ${event.name}: nu am putut determina comanda — sar peste.`)
+    return
+  }
+
+  // Comanda cu plata pe pagina bancii se creeaza inainte de a incasa, ca sa
+  // avem un id de trimis la Netopia. Pana intra banii nu are ce cauta in
+  // gestiune: ar scadea stocul pentru cineva care doar a ajuns pe pagina de
+  // plata si s-a razgandit. La `payment.captured` se trimite oricum.
+  if (
+    event.name === "order.placed" &&
+    (await orderAwaitsCardPayment(container, orderId))
+  ) {
+    logger.info(
+      `[erp] order.placed: comanda ${orderId} asteapta plata cu cardul — aman trimiterea.`,
+    )
     return
   }
 
