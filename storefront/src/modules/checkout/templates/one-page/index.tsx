@@ -113,6 +113,13 @@ const submitNetopiaForm = (url: string, envKey: string, data: string) => {
   form.submit()
 }
 
+/** Ce scrie pe ecranul de așteptare, în funcție de unde pleacă clientul. */
+const placingMessage = (id?: string): string => {
+  if (isNetopia(id) || isStripeLike(id)) return "Te ducem la plata securizată…"
+  if (isUnicredit(id) || isTbi(id)) return "Trimitem cererea de finanțare…"
+  return "Se procesează comanda…"
+}
+
 const methodMeta = (
   id: string
 ): { title: string; description?: string; badges: React.ReactNode } | null => {
@@ -1240,6 +1247,25 @@ const OnePageCheckout = ({
           ))}
         </ul>
       </div>
+
+      {/* Cât se plasează comanda și se deschide plata, ecranul rămâne acoperit
+          — la card urmează un salt către pagina băncii, care poate dura câteva
+          secunde, iar fără asta pare că nu s-a întâmplat nimic. */}
+      {placing && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-white/90 backdrop-blur-sm px-6 text-center"
+        >
+          <span className="h-10 w-10 rounded-full border-[3px] border-brand-dark/15 border-t-brand-dark animate-spin" />
+          <p className="font-bold text-brand-dark">
+            {placingMessage(selectedPayment)}
+          </p>
+          <p className="text-sm text-brand-dark/60 max-w-xs">
+            Nu închide pagina și nu apăsa înapoi.
+          </p>
+        </div>
+      )}
     </div>
   )
 }

@@ -438,11 +438,18 @@ export type NetopiaPaymentFields =
   | { fallback_url: string }
 
 /**
- * Plasează comanda cu plata „Card prin Netopia" și întoarce unde trimitem
- * clientul: pe API v2 un `redirect_url` simplu către pagina lor de plată, pe
- * v1 câmpurile form POST-ului către mobilPay (browserul trimite formularul,
- * nu serverul). Dacă pregătirea plății eșuează, întoarce URL-ul de confirmare
- * — comanda e plasată, plata se reia din suport.
+ * Plasează comanda cu plata „Card prin Netopia" și trimite clientul la plată.
+ *
+ * Pe API v2 face `redirect()` chiar de aici, din server action. E important:
+ * plasarea comenzii golește coșul, iar dacă am lăsa clientul să navigheze,
+ * Next ar reîmprospăta întâi ruta curentă — /checkout fără coș înseamnă
+ * `notFound()`, adică un „Page not found" care pâlpâia până se încărca pagina
+ * Netopia. Cu redirect din acțiune, routerul navighează direct și pagina de
+ * checkout rămâne pe ecran până răspunde Netopia.
+ *
+ * Pe v1 nu se poate: acolo e nevoie de form POST cu env_key + data, deci
+ * întoarcem câmpurile și le trimite browserul. Dacă pregătirea plății eșuează,
+ * întoarcem URL-ul de confirmare — comanda e plasată, plata se reia din suport.
  */
 export async function placeNetopiaOrder(
   cartId?: string
@@ -477,6 +484,9 @@ export async function placeNetopiaOrder(
   revalidateTag(orderCacheTag)
   removeCartId()
 
+  let redirectUrl: string | undefined
+  let formFields: NetopiaPaymentFields | undefined
+
   try {
     const resp = await sdk.client.fetch<{
       redirect_url?: string
@@ -489,10 +499,9 @@ export async function placeNetopiaOrder(
       headers,
     })
     if (resp?.redirect_url) {
-      return { redirect_url: resp.redirect_url }
-    }
-    if (resp?.payment_url && resp?.env_key && resp?.data) {
-      return {
+      redirectUrl = resp.redirect_url
+    } else if (resp?.payment_url && resp?.env_key && resp?.data) {
+      formFields = {
         payment_url: resp.payment_url,
         env_key: resp.env_key,
         data: resp.data,
@@ -502,7 +511,12 @@ export async function placeNetopiaOrder(
     console.error("[netopia] Pregătirea plății Netopia a eșuat:", e)
   }
 
-  return { fallback_url: `/${countryCode}/order/${order.id}/confirmed` }
+  // redirect() aruncă NEXT_REDIRECT, deci trebuie chemat în afara try-ului.
+  if (redirectUrl) {
+    redirect(redirectUrl)
+  }
+
+  return formFields ?? { fallback_url: `/${countryCode}/order/${order.id}/confirmed` }
 }
 
 /**
