@@ -5,6 +5,30 @@ import medusaError from "@lib/util/medusa-error"
 import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { HttpTypes } from "@medusajs/types"
 
+/**
+ * Comanda pentru pagina de handoff spre plată.
+ *
+ * `retrieveOrder` nu merge aici din două motive: cere o listă fixă de câmpuri
+ * din care lipsește `metadata` — exact acolo stă URL-ul Netopia — iar în
+ * Medusa un `fields` fără `+` înlocuiește selecția implicită, nu o completează.
+ * Și răspunde din cache, deși noi citim o comandă creată acum o secundă.
+ */
+export const retrieveOrderForPayment = async (id: string) => {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  return sdk.client
+    .fetch<HttpTypes.StoreOrderResponse>(`/store/orders/${id}`, {
+      method: "GET",
+      query: { fields: "+metadata" },
+      headers,
+      cache: "no-store",
+    })
+    .then(({ order }) => order)
+    .catch(() => null)
+}
+
 export const retrieveOrder = async (id: string) => {
   const headers = {
     ...(await getAuthHeaders()),

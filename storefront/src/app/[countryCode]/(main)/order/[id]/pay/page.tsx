@@ -1,4 +1,4 @@
-import { retrieveOrder } from "@lib/data/orders"
+import { retrieveOrderForPayment } from "@lib/data/orders"
 import PaymentHandoff from "@modules/checkout/components/payment-handoff"
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
  */
 export default async function OrderPayPage(props: Props) {
   const params = await props.params
-  const order = await retrieveOrder(params.id).catch(() => null)
+  const order = await retrieveOrderForPayment(params.id)
 
   if (!order) {
     return notFound()
