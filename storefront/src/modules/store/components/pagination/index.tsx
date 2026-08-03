@@ -24,7 +24,7 @@ export function Pagination({
     if (newPage < 1 || newPage > totalPages) return
     const params = new URLSearchParams(searchParams)
     params.set("page", newPage.toString())
-    router.push(`${pathname}?${params.toString()}`, { scroll: false })
+    router.push(`${pathname}?${params.toString()}`)
   }
 
   const pageButton = (p: number, isCurrent: boolean, compact: boolean) => (
