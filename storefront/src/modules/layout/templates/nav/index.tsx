@@ -5,8 +5,9 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import CartButton from "@modules/layout/components/cart-button"
 import SideMenu from "@modules/layout/components/side-menu"
 import SideMenuCartCount from "@modules/layout/components/side-menu/cart-count"
-import { MagnifyingGlass, User } from "@phosphor-icons/react/dist/ssr"
+import { User } from "@phosphor-icons/react/dist/ssr"
 import { resolveMegaMenu } from "@modules/layout/components/mega-menu/resolve"
+import { SearchSheetTrigger } from "@modules/search/components/search-sheet"
 import NavInteractive from "./nav-interactive"
 
 /**
@@ -46,27 +47,26 @@ export default async function Nav({ countryCode }: { countryCode: string }) {
         data-testid="nav-store-link"
         aria-label="onlybestdevice — Acasă"
       >
-        <span className="font-serif text-xl sm:text-2xl font-bold tracking-tight select-none">
+        {/* La 1024–1279 logo-ul revine la dimensiunea mică: acolo încap greu
+            logo + „Toate produsele" + o căutare centrată, iar din cele trei el e
+            singurul care nu pierde nimic din câteva puncte de mărime. */}
+        <span className="font-serif text-xl sm:text-2xl lg:text-xl xl:text-2xl font-bold tracking-tight select-none">
           onlybest<span className="text-brand-accent">device</span>
         </span>
       </LocalizedClientLink>
     </>
   )
 
+  // Pe desktop căutarea e bara din mijloc; pe mobil, unde bara nu încape,
+  // rămâne lupa care deschide ecranul plin de căutare.
   const right = (
     <>
-      <button
-        type="button"
-        className="hover:text-brand-accent transition-colors"
-        aria-label="Caută"
-      >
-        <MagnifyingGlass size={26} weight="light" />
-      </button>
+      <SearchSheetTrigger />
       <LocalizedClientLink
         href="/account"
         className="hidden sm:block hover:text-brand-accent transition-colors"
         data-testid="nav-account-link"
-        aria-label="Account"
+        aria-label="Contul meu"
       >
         <User size={26} weight="light" />
       </LocalizedClientLink>

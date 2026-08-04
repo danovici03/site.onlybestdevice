@@ -6,6 +6,10 @@ import { usePathname } from "next/navigation"
 import MegaMenuPanel from "@modules/layout/components/mega-menu/panel"
 import MegaMenuTriggers from "@modules/layout/components/mega-menu/triggers"
 import { ResolvedMegaRoot } from "@modules/layout/components/mega-menu/data"
+import SearchInput from "@modules/search/components/search-input"
+import SearchPanel from "@modules/search/components/search-panel"
+import SearchSheet from "@modules/search/components/search-sheet"
+import { SearchProvider, useSearch } from "@modules/search/context"
 import NavShell from "./nav-shell"
 
 type Props = {
@@ -14,10 +18,19 @@ type Props = {
   megaMenu: ResolvedMegaRoot[]
 }
 
-export default function NavInteractive({ left, right, megaMenu }: Props) {
+export default function NavInteractive(props: Props) {
+  return (
+    <SearchProvider>
+      <NavBody {...props} />
+    </SearchProvider>
+  )
+}
+
+function NavBody({ left, right, megaMenu }: Props) {
   const [active, setActive] = useState<string | null>(null)
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pathname = usePathname()
+  const { open: searchOpen, setOpen: setSearchOpen, isSearchable } = useSearch()
 
   const cancelDismiss = () => {
     if (dismissTimerRef.current) {
@@ -28,6 +41,9 @@ export default function NavInteractive({ left, right, megaMenu }: Props) {
 
   const activate = (key: string) => {
     cancelDismiss()
+    // Meniul și sugestiile ocupă același loc sub header — nu pot fi deschise
+    // în același timp.
+    setSearchOpen(false)
     setActive(key)
   }
 
@@ -47,30 +63,53 @@ export default function NavInteractive({ left, right, megaMenu }: Props) {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
 
+  // Deschiderea sugestiilor închide mega-meniul, în ambele sensuri.
+  useEffect(() => {
+    if (searchOpen) {
+      cancelDismiss()
+      setActive(null)
+    }
+  }, [searchOpen])
+
   // Close the panel on client-side navigation (link clicks inside the menu).
   useEffect(() => {
     cancelDismiss()
     setActive(null)
   }, [pathname])
 
+  // Peste hero, nav-ul e transparent cu text alb. Sub el nu poate sta un panou
+  // alb, deci orice panou deschis readuce bara la fundal opac.
+  const panelOpen = active !== null || (searchOpen && isSearchable)
+
   return (
     <>
       <NavShell
-        left={left}
-        center={
-          <MegaMenuTriggers
-            active={active}
-            onActivate={activate}
-            onDismiss={dismiss}
-          />
-        }
+        // Butonul stă lângă logo, nu lângă căutare: altfel bara de căutare ar
+        // porni de după el și n-ar mai cădea pe centrul barei.
+        left={({ overlay, compact }) => (
+          <>
+            {left}
+            <div className="hidden lg:flex items-center font-bold text-sm">
+              <MegaMenuTriggers
+                active={active}
+                onActivate={activate}
+                onDismiss={dismiss}
+                overlay={overlay}
+                compact={compact}
+              />
+            </div>
+          </>
+        )}
+        center={({ overlay }) => (
+          <div className="w-full" onMouseEnter={dismiss}>
+            <SearchInput overlay={overlay} bindSlashShortcut />
+          </div>
+        )}
         right={right}
-        menuOpen={active !== null}
+        menuOpen={panelOpen}
       />
-      <div
-        onMouseEnter={cancelDismiss}
-        onMouseLeave={dismiss}
-      >
+
+      <div onMouseEnter={cancelDismiss} onMouseLeave={dismiss}>
         <MegaMenuPanel
           roots={megaMenu}
           active={active}
@@ -78,6 +117,9 @@ export default function NavInteractive({ left, right, megaMenu }: Props) {
           onDismiss={dismiss}
         />
       </div>
+
+      <SearchPanel />
+      <SearchSheet />
     </>
   )
 }

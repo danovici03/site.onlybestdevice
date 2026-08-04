@@ -17,6 +17,8 @@ import { CaretDown, CaretUp, Funnel, X } from "@phosphor-icons/react/dist/ssr"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 
+import { countWithNoun } from "@lib/util/plural-ro"
+
 /**
  * Câte valori arătăm inițial per fațetă (restul intră sub „Vezi mai multe”).
  * Fațetele lipsă de aici se afișează integral — stocarea și RAM-ul au oricum
@@ -178,7 +180,7 @@ const ProductFilters = ({ facets, selected, resultCount }: ProductFiltersProps) 
       )}
 
       <span className="ml-auto hidden text-sm text-brand-dark/50 sm:inline">
-        {resultCount} {resultCount === 1 ? "produs" : "produse"}
+        {countWithNoun(resultCount, resultCount === 1 ? "produs" : "produse")}
       </span>
 
       {/* Drawer */}

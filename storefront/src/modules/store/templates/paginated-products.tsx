@@ -19,6 +19,7 @@ export default async function PaginatedProducts({
   countryCode,
   filters,
   facetParentId,
+  q,
 }: {
   sortBy?: SortOptions
   page: number
@@ -26,6 +27,8 @@ export default async function PaginatedProducts({
   categoryId?: string | string[]
   countryCode: string
   filters?: SelectedFilters
+  /** Căutare liberă; îngustează și fațetele, nu doar lista. */
+  q?: string
   /**
    * Categoria ale cărei sub-categorii sunt oferite ca fațetă. Lipsă (sau null)
    * = categoriile de top, cum e pe /store.
@@ -46,6 +49,7 @@ export default async function PaginatedProducts({
     collectionId,
     facetParentId,
     selected,
+    q,
     sortBy: sortBy ?? "created_at",
     page,
     limit: PRODUCT_LIMIT,
@@ -66,10 +70,12 @@ export default async function PaginatedProducts({
       {products.length === 0 ? (
         <div className="w-full rounded-[2rem] border border-brand-dark/10 bg-brand-light/50 p-12 text-center">
           <p className="font-serif text-2xl text-brand-dark">
-            Niciun produs găsit
+            {q ? <>Niciun rezultat pentru „{q}”</> : "Niciun produs găsit"}
           </p>
           <p className="text-brand-dark/60 mt-2 text-sm">
-            Încearcă să modifici filtrele sau revino la tot catalogul.
+            {q
+              ? "Încearcă un termen mai scurt — doar marca sau doar modelul."
+              : "Încearcă să modifici filtrele sau revino la tot catalogul."}
           </p>
         </div>
       ) : (

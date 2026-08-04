@@ -170,6 +170,7 @@ export const listCatalog = async ({
   collectionId,
   facetParentId,
   selected,
+  q,
   sortBy = "created_at",
   page = 1,
   limit = 12,
@@ -179,6 +180,8 @@ export const listCatalog = async ({
   collectionId?: string
   facetParentId?: string | null
   selected: SelectedFilters
+  /** Căutare liberă; îngustează și fațetele, nu doar lista de produse. */
+  q?: string
   sortBy?: SortOptions
   page?: number
   limit?: number
@@ -196,6 +199,11 @@ export const listCatalog = async ({
   }
   if (categoryIds?.length) query.category_id = categoryIds
   if (collectionId) query.collection_id = collectionId
+  // Peste 120 de caractere `/store/catalog` respinge cererea cu 400, iar
+  // clientul ar vedea „niciun rezultat" fără să înțeleagă de ce — un titlu de
+  // produs lipit în bară trece ușor de limită. Tăiem în loc să refuzăm.
+  const term = q?.trim().slice(0, 120)
+  if (term) query.q = term
   // Absent = fațeta de categorie oferă nivelul de top.
   if (facetParentId) query.facet_parent_id = facetParentId
 

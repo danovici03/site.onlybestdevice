@@ -39,6 +39,8 @@ const multi = z
 
 const QuerySchema = z.object({
   region_id: z.string().min(1),
+  /** Căutare liberă: fiecare cuvânt trebuie să apară undeva în produs. */
+  q: z.string().trim().max(120).optional(),
   category_id: z.union([z.string(), z.array(z.string())]).optional(),
   collection_id: z.string().optional(),
   /** Categoria-părinte ale cărei fațete de sub-categorie le oferim; absent = nivelul de top. */
@@ -94,6 +96,59 @@ const parsePrice = (raw?: string): { min: number | null; max: number | null } =>
   }
   return { min: num(a), max: num(b) }
 }
+
+/**
+ * Cuvintele căutării. Se caută pe cuvinte, nu pe șirul întreg: „iphone negru"
+ * trebuie să găsească „Apple iPhone 15 · Midnight negru", unde cele două
+ * cuvinte nu sunt lipite. Maxim 6 — restul nu mai schimbă rezultatul, dar ar
+ * adăuga clauze SQL la nesfârșit.
+ */
+const searchTerms = (raw?: string): string[] => {
+  const trimmed = (raw ?? "").trim()
+  if (!trimmed) return []
+
+  const tokens = trimmed
+    .split(/\s+/)
+    .filter((t) => t.length >= 2)
+    .slice(0, 6)
+
+  // O căutare din cuvinte de o literă („s") n-ar lăsa niciun token, iar zero
+  // clauze înseamnă „fără filtru" — adică tot catalogul, sub titlul „Rezultate
+  // pentru «s»". Căutăm atunci șirul ca atare: puține rezultate e un răspuns
+  // corect, tot catalogul nu e.
+  return tokens.length ? tokens : [trimmed]
+}
+
+/** `%`, `_` și `\` sunt metacaractere în ILIKE — le neutralizăm. */
+const escapeLike = (s: string): string => s.replace(/[\\%_]/g, "\\$&")
+
+/**
+ * Catalogul are titluri și cu, și fără diacritice — importurile din WooCommerce
+ * au venit în ambele feluri („Husa de protectie" lângă „Husă"). Fără
+ * normalizare, „husă" găsea 2 produse și „husa" alte 7, iar clientul nu are cum
+ * să ghicească ce variantă a scris operatorul.
+ *
+ * Aceeași hartă se aplică termenului (în JS) și coloanelor (prin TRANSLATE, în
+ * SQL) — de aceea e o listă explicită și nu o normalizare NFD: NFD ar acoperi
+ * în JS litere pe care TRANSLATE nu le-ar acoperi în SQL, iar cele două părți
+ * ar înceta să se potrivească.
+ */
+const DIACRITICS = {
+  ă: "a", â: "a", î: "i", ș: "s", ş: "s", ț: "t", ţ: "t",
+  á: "a", à: "a", ä: "a", é: "e", è: "e", ë: "e", í: "i", ì: "i", ï: "i",
+  ó: "o", ò: "o", ö: "o", ú: "u", ù: "u", ü: "u", ç: "c", ñ: "n",
+} as const
+
+const DIACRITICS_FROM = Object.keys(DIACRITICS).join("")
+const DIACRITICS_TO = Object.values(DIACRITICS).join("")
+
+/** Varianta fără diacritice, cu litere mici — pentru termenul căutat. */
+const foldTerm = (s: string): string =>
+  s.toLowerCase().replace(/./gu, (c) => (DIACRITICS as Record<string, string>)[c] ?? c)
+
+/** Aceeași normalizare, dar pentru o expresie SQL. */
+const foldSql = (expr: string): string =>
+  `TRANSLATE(LOWER(${expr}), '${DIACRITICS_FROM}', '${DIACRITICS_TO}')`
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const logger = req.scope.resolve(ContainerRegistrationKeys.LOGGER)
@@ -185,9 +240,38 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     scopeWhere.push(`p.collection_id = ${bind(q.collection_id, "coll")}`)
   }
 
+  // Căutarea îngustează SCOPE-ul, nu doar setul filtrat: și fațetele, și
+  // intervalul de preț trebuie să se refere la rezultatele căutării, altfel
+  // panoul de filtre ar oferi mărci care nu apar în ce vede clientul.
+  // Termenii sunt deja fără diacritice și cu litere mici, la fel ca fiecare
+  // coloană prin `foldSql` — deci `LIKE`, nu `ILIKE`.
+  const terms = searchTerms(q.q).map(foldTerm)
+  for (const term of terms) {
+    const t = bind(`%${escapeLike(term)}%`, "q")
+    scopeWhere.push(`(
+      ${foldSql("p.title")} LIKE ${t}
+      OR ${foldSql("p.subtitle")} LIKE ${t}
+      OR ${foldSql("p.handle")} LIKE ${t}
+      OR ${foldSql("p.metadata->>'filter_brand'")} LIKE ${t}
+      OR EXISTS (
+        SELECT 1 FROM product_variant pv
+        WHERE pv.product_id = p.id AND pv.deleted_at IS NULL
+          AND (${foldSql("pv.title")} LIKE ${t} OR ${foldSql("pv.sku")} LIKE ${t})
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM product_category_product pcp
+        JOIN product_category pc ON pc.id = pcp.product_category_id
+                                AND pc.deleted_at IS NULL
+        WHERE pcp.product_id = p.id AND ${foldSql("pc.name")} LIKE ${t}
+      )
+    )`)
+  }
+
   const scopedCte = `
     scoped AS (
       SELECT p.id,
+             p.title,
              p.created_at,
              p.metadata->>'filter_brand'     AS brand,
              p.metadata->>'filter_storage'   AS storage,
@@ -308,12 +392,36 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   // Importul în masă a dat același `created_at` la zeci de produse deodată, iar
   // și prețurile se repetă — fără `id` la coadă ordinea nu e totală și paginile
   // se suprapun între cereri (Postgres nu garantează stabilitatea la egalitate).
-  const orderBy =
+  const baseOrderBy =
     q.sort === "price_asc"
       ? "price ASC NULLS LAST, created_at DESC, id DESC"
       : q.sort === "price_desc"
         ? "price DESC NULLS LAST, created_at DESC, id DESC"
         : "created_at DESC, id DESC"
+
+  // La căutare, „cel mai recent" e un criteriu prost pe primul ecran: cine
+  // scrie „iphone" vrea telefonul, nu husa de iPhone importată cel mai târziu.
+  // Fără date de vânzări, cele mai bune semnale sunt în titlu:
+  //   1. titlul începe cu ce s-a căutat („iPhone 15 …");
+  //   2. termenul apare devreme în titlu — „Telefon mobil Apple iPhone 15" e
+  //      despre iPhone, „Husa … pentru Apple Iphone 15 Pro" e despre husă;
+  //   3. titlul e scurt, deci produsul nu e o variație accesorizată a lui.
+  // Produsele care se potrivesc doar prin categorie sau SKU n-au termenul în
+  // titlu: POSITION dă 0, iar NULLIF le trimite la coadă, nu în frunte.
+  const relevance = terms.length
+    ? [
+        `CASE WHEN ${foldSql("title")} LIKE ${bind(
+          `${escapeLike(terms.join(" "))}%`,
+          "rank"
+        )} THEN 0 ELSE 1 END`,
+        `NULLIF(POSITION(${bind(terms[0], "rank")} IN ${foldSql(
+          "title"
+        )}), 0) NULLS LAST`,
+        "LENGTH(title)",
+      ].join(", ") + ", "
+    : ""
+
+  const orderBy = `${relevance}${baseOrderBy}`
 
   const pageSql = `
     WITH ${scopedCte}, ${filteredCte}
