@@ -4,7 +4,7 @@ import { ReactNode } from "react"
 import { useParams, usePathname } from "next/navigation"
 import {
   House,
-  ShoppingBag,
+  Handbag,
   Storefront,
   User,
 } from "@phosphor-icons/react/dist/ssr"
@@ -54,7 +54,7 @@ export default function BottomNavClient({ cartIndicator }: Props) {
     {
       href: "/cart",
       label: "Coș",
-      icon: ShoppingBag,
+      icon: Handbag,
       matchPrefixes: ["/cart", "/checkout"],
       badge: cartIndicator,
       onSelect: openCart,

@@ -16,7 +16,7 @@ import {
   Plus,
   Recycle,
   ShieldCheck,
-  ShoppingBag,
+  Handbag,
   Storefront,
   WhatsappLogo,
   XLogo,
@@ -529,7 +529,7 @@ export default function ProductActions({
                 aria-label="Se încarcă"
               />
             ) : (
-              <ShoppingBag size={18} weight="bold" />
+              <Handbag size={18} weight="bold" />
             )}
             <span>{ctaLabel}</span>
           </button>

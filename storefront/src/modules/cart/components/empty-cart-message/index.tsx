@@ -1,5 +1,5 @@
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { ArrowRight, ShoppingBag } from "@phosphor-icons/react/dist/ssr"
+import { ArrowRight, Handbag } from "@phosphor-icons/react/dist/ssr"
 
 const EmptyCartMessage = () => {
   return (
@@ -8,7 +8,7 @@ const EmptyCartMessage = () => {
       data-testid="empty-cart-message"
     >
       <span className="w-20 h-20 rounded-full bg-brand-light flex items-center justify-center mb-6">
-        <ShoppingBag size={32} weight="light" className="text-brand-dark" />
+        <Handbag size={32} weight="light" className="text-brand-dark" />
       </span>
       <span className="text-xs uppercase tracking-[0.2em] font-bold text-brand-dark/50">
         Coș

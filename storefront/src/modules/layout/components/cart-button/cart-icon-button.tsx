@@ -1,7 +1,7 @@
 "use client"
 
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
-import { ShoppingBag } from "@phosphor-icons/react/dist/ssr"
+import { Handbag } from "@phosphor-icons/react/dist/ssr"
 
 /**
  * Iconița de coș din header. Deschide panoul de coș în loc să navigheze la
@@ -32,7 +32,7 @@ const CartIconButton = ({
       aria-haspopup="dialog"
       aria-label={`Coș (${totalItems})`}
     >
-      <ShoppingBag size={26} weight="light" />
+      <Handbag size={26} weight="light" />
       {showCount && (
         <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-brand-dark px-1 text-[10px] font-bold text-white">
           {totalItems > 99 ? "99+" : totalItems}

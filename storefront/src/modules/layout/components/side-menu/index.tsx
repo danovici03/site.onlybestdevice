@@ -5,9 +5,9 @@ import { clx, useToggleState } from "@medusajs/ui"
 import { ArrowRightMini } from "@medusajs/icons"
 import {
   ArrowRight,
-  CaretDown,
+  CaretRight,
   List,
-  ShoppingBag,
+  Handbag,
   User,
   X,
 } from "@phosphor-icons/react/dist/ssr"
@@ -18,7 +18,17 @@ import CountrySelect from "../country-select"
 import LanguageSelect from "../language-select"
 import { HttpTypes } from "@medusajs/types"
 import { Locale } from "@lib/data/locales"
-import { FLAT_LINKS, MEGA_MENU } from "@modules/layout/components/mega-menu/data"
+import {
+  MEGA_MENU,
+  SECONDARY_LINKS,
+} from "@modules/layout/components/mega-menu/data"
+import { getCategoryIcon } from "@modules/layout/components/mega-menu/category-icons"
+
+// Un singur set de titluri de secțiune în tot drawer-ul: categoriile și
+// suportul trebuie să arate ca două secțiuni ale aceleiași liste, nu ca două
+// componente diferite lipite una sub alta.
+const EYEBROW =
+  "text-[11px] uppercase tracking-[0.18em] font-bold text-brand-dark/40"
 
 type SideMenuProps = {
   regions: HttpTypes.StoreRegion[] | null
@@ -28,7 +38,6 @@ type SideMenuProps = {
 
 const SideMenu = ({ regions, locales, cartIndicator }: SideMenuProps) => {
   const [open, setOpen] = useState(false)
-  const [expanded, setExpanded] = useState<string | null>(MEGA_MENU[0]?.key ?? null)
   const countryToggleState = useToggleState()
   const languageToggleState = useToggleState()
 
@@ -83,97 +92,80 @@ const SideMenu = ({ regions, locales, cartIndicator }: SideMenuProps) => {
           </div>
 
           <nav className="flex-1 overflow-y-auto overscroll-contain px-7 pt-6 pb-6">
-            <ul className="flex flex-col gap-2">
-              {MEGA_MENU.map((root) => {
-                const isOpen = expanded === root.key
-                return (
-                  <li key={root.key}>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpanded(isOpen ? null : root.key)
-                      }
-                      aria-expanded={isOpen}
-                      className="w-full flex items-center justify-between py-2 font-serif text-3xl text-brand-dark hover:text-brand-accent transition-colors text-left"
-                    >
-                      <span>{root.label}</span>
-                      <CaretDown
-                        size={18}
-                        weight="bold"
-                        className={`transition-transform duration-200 ${
-                          isOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </button>
-                    <div
-                      className={`grid transition-all duration-300 ease-out ${
-                        isOpen
-                          ? "grid-rows-[1fr] opacity-100"
-                          : "grid-rows-[0fr] opacity-0"
-                      }`}
-                    >
-                      <div className="overflow-hidden">
-                        <ul className="flex flex-col gap-1 pl-1 pt-2 pb-3">
-                          <li>
-                            <LocalizedClientLink
-                              href={root.href}
-                              onClick={close}
-                              className="group flex items-center justify-between py-1.5 text-sm font-bold uppercase tracking-[0.15em] text-brand-dark/70 hover:text-brand-dark transition-colors"
-                            >
-                              <span>Vezi {root.label}</span>
-                              <ArrowRight
-                                size={14}
-                                weight="bold"
-                                className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
-                              />
-                            </LocalizedClientLink>
-                          </li>
-                          {root.items.map((item) => (
-                            <li key={item.href}>
-                              <LocalizedClientLink
-                                href={item.href}
-                                onClick={close}
-                                className="group flex items-baseline justify-between py-1.5 text-lg text-brand-dark hover:text-brand-accent transition-colors"
-                              >
-                                <span className="flex items-baseline gap-2">
-                                  <span>{item.label}</span>
-                                  {item.count !== undefined && (
-                                    <span className="text-xs text-brand-dark/40">
-                                      {item.count}
-                                    </span>
-                                  )}
-                                </span>
-                                <ArrowRight
-                                  size={14}
-                                  weight="bold"
-                                  className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
-                                />
-                              </LocalizedClientLink>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </li>
-                )
-              })}
-
-              {FLAT_LINKS.map((link) => (
-                <li key={link.key}>
+            {/* Categoriile sunt singurul motiv pentru care se deschide meniul,
+                deci se văd direct: acordeonul cu un singur grup punea un titlu
+                uriaș și un click în plus peste exact aceeași listă. */}
+            {MEGA_MENU.map((root) => (
+              <section key={root.key} className="first:mt-0 mt-8">
+                <div className="flex items-baseline justify-between gap-4">
+                  <h2 className={EYEBROW}>{root.label}</h2>
                   <LocalizedClientLink
-                    href={link.href}
+                    href={root.href}
                     onClick={close}
-                    data-testid={`${link.key}-link`}
-                    className="group flex items-baseline justify-between py-2 font-serif text-3xl text-brand-dark hover:text-brand-accent transition-colors"
+                    className="shrink-0 inline-flex items-center gap-1.5 text-[13px] font-bold text-brand-dark/70 active:text-brand-accent hover:text-brand-accent transition-colors"
                   >
-                    <span>{link.label}</span>
-                    <ArrowRightMini className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" />
+                    Vezi toate
+                    <ArrowRight size={13} weight="bold" />
                   </LocalizedClientLink>
-                </li>
-              ))}
-            </ul>
+                </div>
 
-            <div className="mt-10 pt-6 border-t border-brand-dark/10 flex flex-col gap-3">
+                <ul className="mt-2 divide-y divide-brand-dark/[0.07]">
+                  {root.items.map((item) => {
+                    const Icon = getCategoryIcon(item.href)
+                    // „Oferte" nu e o categorie de produs, ci un motiv de
+                    // cumpărare — la fel ca pe desktop, primește accentul.
+                    const highlight = !!item.highlight
+                    return (
+                      <li key={item.href}>
+                        <LocalizedClientLink
+                          href={item.href}
+                          onClick={close}
+                          className="group flex items-center gap-3.5 py-3 -mx-2 px-2 rounded-xl active:bg-brand-dark/[0.04] transition-colors"
+                        >
+                          <span
+                            className={clx(
+                              "w-9 h-9 shrink-0 rounded-xl flex items-center justify-center transition-colors",
+                              highlight
+                                ? "bg-brand-accent text-white"
+                                : "bg-brand-dark/[0.05] text-brand-dark/70 group-hover:bg-brand-dark group-hover:text-white"
+                            )}
+                          >
+                            <Icon
+                              size={18}
+                              weight={highlight ? "fill" : "regular"}
+                            />
+                          </span>
+                          <span
+                            className={clx(
+                              "flex-1 text-base tracking-[-0.01em] transition-colors",
+                              highlight
+                                ? "font-bold text-brand-accent"
+                                : "font-medium text-brand-dark group-hover:text-brand-accent"
+                            )}
+                          >
+                            {item.label}
+                          </span>
+                          {item.count !== undefined && (
+                            <span className="text-xs tabular-nums text-brand-dark/35">
+                              {item.count}
+                            </span>
+                          )}
+                          {/* Săgeata rămâne vizibilă: pe touch nu există hover,
+                              iar fără ea rândurile nu par apăsabile. */}
+                          <CaretRight
+                            size={14}
+                            weight="bold"
+                            className="shrink-0 text-brand-dark/25 group-hover:text-brand-dark/60 transition-colors"
+                          />
+                        </LocalizedClientLink>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            ))}
+
+            <div className="mt-8 pt-6 border-t border-brand-dark/10 flex flex-col gap-2.5">
               <LocalizedClientLink
                 href="/cart"
                 onClick={close}
@@ -182,7 +174,7 @@ const SideMenu = ({ regions, locales, cartIndicator }: SideMenuProps) => {
               >
                 <span className="flex items-center gap-3">
                   <span className="relative">
-                    <ShoppingBag size={22} weight="light" />
+                    <Handbag size={22} weight="light" />
                     {cartIndicator}
                   </span>
                   <span className="text-base font-medium">
@@ -205,7 +197,7 @@ const SideMenu = ({ regions, locales, cartIndicator }: SideMenuProps) => {
               >
                 <span className="flex items-center gap-3 text-brand-dark">
                   <User size={20} weight="light" />
-                  <span className="text-sm font-medium">Account</span>
+                  <span className="text-base font-medium">Contul meu</span>
                 </span>
                 <ArrowRight
                   size={16}
@@ -213,6 +205,34 @@ const SideMenu = ({ regions, locales, cartIndicator }: SideMenuProps) => {
                 />
               </LocalizedClientLink>
             </div>
+            {/* Suportul nu concurează cu catalogul: aceleași subiecte sunt în
+                footer și în întrebările frecvente, aici rămân doar pentru că
+                footer-ul nu se vede cât drawer-ul e deschis. De aceea sunt și
+                mai slabe vizual decât categoriile — erau bold, adică trăgeau
+                ochiul înaintea catalogului. */}
+            <div className="mt-8 pt-6 border-t border-brand-dark/10">
+              <h2 className={EYEBROW}>Ai nevoie de ajutor</h2>
+              <ul className="mt-1 flex flex-col">
+                {SECONDARY_LINKS.map((link) => (
+                  <li key={link.key}>
+                    <LocalizedClientLink
+                      href={link.href}
+                      onClick={close}
+                      data-testid={`${link.key}-link`}
+                      className="group flex items-center justify-between gap-4 py-2.5 -mx-2 px-2 rounded-xl text-[15px] text-brand-dark/70 hover:text-brand-dark active:bg-brand-dark/[0.04] transition-colors"
+                    >
+                      <span>{link.label}</span>
+                      <CaretRight
+                        size={13}
+                        weight="bold"
+                        className="shrink-0 text-brand-dark/20 group-hover:text-brand-dark/50 transition-colors"
+                      />
+                    </LocalizedClientLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
           </nav>
 
           <div className="px-7 pt-5 pb-[max(1.75rem,env(safe-area-inset-bottom))] border-t border-brand-dark/10 bg-brand-light shrink-0">

@@ -7,6 +7,12 @@ export type MegaMenuItem = {
   // Featured items get a large photo card in the center of the mega-menu;
   // the rest appear only in the left text list.
   featured?: boolean
+  /**
+   * Intrare evidențiată, ținută prima în listă și colorată în accent. „Oferte"
+   * era link separat în nav; mutat aici, are nevoie de ceva care să-l scoată
+   * din șirul de categorii, altfel se pierde printre ele.
+   */
+  highlight?: boolean
 }
 
 export type MegaMenuRoot = {
@@ -14,7 +20,14 @@ export type MegaMenuRoot = {
   label: string
   href: string
   caption: string
-  feature: { title: string; body: string; image: string }
+  feature: {
+    title: string
+    body: string
+    image: string
+    href?: string
+    /** Supratitlul bannerului; implicit „Recomandarea noastră". */
+    eyebrow?: string
+  }
   items: MegaMenuItem[]
 }
 
@@ -51,13 +64,26 @@ export const MEGA_MENU: MegaMenuRoot[] = [
     label: "Produse",
     href: "/store",
     caption: "Cele mai noi device-uri, cu garanție și livrare rapidă.",
+    // Bannerul din dreapta duce la Oferte, nu la tot catalogul: „Oferte" a
+    // ieșit din bara de sus și ăsta e locul unde rămâne vizibil de la prima
+    // deschidere a meniului.
     feature: {
-      title: "Cele mai noi device-uri",
-      body: "Produse noi cu garanție 24 de luni și retur gratuit 14 zile.",
+      eyebrow: "Prețuri reduse",
+      title: "Ofertele săptămânii",
+      body: "Reduceri la telefoane, laptopuri și accesorii — stoc limitat.",
+      href: "/categories/oferte",
       image:
-        "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1607082349566-187342175e2f?auto=format&fit=crop&q=80",
     },
     items: [
+      {
+        label: "Oferte",
+        href: "/categories/oferte",
+        description: "Reducerile active, actualizate săptămânal.",
+        image:
+          "https://images.unsplash.com/photo-1607082349566-187342175e2f?auto=format&fit=crop&q=80",
+        highlight: true,
+      },
       {
         label: "Telefoane mobile",
         href: "/categories/telefoane-mobile",
@@ -107,8 +133,14 @@ export const MEGA_MENU: MegaMenuRoot[] = [
   },
 ]
 
-export const FLAT_LINKS: FlatLink[] = [
-  { key: "oferte", label: "Oferte", href: "/categories/oferte" },
+/**
+ * Linkurile de suport. NU mai apar în bara de sus: acolo a rămas doar mega-
+ * meniul „Produse" plus căutarea, ca navigarea să aibă o singură intrare în
+ * catalog. Aceleași subiecte sunt acoperite de footer (pe orice pagină) și de
+ * pagina de întrebări frecvente; aici rămân doar pentru meniul de pe mobil,
+ * unde drawer-ul ține loc de footer cât timp e deschis.
+ */
+export const SECONDARY_LINKS: FlatLink[] = [
   { key: "livrare", label: "Livrare", href: "/livrare" },
   { key: "retur", label: "Retur produse", href: "/retur" },
   { key: "garantie", label: "Garanție și service", href: "/garantie" },

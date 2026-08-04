@@ -2,20 +2,7 @@
 
 import { useEffect, useState } from "react"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import {
-  ArrowRight,
-  DeviceMobile,
-  DeviceTablet,
-  Plug,
-  Watch,
-  GameController,
-  Laptop,
-  Desktop,
-  Television,
-  Shield,
-  ShieldCheck,
-  Package,
-} from "@phosphor-icons/react/dist/ssr"
+import { ArrowRight, Package } from "@phosphor-icons/react/dist/ssr"
 import Image from "next/image"
 import { unsplashLoader } from "@lib/util/unsplash-loader"
 import {
@@ -23,27 +10,13 @@ import {
   ResolvedMegaItem,
   ResolvedMegaRoot,
 } from "./data"
+import { getCategoryIcon } from "./category-icons"
 
 type Props = {
   roots: ResolvedMegaRoot[]
   active: string | null
   onActivate: (key: string) => void
   onDismiss: () => void
-}
-
-// Small icon shown next to each category in the left list, keyed by href.
-const CATEGORY_ICONS: Record<string, React.ElementType> = {
-  "/categories/telefoane-mobile": DeviceMobile,
-  "/categories/tablete": DeviceTablet,
-  "/categories/incarcatoare-accesorii": Plug,
-  "/categories/smartwatch-wearables": Watch,
-  "/categories/console-jocuri": GameController,
-  "/categories/laptop": Laptop,
-  "/categories/desktop-pc-periferice": Desktop,
-  "/categories/tv-audio-video-si-foto": Television,
-  "/categories/huse-telefoane": Shield,
-  "/categories/folii-de-protectie": ShieldCheck,
-  "/categories/diverse": Package,
 }
 
 export default function MegaMenuPanel({
@@ -67,7 +40,7 @@ export default function MegaMenuPanel({
       <div
         aria-hidden={!visible}
         onClick={onDismiss}
-        className={`fixed inset-x-0 top-20 bottom-0 z-30 bg-brand-dark/30 backdrop-blur-sm transition-opacity duration-200 ${
+        className={`fixed inset-x-0 top-[var(--nav-bottom,5rem)] bottom-0 z-30 bg-brand-dark/30 backdrop-blur-sm transition-opacity duration-200 ${
           visible
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none"
@@ -76,7 +49,7 @@ export default function MegaMenuPanel({
 
       <div
         onMouseLeave={onDismiss}
-        className={`hidden lg:block fixed inset-x-0 top-20 z-40 transition-all duration-300 ease-out ${
+        className={`hidden lg:block fixed inset-x-0 top-[var(--nav-bottom,5rem)] z-40 transition-all duration-300 ease-out ${
           visible
             ? "opacity-100 translate-y-0 pointer-events-auto"
             : "opacity-0 -translate-y-2 pointer-events-none"
@@ -179,7 +152,10 @@ function CategoryListItem({
   isSelected: boolean
   onSelect: () => void
 }) {
-  const Icon = CATEGORY_ICONS[item.href] ?? Package
+  const Icon = getCategoryIcon(item.href)
+  // „Oferte" e singura intrare care nu e o categorie de produs, ci un motiv de
+  // cumpărare. Fără accent s-ar citi ca a șaptea categorie din listă.
+  const highlight = !!item.highlight
   return (
     <LocalizedClientLink
       href={item.href}
@@ -191,18 +167,22 @@ function CategoryListItem({
     >
       <span
         className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
-          isSelected
-            ? "bg-brand-dark text-white"
-            : "bg-brand-light text-brand-dark/70 group-hover/row:bg-brand-dark group-hover/row:text-white"
+          highlight
+            ? "bg-brand-accent text-white"
+            : isSelected
+              ? "bg-brand-dark text-white"
+              : "bg-brand-light text-brand-dark/70 group-hover/row:bg-brand-dark group-hover/row:text-white"
         }`}
       >
-        <Icon size={16} />
+        <Icon size={16} weight={highlight ? "fill" : "regular"} />
       </span>
       <span
         className={`flex-1 text-[15px] tracking-[-0.01em] transition-colors truncate ${
-          isSelected
-            ? "font-extrabold text-brand-dark"
-            : "font-bold text-brand-dark/70 group-hover/row:text-brand-dark"
+          highlight
+            ? "font-extrabold text-brand-accent"
+            : isSelected
+              ? "font-extrabold text-brand-dark"
+              : "font-bold text-brand-dark/70 group-hover/row:text-brand-dark"
         }`}
       >
         {item.label}
@@ -321,7 +301,7 @@ function EmptyState({ item }: { item: ResolvedMegaItem }) {
 function PromoCard({ root }: { root: ResolvedMegaRoot }) {
   return (
     <LocalizedClientLink
-      href={root.href}
+      href={root.feature.href ?? root.href}
       className="group/promo relative block w-full min-h-[300px] rounded-2xl overflow-hidden img-zoom-wrapper bg-brand-dark"
     >
       <Image
@@ -335,7 +315,7 @@ function PromoCard({ root }: { root: ResolvedMegaRoot }) {
       <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/90 via-brand-dark/40 to-transparent" />
       <div className="absolute inset-0 p-6 flex flex-col justify-end text-white">
         <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/70 mb-2">
-          Recomandarea noastră
+          {root.feature.eyebrow ?? "Recomandarea noastră"}
         </span>
         <h4 className="font-serif text-2xl leading-[1.1] max-w-[18ch]">
           {root.feature.title}

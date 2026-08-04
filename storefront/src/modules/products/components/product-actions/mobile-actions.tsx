@@ -1,6 +1,6 @@
 import { Dialog, Transition } from "@headlessui/react"
 import { clx } from "@medusajs/ui"
-import { CaretDown, ShoppingBag, X as XIcon } from "@phosphor-icons/react/dist/ssr"
+import { CaretDown, Handbag, X as XIcon } from "@phosphor-icons/react/dist/ssr"
 import React, { Fragment, useMemo } from "react"
 
 import useToggleState from "@lib/hooks/use-toggle-state"
@@ -126,7 +126,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                   aria-label="Se încarcă"
                 />
               ) : (
-                <ShoppingBag size={16} weight="bold" />
+                <Handbag size={16} weight="bold" />
               )}
               <span className="hidden xsmall:inline">
                 {!variant

@@ -23,7 +23,7 @@ import {
   Lock,
   Minus,
   Plus,
-  ShoppingBag,
+  Handbag,
   Trash,
   X as XIcon,
 } from "@phosphor-icons/react/dist/ssr"
@@ -147,7 +147,7 @@ const CartDrawer = () => {
               {items.length === 0 ? (
                 <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-16 text-center">
                   <span className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-light text-brand-dark">
-                    <ShoppingBag size={24} weight="regular" />
+                    <Handbag size={24} weight="regular" />
                   </span>
                   <p className="text-brand-dark/60">Coșul tău e gol.</p>
                   <LocalizedClientLink

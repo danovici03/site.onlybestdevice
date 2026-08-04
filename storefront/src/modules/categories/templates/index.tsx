@@ -9,7 +9,6 @@ import RefinementBar from "@modules/store/components/refinement-bar"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import PaginatedProducts from "@modules/store/templates/paginated-products"
 import type { CategoryCrumb } from "@lib/data/categories"
-import { categorySlug } from "@lib/util/category-slug"
 import type { SelectedFilters } from "@lib/util/product-filters"
 
 export default function CategoryTemplate({
@@ -45,17 +44,6 @@ export default function CategoryTemplate({
 
   const directParent = ancestors[ancestors.length - 1]
   const eyebrow = directParent ? directParent.name : "Catalog"
-
-  // Slug-uri, nu handle-uri: URL-ul canonic al unei subcategorii e
-  // /categories/tablete/apple, nu /categories/tablete/apple-tablete.
-  const currentPath = path.length
-    ? path.map((c) => c.slug)
-    : [categorySlug(category.name ?? "")]
-
-  const children = (category.category_children ?? []).filter(
-    (c): c is HttpTypes.StoreProductCategory & { name: string } =>
-      Boolean(c?.name)
-  )
 
   const collectDescendantIds = (
     cat: HttpTypes.StoreProductCategory
@@ -123,27 +111,11 @@ export default function CategoryTemplate({
         </div>
       </div>
 
-      {children.length > 0 && (
-        <nav
-          aria-label="Subcategorii"
-          className="flex flex-wrap gap-2 mb-5 lg:mb-8"
-          data-testid="subcategory-links"
-        >
-          {children.map((child) => (
-            <LocalizedClientLink
-              key={child.id}
-              href={`/categories/${[
-                ...currentPath,
-                categorySlug(child.name),
-              ].join("/")}`}
-              className="rounded-full border border-brand-dark/15 px-4 py-2 text-sm font-medium text-brand-dark/70 transition-colors hover:border-brand-dark/40 hover:text-brand-dark"
-            >
-              {child.name}
-            </LocalizedClientLink>
-          ))}
-        </nav>
-      )}
-
+      {/* Subcategoriile (mărcile) nu mai apar ca șir de chips sub titlu:
+          aceleași valori sunt în filtre, unde se combină cu preț și stoc.
+          Paginile /categories/tablete/apple rămân valide, doar că se ajunge
+          la ele din filtre și din meniu, nu dintr-un rând de butoane care
+          ocupa două rânduri pe mobil. */}
       <MobileSortFab sortBy={sort} />
 
       <Suspense
