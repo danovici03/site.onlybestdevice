@@ -132,7 +132,7 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
         {/* Pe mobil boxul e mai scund decât pătratul, ca să rămână loc pentru
             text. Thumb-urile din catalog sunt pătrate pe fond alb, deci
             `object-contain` doar micșorează poza — nu taie din produs. */}
-        <div className="relative aspect-[6/5] sm:aspect-square w-full overflow-hidden rounded-[1.1rem] bg-white">
+        <div className="relative aspect-[6/5] sm:aspect-square w-full overflow-hidden rounded-[1.1rem] bg-white ring-1 ring-inset ring-brand-dark/[0.07]">
           {thumb && (
             <Image
               src={thumb}
