@@ -97,7 +97,7 @@ const GalleryInner = ({
             {images.map((image, index) => (
               <div
                 key={image.id}
-                className="relative aspect-square w-[85vw] shrink-0 min-w-0 rounded-[2rem] overflow-hidden bg-brand-light"
+                className="relative aspect-square w-[85vw] shrink-0 min-w-0 rounded-[2rem] overflow-hidden bg-white ring-1 ring-inset ring-brand-dark/[0.07]"
               >
                 {!!image.url && (
                   <Image
@@ -132,7 +132,7 @@ const GalleryInner = ({
 
       {/* Desktop: imagine mare + thumbnails */}
       <div className="hidden lg:flex flex-col gap-3 w-full max-w-[460px] mx-auto">
-        <div className="relative aspect-square w-full overflow-hidden rounded-[2rem] bg-brand-light img-zoom-wrapper">
+        <div className="relative aspect-square w-full overflow-hidden rounded-[2rem] bg-white ring-1 ring-inset ring-brand-dark/[0.07] img-zoom-wrapper">
           {!!main?.url && (
             <Image
               key={main.id}
@@ -157,7 +157,7 @@ const GalleryInner = ({
                   onClick={() => selectThumb(index)}
                   aria-label={`Vezi imaginea ${index + 1}`}
                   aria-current={index === safeSelected ? "true" : undefined}
-                  className={`relative aspect-square flex-[0_0_calc(33.333%-0.5rem)] rounded-2xl overflow-hidden bg-brand-light transition-shadow ${
+                  className={`relative aspect-square flex-[0_0_calc(33.333%-0.5rem)] rounded-2xl overflow-hidden bg-white transition-shadow ${
                     index === safeSelected
                       ? "ring-2 ring-brand-dark"
                       : "ring-1 ring-brand-dark/10 hover:ring-brand-dark/40"
