@@ -114,7 +114,9 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
                   {/* Sub lg e vizibilă BottomNav-ul fix (~4.5rem + safe area),
                       deci titlul/CTA au nevoie de spațiu suplimentar dedesubt. */}
                   <div className="w-full max-w-[1920px] mx-auto px-6 sm:px-12 lg:px-20 pb-[calc(8rem+env(safe-area-inset-bottom))] lg:pb-28">
-                    <h2 className="font-sans font-black uppercase text-4xl sm:text-6xl lg:text-7xl text-white leading-[1.05] tracking-tight mb-6 sm:mb-8 max-w-4xl">
+                    {/* Titlul se scrie ca o propoziție (doar prima literă mare)
+                        — fără `uppercase`, ca blocul de text să respire. */}
+                    <h2 className="font-sans font-black text-4xl sm:text-6xl lg:text-7xl text-white leading-[1.05] tracking-tight mb-6 sm:mb-8 max-w-4xl">
                       {slide.titleLine1}
                       {slide.titleLine2 && (
                         <>

@@ -20,6 +20,7 @@ export default async function PaginatedProducts({
   filters,
   facetParentId,
   q,
+  sale,
 }: {
   sortBy?: SortOptions
   page: number
@@ -29,6 +30,8 @@ export default async function PaginatedProducts({
   filters?: SelectedFilters
   /** Căutare liberă; îngustează și fațetele, nu doar lista. */
   q?: string
+  /** Prezent pe /oferte: doar produsele bifate „La ofertă" în admin. */
+  sale?: boolean
   /**
    * Categoria ale cărei sub-categorii sunt oferite ca fațetă. Lipsă (sau null)
    * = categoriile de top, cum e pe /store.
@@ -50,6 +53,7 @@ export default async function PaginatedProducts({
     facetParentId,
     selected,
     q,
+    sale,
     sortBy: sortBy ?? "created_at",
     page,
     limit: PRODUCT_LIMIT,

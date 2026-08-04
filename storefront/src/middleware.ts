@@ -1,6 +1,8 @@
 import { HttpTypes } from "@medusajs/types"
 import { NextRequest, NextResponse } from "next/server"
 
+import { RETIRED_CATEGORY_HANDLES } from "@lib/util/retired-categories"
+
 const BACKEND_URL = process.env.MEDUSA_BACKEND_URL
 const PUBLISHABLE_API_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
 const DEFAULT_REGION = process.env.NEXT_PUBLIC_DEFAULT_REGION || "us"
@@ -163,38 +165,11 @@ const LEGACY_SYSTEM_PAGES: Record<string, string> = {
   "/finalizeaza-comanda": "/checkout",
   "/contul-meu": "/account",
   "/magazin": "/store",
-  "/oferte": "/categories/oferte",
-}
-
-/**
- * Handle-uri de categorie scoase din uz de `merge-duplicate-categories.ts` →
- * calea canonică de azi.
- *
- * Catalogul a avut categorii duplicate din cele două valuri de import (seed RO
- * + WooCommerce). După unire, rândurile retrase nu mai există în baza de date,
- * deci URL-urile lor n-ar mai putea fi rezolvate — de aici, 404 în loc de 308.
- * Restul mutărilor de URL (sufixul de dezambiguizare: `apple-tablete` →
- * `tablete/apple`) se redirectează dinamic în pagina de categorie, care poate
- * încă rezolva handle-ul; aici stau doar cele care au dispărut.
- *
- * Cheile sunt scrise decodat: unele conțineau virgule și diacritice, care în
- * URL ajung percent-encodate. Valorile sunt căi relative la regiune, nu doar
- * handle-uri — „Fără categorie" nu are echivalent, deci pleacă în catalog.
- */
-const RETIRED_CATEGORY_HANDLES: Record<string, string> = {
-  "console,-jocuri": "/categories/console-jocuri",
-  "tv,-audio-video-și-foto": "/categories/tv-audio-video-si-foto",
-  "folii-de-protecție": "/categories/folii-de-protectie",
-  "desktop-pc-&-periferice": "/categories/desktop-pc-periferice",
-  "încărcătoare-&-accesorii": "/categories/incarcatoare-accesorii",
-  "smartwatch-&-wearables": "/categories/smartwatch-wearables",
-  "honor-2": "/categories/telefoane-mobile/honor",
-  // Redenumite, nu șterse — vechiul handle avea typo-ul din slug-ul WooCommerce.
-  "incarcatoare-acccesorii": "/categories/incarcatoare-accesorii",
-  "smartatch-si-wearables": "/categories/smartwatch-wearables",
-  // Pubela WooCommerce pentru produse necategorizate: nu e o categorie de
-  // navigat, iar produsele ei sunt oricum în catalog.
-  "fara-categorie": "/store",
+  // Ofertele au acum pagina lor, alimentată de bifa „La ofertă". URL-ul vechi
+  // are vechime în index, deci rămâne 308 (permanent) ca restul paginilor de
+  // sistem — fără el ar cădea pe 307-ul generic de regiune, iar semnalele de
+  // ranking n-ar migra pe /oferte.
+  "/oferte": "/oferte",
 }
 
 /**

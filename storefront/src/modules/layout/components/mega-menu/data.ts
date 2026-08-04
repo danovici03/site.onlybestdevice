@@ -13,6 +13,13 @@ export type MegaMenuItem = {
    * din șirul de categorii, altfel se pierde printre ele.
    */
   highlight?: boolean
+  /**
+   * Intrarea nu e o categorie Medusa, ci lista de oferte: produsele ei se
+   * rezolvă după bifa „La ofertă", nu după handle-ul din `href`. Fără marcaj,
+   * `resolveMegaMenu` ar căuta categoria „oferte" și ar arăta altceva decât
+   * pagina spre care duce linkul.
+   */
+  sale?: boolean
 }
 
 export type MegaMenuRoot = {
@@ -71,18 +78,19 @@ export const MEGA_MENU: MegaMenuRoot[] = [
       eyebrow: "Prețuri reduse",
       title: "Ofertele săptămânii",
       body: "Reduceri la telefoane, laptopuri și accesorii — stoc limitat.",
-      href: "/categories/oferte",
+      href: "/oferte",
       image:
         "https://images.unsplash.com/photo-1607082349566-187342175e2f?auto=format&fit=crop&q=80",
     },
     items: [
       {
         label: "Oferte",
-        href: "/categories/oferte",
+        href: "/oferte",
         description: "Reducerile active, actualizate săptămânal.",
         image:
           "https://images.unsplash.com/photo-1607082349566-187342175e2f?auto=format&fit=crop&q=80",
         highlight: true,
+        sale: true,
       },
       {
         label: "Telefoane mobile",

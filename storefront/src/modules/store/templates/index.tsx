@@ -14,6 +14,7 @@ const StoreTemplate = async ({
   countryCode,
   filters,
   q,
+  sale,
 }: {
   sortBy?: SortOptions
   page?: string
@@ -21,10 +22,26 @@ const StoreTemplate = async ({
   filters?: SelectedFilters
   /** Prezent pe /search: aceeași listă, îngustată de căutare. */
   q?: string
+  /** Prezent pe /oferte: doar produsele bifate „La ofertă" în admin. */
+  sale?: boolean
 }) => {
   const pageNumber = page ? parseInt(page) : 1
   const sort = sortBy || "created_at"
   const term = q?.trim()
+
+  const eyebrow = term ? "Căutare" : sale ? "Oferte" : "Catalog"
+  const heading = term ? (
+    <>Rezultate pentru „{term}”</>
+  ) : sale ? (
+    "Ofertele săptămânii"
+  ) : (
+    "Toate produsele"
+  )
+  const lead = term
+    ? "Filtrează rezultatele după marcă, preț sau categorie."
+    : sale
+      ? "Produsele alese de noi, la preț redus — stoc limitat."
+      : "Explorează întreaga gamă onlybestdevice — device-uri alese cu grijă pentru tine."
 
   return (
     <section
@@ -34,18 +51,16 @@ const StoreTemplate = async ({
       <div className="flex flex-col gap-4 lg:gap-6 lg:flex-row lg:items-end lg:justify-between mb-5 lg:mb-10">
         <header className="flex flex-col gap-2 sm:gap-4 max-w-2xl">
           <span className="hidden lg:inline text-xs uppercase tracking-[0.2em] font-bold text-brand-dark/50">
-            {term ? "Căutare" : "Catalog"}
+            {eyebrow}
           </span>
           <h1
             className="font-serif text-3xl sm:text-5xl lg:text-6xl text-brand-dark leading-[1.05]"
             data-testid="store-page-title"
           >
-            {term ? <>Rezultate pentru „{term}”</> : "Toate produsele"}
+            {heading}
           </h1>
           <p className="text-brand-dark/60 font-medium text-sm sm:text-base leading-relaxed line-clamp-2 sm:line-clamp-none">
-            {term
-              ? "Filtrează rezultatele după marcă, preț sau categorie."
-              : "Explorează întreaga gamă onlybestdevice — device-uri alese cu grijă pentru tine."}
+            {lead}
           </p>
         </header>
 
@@ -67,6 +82,7 @@ const StoreTemplate = async ({
           filters={filters}
           facetParentId={null}
           q={term}
+          sale={sale}
         />
       </Suspense>
     </section>

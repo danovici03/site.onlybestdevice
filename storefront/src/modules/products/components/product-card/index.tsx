@@ -1,8 +1,5 @@
 import { getProductPrice } from "@lib/util/get-product-price"
-import {
-  SHOWROOM_BADGE_LABEL,
-  isShowroomProduct,
-} from "@lib/util/showroom"
+import { getProductBadge } from "@lib/util/product-badge"
 import {
   getPhoneColorSwatches,
   getPhoneSpec,
@@ -18,18 +15,6 @@ import { CreditCard, Star, Truck } from "@phosphor-icons/react/dist/ssr"
 import Image from "@modules/common/components/image"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-
-const getBadge = (product: HttpTypes.StoreProduct): string | null => {
-  if (isShowroomProduct(product)) return SHOWROOM_BADGE_LABEL
-  const tags = (product.tags ?? []).map((t) => t.value?.toLowerCase() ?? "")
-  if (tags.includes("new") || tags.includes("nuovo") || tags.includes("nou"))
-    return "Nou"
-  if (tags.includes("bestseller") || tags.includes("best-seller"))
-    return "Best seller"
-  if (tags.includes("sale") || tags.includes("saldo") || tags.includes("reducere"))
-    return "Reducere"
-  return null
-}
 
 const getRating = (product: HttpTypes.StoreProduct): number | null => {
   const meta = (product.metadata ?? {}) as Record<string, unknown>
@@ -69,7 +54,7 @@ type ProductCardProps = {
 
 const ProductCard = ({ product, priority }: ProductCardProps) => {
   const { cheapestPrice } = getProductPrice({ product })
-  const badge = getBadge(product)
+  const badge = getProductBadge(product)
   const rating = getRating(product)
   const colorOption = getColorOption(product)
 

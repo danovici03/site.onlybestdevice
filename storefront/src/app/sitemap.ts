@@ -2,6 +2,7 @@ import { MetadataRoute } from "next"
 import { listProducts } from "@lib/data/products"
 import { listCategories } from "@lib/data/categories"
 import { categorySlug } from "@lib/util/category-slug"
+import { RETIRED_CATEGORY_HANDLES } from "@lib/util/retired-categories"
 
 const BASE = (
   process.env.NEXT_PUBLIC_BASE_URL || "https://onlybestdevice.ro"
@@ -11,6 +12,7 @@ const REGION = process.env.NEXT_PUBLIC_DEFAULT_REGION || "ro"
 const STATIC_PATHS = [
   "",
   "/store",
+  "/oferte",
   "/livrare",
   "/retur",
   "/garantie",
@@ -47,6 +49,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           ? byId.get(cur.parent_category.id)
           : undefined
       }
+      // Categoriile retrase redirectează 308 (ex. „Oferte" → /oferte, care e
+      // deja în STATIC_PATHS). Rândul lor mai există în Medusa, deci fără
+      // filtrul ăsta sitemap-ul ar declara exact URL-urile pe care middleware-ul
+      // le mută — un hop irosit la fiecare crawl.
+      const leaf = path[path.length - 1]
+      if (leaf && RETIRED_CATEGORY_HANDLES[leaf.toLowerCase()]) continue
+
       if (path.length && path.every(Boolean))
         entries.push({
           url: `${BASE}/${REGION}/categories/${path.join("/")}`,

@@ -20,8 +20,8 @@ const SEED: SeedSlide[] = [
     image_url:
       "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80",
     alt: "Telefoane mobile noi — onlybestdevice",
-    title_line_1: "CELE MAI NOI",
-    title_line_2: "TELEFOANE MOBILE",
+    title_line_1: "Cele mai noi",
+    title_line_2: "telefoane mobile",
     cta_text: "Vezi telefoanele",
     cta_href: "/categories/telefoane-mobile",
   },
@@ -29,8 +29,8 @@ const SEED: SeedSlide[] = [
     image_url:
       "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&q=80",
     alt: "Laptopuri — onlybestdevice",
-    title_line_1: "PUTERE",
-    title_line_2: "PENTRU ORICE TASK",
+    title_line_1: "Putere",
+    title_line_2: "pentru orice task",
     cta_text: "Vezi laptopurile",
     cta_href: "/categories/laptop",
   },
@@ -38,8 +38,8 @@ const SEED: SeedSlide[] = [
     image_url:
       "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&q=80",
     alt: "TV, Audio-Video și Foto — onlybestdevice",
-    title_line_1: "SUNET ȘI IMAGINE",
-    title_line_2: "FĂRĂ COMPROMISURI",
+    title_line_1: "Sunet și imagine",
+    title_line_2: "fără compromisuri",
     cta_text: "Vezi TV & Audio-Video",
     cta_href: "/categories/tv-audio-video-si-foto",
   },

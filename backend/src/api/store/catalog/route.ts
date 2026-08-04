@@ -52,6 +52,17 @@ const QuerySchema = z.object({
   color: multi,
   /** Interval de preț „min-max"; capetele sunt opționale („-500", „100-"). */
   price: z.string().optional(),
+  /**
+   * Doar produsele bifate „La ofertă" în admin (tagul `oferta`).
+   *
+   * Nu se deduce din `compare_at_price`: aproape tot catalogul are un preț
+   * tăiat, deci criteriul acela ar întoarce tot magazinul. Oferta e o selecție
+   * făcută manual, nu o proprietate a prețului.
+   */
+  sale: z
+    .union([z.literal("true"), z.literal("1"), z.literal("false"), z.literal("0")])
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
   sort: z.enum(["created_at", "price_asc", "price_desc"]).default("created_at"),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(12),
@@ -70,8 +81,28 @@ const normName = (s: string): string =>
     .trim()
     .toLowerCase()
 
-/** Categorii-container care n-au sens ca valoare de filtru. */
-const CATEGORY_FACET_BLOCKLIST = new Set(["fara categorie"])
+/**
+ * Categorii-container care n-au sens ca valoare de filtru.
+ *
+ * „Oferte" e aici pentru că nu mai e sursa ofertelor: pagina /oferte listează
+ * după bifa „La ofertă" de pe produs. Lăsată în fațetă, `/store?category=Oferte`
+ * ar rămâne o a doua listă de oferte, care se depărtează de prima la fiecare
+ * bifare — exact contradicția pe care redirectul de pe `/categories/oferte` o
+ * închide la nivel de URL.
+ */
+const CATEGORY_FACET_BLOCKLIST = new Set(["fara categorie", "oferte"])
+
+/**
+ * Tagul care marchează un produs ca fiind la ofertă.
+ *
+ * Exact unul, și exact cel pe care îl scrie bifa „La ofertă" din admin: dacă
+ * am accepta aici și sinonime moștenite din import (`sale`, `reducere`, …), un
+ * produs care le poartă ar apărea pe /oferte în timp ce bifa arată „Preț
+ * normal", iar operatorul n-ar avea cum să-l scoată din admin — bifa scoate
+ * doar `oferta`. Trebuie să rămână aliniat cu `SALE_TAG` din storefront
+ * (`lib/util/sale.ts`).
+ */
+const SALE_TAG = "oferta"
 
 /** Trebuie să rămână aliniat cu `FilterKey` din storefront. */
 type FilterKey = "category" | "brand" | "storage" | "ram" | "color"
@@ -238,6 +269,18 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   }
   if (q.collection_id) {
     scopeWhere.push(`p.collection_id = ${bind(q.collection_id, "coll")}`)
+  }
+  // Oferta îngustează SCOPE-ul, nu setul filtrat: pe /oferte fațetele și
+  // intervalul de preț trebuie să descrie ofertele, nu tot catalogul.
+  if (q.sale) {
+    scopeWhere.push(
+      `p.id IN (
+        SELECT pt.product_id
+        FROM product_tags pt
+        JOIN product_tag t ON t.id = pt.product_tag_id AND t.deleted_at IS NULL
+        WHERE LOWER(t.value) = ${bind(SALE_TAG, "sale")}
+      )`
+    )
   }
 
   // Căutarea îngustează SCOPE-ul, nu doar setul filtrat: și fațetele, și

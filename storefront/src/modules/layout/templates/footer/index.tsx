@@ -10,7 +10,7 @@ import ManagePreferencesLink from "@modules/layout/components/cookie-consent/man
 
 const SHOP_LINKS = [
   { label: "Toate produsele", href: "/store" },
-  { label: "Oferte", href: "/categories/oferte" },
+  { label: "Oferte", href: "/oferte" },
   { label: "Telefoane mobile", href: "/categories/telefoane-mobile" },
   { label: "Laptopuri", href: "/categories/laptop" },
 ]

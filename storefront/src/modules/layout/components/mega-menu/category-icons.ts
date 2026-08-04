@@ -17,7 +17,7 @@ import {
 // și panoul de pe desktop, și drawer-ul de pe mobil — dacă o categorie are alt
 // simbol în cele două locuri, meniul nu mai pare același meniu.
 export const CATEGORY_ICONS: Record<string, React.ElementType> = {
-  "/categories/oferte": Tag,
+  "/oferte": Tag,
   "/categories/telefoane-mobile": DeviceMobile,
   "/categories/tablete": DeviceTablet,
   "/categories/incarcatoare-accesorii": Plug,

@@ -1,6 +1,8 @@
 import { listCategories } from "@lib/data/categories"
-import { listProducts } from "@lib/data/products"
+import { listCatalog, listProducts } from "@lib/data/products"
 import { getProductPrice } from "@lib/util/get-product-price"
+import { emptySelectedFilters } from "@lib/util/product-filters"
+import { HttpTypes } from "@medusajs/types"
 
 import {
   MEGA_MENU,
@@ -9,6 +11,19 @@ import {
 } from "./data"
 
 const PRODUCTS_PER_CATEGORY = 4
+
+const toMenuProducts = (
+  products: HttpTypes.StoreProduct[]
+): MegaMenuProduct[] =>
+  products.map((p) => {
+    const { cheapestPrice } = getProductPrice({ product: p })
+    return {
+      title: p.title ?? "",
+      handle: p.handle ?? "",
+      thumbnail: p.thumbnail ?? null,
+      price: cheapestPrice?.calculated_price ?? null,
+    }
+  })
 
 // Enriches the curated mega-menu with real Medusa products for each category,
 // matched by handle. Everything is defensive — any failure degrades to an
@@ -30,11 +45,30 @@ export async function resolveMegaMenu(
     MEGA_MENU.map(async (root) => {
       const items = await Promise.all(
         root.items.map(async (item) => {
+          const empty = { ...item, count: 0, products: [] as MegaMenuProduct[] }
+
+          // „Oferte" nu e o categorie: se rezolvă din aceeași sursă ca pagina
+          // /oferte (bifa „La ofertă"), altfel meniul ar arăta produse care nu
+          // se regăsesc acolo.
+          if (item.sale) {
+            try {
+              const { products, count } = await listCatalog({
+                countryCode,
+                selected: emptySelectedFilters(),
+                sale: true,
+                limit: PRODUCTS_PER_CATEGORY,
+              })
+              return { ...item, count, products: toMenuProducts(products) }
+            } catch {
+              return empty
+            }
+          }
+
           const handle = item.href.replace(/^\/categories\//, "")
           const categoryId = handleToId.get(handle)
 
           if (!categoryId) {
-            return { ...item, count: 0, products: [] as MegaMenuProduct[] }
+            return empty
           }
 
           try {
@@ -48,19 +82,9 @@ export async function resolveMegaMenu(
               },
             })
 
-            const resolved: MegaMenuProduct[] = products.map((p) => {
-              const { cheapestPrice } = getProductPrice({ product: p })
-              return {
-                title: p.title ?? "",
-                handle: p.handle ?? "",
-                thumbnail: p.thumbnail ?? null,
-                price: cheapestPrice?.calculated_price ?? null,
-              }
-            })
-
-            return { ...item, count, products: resolved }
+            return { ...item, count, products: toMenuProducts(products) }
           } catch {
-            return { ...item, count: 0, products: [] as MegaMenuProduct[] }
+            return empty
           }
         })
       )

@@ -2,9 +2,14 @@
 
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react/dist/ssr"
 import useEmblaCarousel from "embla-carousel-react"
-import Image from "next/image"
+import Image, { type StaticImageData } from "next/image"
 import { useEffect, useRef } from "react"
 
+import laptopuriImg from "../../../../assets/categories/laptopuri.webp"
+import smartwatchImg from "../../../../assets/categories/smartwatch.webp"
+import tableteImg from "../../../../assets/categories/tablete.webp"
+import telefoaneImg from "../../../../assets/categories/telefoane.webp"
+import tvAudioFotoImg from "../../../../assets/categories/tv-audio-foto.webp"
 import { unsplashLoader } from "@lib/util/unsplash-loader"
 import { usePrevNextButtons } from "@modules/common/components/carousel/embla-carousel-hooks"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -13,12 +18,16 @@ type Room = {
   href: string
   title: string
   description: string
-  image: string
+  image: string | StaticImageData
   alt: string
   variant: "dark" | "light"
   // Base color for the soft colored pedestal behind the product cut-out.
   // The card stays white — only the product backdrop is tinted.
   tint?: string
+  // Corecție fină de mărime: produsele au proporții diferite (laptopul e lat,
+  // telefonul e înalt), așa că unele au nevoie de un plus/minus ca să pară
+  // egale ca prezență pe card. 1 = umple complet zona de imagine.
+  scale?: number
 }
 
 const ROOMS: Room[] = [
@@ -35,51 +44,52 @@ const ROOMS: Room[] = [
     href: "/categories/telefoane-mobile",
     title: "Telefoane mobile",
     description: "Smartphone-uri noi, cu garanție",
-    image:
-      "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80",
-    alt: "Telefoane mobile",
+    image: telefoaneImg,
+    alt: "Apple iPhone 17 Pro Max",
     variant: "light",
     tint: "#3B82F6",
+    scale: 0.84,
   },
   {
     href: "/categories/laptop",
     title: "Laptopuri",
     description: "Pentru muncă și gaming",
-    image:
-      "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&q=80",
-    alt: "Laptopuri",
+    image: laptopuriImg,
+    alt: "Apple MacBook Pro 14",
     variant: "light",
     tint: "#8B5CF6",
+    scale: 1.0,
   },
   {
     href: "/categories/tablete",
     title: "Tablete",
     description: "Productivitate și divertisment",
-    image:
-      "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?auto=format&fit=crop&q=80",
-    alt: "Tablete",
+    image: tableteImg,
+    alt: "Apple iPad Pro 13",
     variant: "light",
     tint: "#F59E0B",
+    scale: 0.84,
   },
   {
     href: "/categories/smartwatch-wearables",
     title: "Smartwatch & Wearables",
     description: "Ceasuri smart și brățări fitness",
-    image:
-      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80",
-    alt: "Smartwatch & Wearables",
+    image: smartwatchImg,
+    alt: "Apple Watch Ultra 2",
     variant: "light",
     tint: "#10B981",
+    // Titlul se rupe pe două rânduri, deci ceasul are nevoie de puțin aer.
+    scale: 0.8,
   },
   {
     href: "/categories/tv-audio-video-si-foto",
     title: "TV, Audio-Video și Foto",
     description: "Sunet și imagine de calitate",
-    image:
-      "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&q=80",
-    alt: "TV, Audio-Video și Foto",
+    image: tvAudioFotoImg,
+    alt: "Aparat foto Canon PowerShot V1",
     variant: "light",
     tint: "#F43F5E",
+    scale: 0.94,
   },
 ]
 
@@ -193,24 +203,34 @@ const Rooms = () => {
               ) : (
                 <>
                   {/* Product stage — white card with a soft colored pedestal
-                      behind the floating product cut-out. */}
-                  <div className="relative flex-1 flex items-center justify-center px-5 pt-5 sm:px-8 sm:pt-8 overflow-hidden">
+                      behind the floating product cut-out. Pozele sunt decupaje
+                      pe fundal transparent, tăiate fix pe conturul produsului,
+                      deci pot umple toată zona fără să apară un pătrat alb. */}
+                  <div className="relative flex-1 min-h-0 flex items-center justify-center px-4 pt-5 sm:px-6 sm:pt-7 overflow-hidden">
                     {room.tint ? (
                       <div
                         aria-hidden
-                        className="absolute inset-x-6 top-1/2 -translate-y-[55%] h-[70%] opacity-70 group-hover:opacity-100 transition-opacity duration-700"
+                        className="absolute inset-x-4 top-1/2 -translate-y-[52%] h-[82%] opacity-70 group-hover:opacity-100 transition-opacity duration-700"
                         style={{
                           backgroundImage: `radial-gradient(58% 50% at 50% 50%, ${room.tint}33 0%, ${room.tint}14 45%, transparent 72%)`,
                         }}
                       />
                     ) : null}
-                    <div className="relative w-[82%] h-[80%]">
+                    <div
+                      className="relative w-full h-full"
+                      style={
+                        room.scale ? { transform: `scale(${room.scale})` } : undefined
+                      }
+                    >
                       <Image
-                        loader={unsplashLoader}
                         src={room.image}
                         alt={room.alt}
                         fill
                         sizes="(min-width: 640px) 360px, 280px"
+                        // Import static → Next generează singur blurDataURL-ul,
+                        // așa că se vede produsul (neclar) din primul frame, nu
+                        // un card gol până se descarcă poza la scroll.
+                        placeholder="blur"
                         className="object-contain drop-shadow-[0_26px_30px_rgba(0,0,0,0.22)] transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] group-hover:-translate-y-1"
                       />
                     </div>
