@@ -3,6 +3,10 @@ import { notFound } from "next/navigation"
 import { listProducts } from "@lib/data/products"
 import { getRegion, listRegions } from "@lib/data/regions"
 import { listProductReviews } from "@lib/data/reviews"
+import {
+  descriptionSnippet,
+  descriptionText,
+} from "@lib/util/description-text"
 import ProductTemplate from "@modules/products/templates"
 import { HttpTypes } from "@medusajs/types"
 
@@ -71,8 +75,10 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     notFound()
   }
 
+  // Descrierea e HTML (galeriile importate din WooCommerce) — în meta tag-uri
+  // intră doar textul.
   const desc =
-    (product.description?.replace(/\s+/g, " ").trim().slice(0, 160)) ||
+    descriptionSnippet(product.description) ||
     `${product.title} — disponibil pe onlybestdevice, cu garanție și livrare rapidă.`
 
   return {
@@ -157,7 +163,7 @@ export default async function ProductPage(props: Props) {
       .map((i) => i.url)
       .filter(Boolean)
       .slice(0, 6),
-    description: pricedProduct.description ?? pricedProduct.title,
+    description: descriptionText(pricedProduct.description) || pricedProduct.title,
     sku: pricedProduct.variants?.[0]?.sku || undefined,
     brand: { "@type": "Brand", name: "onlybestdevice" },
     ...(lowPrice

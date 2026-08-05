@@ -9,6 +9,8 @@ import {
   Modules,
 } from "@medusajs/framework/utils"
 
+import { htmlToText } from "../lib/woo-description"
+
 const CURRENCY = (process.env.EXPORT_CURRENCY || "eur").toLowerCase()
 const UPLOAD_TO_STORAGE = process.env.EXPORT_UPLOAD !== "false"
 const LOCAL_OUTPUT_DIR = process.env.EXPORT_OUTPUT_DIR || "/tmp"
@@ -113,7 +115,8 @@ export default async function exportProductsXlsx({ container }: ExecArgs) {
       .map((t: any) => safeText(t?.value))
       .filter(Boolean)
       .join(", ")
-    const description = truncate(safeText(p.description))
+    // Descrierile importate din WooCommerce sunt HTML; în Excel intră textul.
+    const description = truncate(safeText(htmlToText(p.description)))
     const thumbUrl = p.thumbnail || p.images?.[0]?.url || null
 
     let thumb: Buffer | null = null

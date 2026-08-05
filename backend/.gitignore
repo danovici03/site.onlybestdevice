@@ -30,3 +30,4 @@ build
 .medusa
 # raport generat de extract-product-specs
 specs-report.csv
+woo-descriptions-report.csv

@@ -6,6 +6,7 @@ import {
   Truck,
 } from "@phosphor-icons/react/dist/ssr"
 
+import DescriptionPanel from "./description"
 import OpenOnHash from "./open-on-hash"
 
 type ProductTabsProps = {
@@ -21,7 +22,7 @@ type ProductTabsProps = {
 const ACCORDION_GROUP = "product-details"
 
 const ProductTabs = ({ product, reviews, reviewCount }: ProductTabsProps) => {
-  const paragraphs = toParagraphs(product.description)
+  const description = product.description?.trim() || ""
 
   return (
     <section className="bg-brand-light rounded-3xl sm:rounded-[2.5rem] p-2.5 sm:p-8 lg:p-12">
@@ -33,9 +34,9 @@ const ProductTabs = ({ product, reviews, reviewCount }: ProductTabsProps) => {
         <AccordionItem title="Specificații" defaultOpen>
           <SpecsPanel product={product} />
         </AccordionItem>
-        {paragraphs.length > 0 && (
+        {description.length > 0 && (
           <AccordionItem title="Descriere">
-            <DescriptionPanel paragraphs={paragraphs} />
+            <DescriptionPanel description={description} />
           </AccordionItem>
         )}
         <AccordionItem title="Livrare & Retur">
@@ -90,82 +91,6 @@ const AccordionItem = ({
     </summary>
     <div className="px-4 pb-5 sm:px-6 sm:pb-6 lg:px-10 lg:pb-9">{children}</div>
   </details>
-)
-
-/** Descrierile din catalog vin cu multe linii goale consecutive. */
-const toParagraphs = (description?: string | null) =>
-  (description || "")
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-
-const DescriptionPanel = ({ paragraphs }: { paragraphs: string[] }) => {
-  const charCount = paragraphs.reduce((sum, p) => sum + p.length, 0)
-  const isLong = charCount > 320 || paragraphs.length > 3
-
-  const body = paragraphs.map((paragraph, i) => (
-    <p key={i} className="text-brand-dark/70 leading-relaxed">
-      {paragraph}
-    </p>
-  ))
-
-  if (!isLong) {
-    return (
-      <div
-        className="max-w-3xl flex flex-col gap-4"
-        data-testid="product-description"
-      >
-        {body}
-      </div>
-    )
-  }
-
-  // Toggle pur CSS: checkbox ascuns + variantele `peer-checked`. Textul întreg
-  // e mereu în DOM (indexabil), doar înălțimea e limitată vizual.
-  return (
-    <div
-      className="max-w-3xl flex flex-col items-start gap-4"
-      data-testid="product-description"
-    >
-      <input
-        type="checkbox"
-        id="product-description-toggle"
-        className="peer sr-only"
-      />
-      <div className="flex flex-col gap-4 max-h-44 overflow-hidden [mask-image:linear-gradient(to_bottom,#000_55%,transparent_100%)] peer-checked:max-h-none peer-checked:[mask-image:none]">
-        {body}
-      </div>
-      <ToggleLabel className="peer-checked:hidden" caret="down">
-        Citește mai mult
-      </ToggleLabel>
-      <ToggleLabel className="hidden peer-checked:inline-flex" caret="up">
-        Arată mai puțin
-      </ToggleLabel>
-    </div>
-  )
-}
-
-const ToggleLabel = ({
-  className,
-  caret,
-  children,
-}: {
-  className: string
-  caret: "up" | "down"
-  children: React.ReactNode
-}) => (
-  <label
-    htmlFor="product-description-toggle"
-    className={`inline-flex cursor-pointer items-center gap-1.5 text-xs uppercase tracking-[0.18em] font-bold text-brand-dark hover:text-brand-accent transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-brand-accent peer-focus-visible:ring-offset-2 rounded-md ${className}`}
-  >
-    {children}
-    <CaretDown
-      size={12}
-      weight="bold"
-      aria-hidden
-      className={caret === "up" ? "rotate-180" : undefined}
-    />
-  </label>
 )
 
 const Spec = ({ label, value }: { label: string; value: string }) => (
