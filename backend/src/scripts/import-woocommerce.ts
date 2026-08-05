@@ -5,6 +5,8 @@
  * (migration/data/wc-export.json) și creează în Medusa:
  *  - categoriile (mirror după WC: name + handle = slug WC + ierarhie parent)
  *  - produsele (status DRAFT, ca să le verifici înainte de publicare)
+ *  - descrierile ca HTML curățat, CU pozele din „rich description" (vezi
+ *    src/lib/woo-description.ts)
  *  - variantele (simple => 1 variantă; variabile => din WC variations)
  *  - prețuri în RON (unități majore, ex. 2999 = 2999 RON)
  *
@@ -26,6 +28,8 @@ import {
   createProductCategoriesWorkflow,
   createProductsWorkflow,
 } from "@medusajs/medusa/core-flows"
+
+import { hasVisibleContent, sanitizeWooHtml } from "../lib/woo-description"
 
 // Medusa exec rulează cu cwd = directorul `backend/`.
 const EXPORT_PATH =
@@ -95,18 +99,15 @@ function slugify(s: string): string {
     .slice(0, 120)
 }
 
-function stripHtml(html?: string): string | undefined {
-  if (!html) return undefined
-  const txt = html
-    .replace(/<\/(p|div|li|br|h[1-6])>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;|&apos;/g, "'")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim()
-  return txt.length ? txt : undefined
+/**
+ * Descrierea, ca HTML curat. Păstrează galeriile de imagini din „rich
+ * description" (poze hotlinkate pe domeniile sursă) — prima versiune a
+ * importului tăia tot markup-ul și a pierdut ~5.900 de imagini, readuse apoi
+ * cu `import-woo-descriptions.ts`.
+ */
+function descriptionHtml(html?: string): string | undefined {
+  const res = sanitizeWooHtml(html)
+  return hasVisibleContent(res.html) ? res.html : undefined
 }
 
 function toAmount(s?: string): number | null {
@@ -316,7 +317,8 @@ export default async function importWoocommerce({ container }: ExecArgs) {
     toCreate.push({
       title: p.name,
       handle,
-      description: stripHtml(p.description) || stripHtml(p.short_description),
+      description:
+        descriptionHtml(p.description) || descriptionHtml(p.short_description),
       status: statusOf(p.status),
       thumbnail,
       images,
