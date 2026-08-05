@@ -11,9 +11,12 @@ import { CaretDown } from "@phosphor-icons/react/dist/ssr"
  *
  * Produsele adăugate manual din Admin au descriere text simplu — le păstrăm
  * randarea pe paragrafe.
+ *
+ * Linkurile apar doar în descrierile scrise din editorul de admin (importul le
+ * aruncă); sanitizatorul le pune deja `target`/`rel`, aici doar le dăm stil.
  */
 
-const HTML_RE = /<(p|img|figure|ul|ol|h[2-6]|strong|em|br|dl)\b/i
+const HTML_RE = /<(p|img|figure|ul|ol|h[2-6]|strong|em|br|dl|a)\b/i
 
 /** Toggle-ul „Citește mai mult" e pur CSS; id-ul e unic pe pagina de produs. */
 const TOGGLE_ID = "product-description-toggle"
@@ -74,6 +77,8 @@ const RichBody = ({ html }: { html: string }) => (
       prose-strong:text-brand-dark prose-strong:font-bold
       prose-img:rounded-2xl prose-img:mx-auto prose-img:my-0
       prose-figure:my-6 prose-figcaption:text-brand-dark/50
+      prose-a:text-brand-dark prose-a:underline prose-a:underline-offset-2
+      prose-a:decoration-brand-accent hover:prose-a:text-brand-accent
     "
     dangerouslySetInnerHTML={{ __html: html }}
   />

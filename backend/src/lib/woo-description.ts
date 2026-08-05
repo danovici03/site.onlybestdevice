@@ -29,7 +29,13 @@
  * CDN blochează hotlinkul, `migrate-images-to-s3.ts` e locul unde se rescriu.
  */
 
-/** Tag-uri păstrate ca atare. */
+/**
+ * Tag-uri păstrate ca atare.
+ *
+ * `a` lipsește intenționat: descrierile copiate din alte magazine vin pline de
+ * linkuri către sursă. Editorul din admin poate totuși pune linkuri — cere
+ * explicit `allowLinks` (vezi `SanitizeOptions`).
+ */
 const KEEP_TAGS = new Set([
   "p",
   "br",
@@ -89,6 +95,14 @@ export type SanitizeOptions = {
   specLabels?: Set<string>
   /** Limită de siguranță pentru descrierile monstruoase (implicit 120.000). */
   maxLength?: number
+  /**
+   * Păstrează linkurile (`<a href>`), implicit `false`.
+   *
+   * Importul din WooCommerce le aruncă — sunt linkuri către magazinul de unde
+   * s-a copiat descrierea. Le păstrăm doar când textul vine din editorul
+   * nostru de admin, unde operatorul le pune intenționat.
+   */
+  allowLinks?: boolean
 }
 
 export type SanitizeResult = {
@@ -121,7 +135,15 @@ export const normLabel = (s: string) =>
 /** Primul URL dintr-un `srcset` („url 200w, url 400w"). */
 const firstFromSrcset = (v: string) => v.split(",")[0]?.trim().split(/\s+/)[0] || ""
 
-const isUsableUrl = (u: string) => /^https?:\/\/\S+$/i.test(u) && !PLACEHOLDER_RE.test(u)
+/**
+ * Sursă de imagine pe care sanitizatorul o păstrează.
+ *
+ * Exportată pentru editorul din admin: o poză urcată cu un nume nefericit
+ * (`placeholder.png`) sau un URL relativ ar dispărea abia la salvare, fără
+ * niciun mesaj — mai bine o refuzăm la inserare.
+ */
+export const isUsableUrl = (u: string) =>
+  /^https?:\/\/\S+$/i.test(u) && !PLACEHOLDER_RE.test(u)
 
 /**
  * Alege sursa reală a unei imagini. Ordinea contează: `data-src`/`data-flixsrcset`
@@ -156,6 +178,35 @@ function parseAttrs(tag: string): Record<string, string> {
 
 const escapeAttr = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")
+
+/** Domeniile proprii — linkurile către ele se deschid în aceeași filă. */
+const OWN_HOSTS = /^https?:\/\/(www\.)?onlybestdevice\.ro(\/|$)/i
+
+/**
+ * Destinația unui link, dacă e una pe care o acceptăm.
+ *
+ * Allowlist, nu blocklist: `javascript:`, `data:` și restul schemelor nu sunt
+ * respinse una câte una, ci pur și simplu nu se potrivesc. Atenție la
+ * `//alt-site.ro/x` — începe cu `/`, dar e URL absolut, nu cale internă.
+ */
+function safeHref(raw?: string): string | null {
+  if (!raw) return null
+  // Spațiile și caracterele de control se scot înainte de verificare:
+  // `java\nscript:` e o schemă validă pentru browser, dar n-ar cădea pe
+  // niciun tipar de mai jos.
+  const href = decodeEntities(raw.trim()).replace(/[\s\u0000-\u001f\u007f]/g, "")
+  if (!href) return null
+  if (/^https?:\/\/\S+$/i.test(href)) return href
+  if (/^(mailto:|tel:)[^\s]+$/i.test(href)) return href
+  if (/^\/(?!\/)/.test(href)) return href
+  return null
+}
+
+/** Linkurile în afara magazinului se deschid în filă nouă și nu dau greutate SEO. */
+const linkAttrs = (href: string) =>
+  /^https?:\/\//i.test(href) && !OWN_HOSTS.test(href)
+    ? ' target="_blank" rel="nofollow noopener"'
+    : ""
 
 /** Dimensiune numerică validă (sursa are o grămadă de `width=""`). */
 const dimension = (v?: string) =>
@@ -347,9 +398,28 @@ export function sanitizeWooHtml(
     const closing = raw.startsWith("</")
     const mapped = REMAP_TAGS[name] || name
 
-    // Necunoscut sau nedorit (`div`, `span`, `a`, `section`…): îl desfacem —
+    // Necunoscut sau nedorit (`div`, `span`, `section`…): îl desfacem —
     // conținutul rămâne, tag-ul dispare.
-    if (!KEEP_TAGS.has(mapped)) continue
+    const kept = KEEP_TAGS.has(mapped) || (opts.allowLinks === true && mapped === "a")
+    if (!kept) continue
+
+    // Linkul e singurul tag pe care îl scriem cu atribute, deci nu trece prin
+    // ramura comună de mai jos. Fără `href` acceptabil îl desfacem, ca pe orice
+    // tag nedorit: textul rămâne, linkul dispare.
+    if (mapped === "a") {
+      if (closing) {
+        const at = stack.lastIndexOf("a")
+        if (at === -1) continue
+        while (stack.length > at) out.push(`</${stack.pop()}>`)
+        continue
+      }
+      const href = safeHref(parseAttrs(raw)["href"])
+      // Linkurile imbricate n-au sens și ar produce HTML invalid.
+      if (!href || stack.includes("a")) continue
+      stack.push("a")
+      out.push(`<a href="${escapeAttr(href)}"${linkAttrs(href)}>`)
+      continue
+    }
 
     if (VOID_TAGS.has(mapped)) {
       if (closing) continue

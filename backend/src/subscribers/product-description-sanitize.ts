@@ -23,6 +23,11 @@ import {
  * HTML brut de oriunde: pozele lazy se rezolvă, fișele de specificații și
  * `script`/`iframe`-urile dispar, iar tabelele de layout se desfac.
  *
+ * Între timp câmpul are și un editor propriu (widgetul „Descriere" din pagina
+ * de produs), care sanitizează la fel înainte de a trimite — deci pentru el
+ * pasul ăsta iese pe `next === current`. Rămâne pentru orice altă cale de
+ * scriere (API, scripturi, textarea nativ).
+ *
  * Fără buclă: `sanitizeWooHtml` e stabil pe propriul rezultat (verificat pe tot
  * catalogul), așa că `product.updated`-ul provocat de scrierea noastră iese pe
  * `next === current` la a doua trecere. Descrierile fără niciun tag (text
@@ -63,7 +68,11 @@ export default async function sanitizeProductDescription({
 
     if (!current || !HAS_TAGS.test(current)) continue
 
-    const res = sanitizeWooHtml(current)
+    // `allowLinks` doar aici: descrierile salvate din admin pot avea linkuri
+    // puse intenționat de operator, iar fără opțiune subscriberul le-ar șterge
+    // la o secundă după salvare. Importurile din Woo rămân pe implicit (fără),
+    // ca să nu reintre linkurile către magazinele de unde s-a copiat textul.
+    const res = sanitizeWooHtml(current, { allowLinks: true })
     // Dacă nu rămâne nimic vizibil (s-a lipit doar o fișă de specificații),
     // păstrăm măcar textul — nu lăsăm markup brut în baza de date.
     const next = hasVisibleContent(res.html) ? res.html : htmlToText(current)

@@ -22,6 +22,7 @@ import {
 } from "@medusajs/ui"
 import { useCallback, useEffect, useRef, useState } from "react"
 import HeroSlidePreview from "../../components/hero-slide-preview"
+import { uploadImages } from "../../lib/admin-uploads"
 
 type HeroSlide = {
   id: string
@@ -61,25 +62,6 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     )
   }
   return res.json()
-}
-
-async function uploadImage(file: File): Promise<string> {
-  const form = new FormData()
-  form.append("files", file)
-  // Nu setăm Content-Type — browserul adaugă boundary-ul corect pentru FormData.
-  const res = await fetch("/admin/uploads", {
-    method: "POST",
-    credentials: "include",
-    body: form,
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body?.message || "Încărcarea imaginii a eșuat")
-  }
-  const data = await res.json()
-  const url = data?.files?.[0]?.url
-  if (!url) throw new Error("Răspuns invalid de la încărcare")
-  return url
 }
 
 const HeroPage = () => {
@@ -126,7 +108,7 @@ const HeroPage = () => {
     if (!file) return
     setUploading(true)
     try {
-      const url = await uploadImage(file)
+      const [url] = await uploadImages([file])
       setEditing((prev) => ({ ...prev, image_url: url }))
       toast.success("Imagine încărcată")
     } catch (err: any) {

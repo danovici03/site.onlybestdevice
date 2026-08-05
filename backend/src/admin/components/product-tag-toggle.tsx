@@ -1,5 +1,5 @@
 import { AdminProduct } from "@medusajs/types"
-import { Container, Heading, Switch, Text, toast } from "@medusajs/ui"
+import { Container, Heading, Switch, toast } from "@medusajs/ui"
 import { ReactNode, useState } from "react"
 
 import { hasTag, setProductTag } from "../lib/product-tags"
