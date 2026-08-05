@@ -47,7 +47,11 @@ APPLY=1 CHECK_IMAGES=1 yarn medusa exec ./src/scripts/import-woo-descriptions.ts
 ```
 
 - `CHECK_IMAGES=1` cere fiecare poză și le scoate pe cele moarte la sursă
-  (ultima rulare: 76 din 2.839).
+  (ultima rulare: 76 din 2.839, aproape toate 404 pe linkuri Apple vechi).
+  **Rulează verificarea doar de pe o conexiune obișnuită, nu din containerul de
+  pe server**: din datacenter, `www.sony.ro` a refuzat 162 de imagini vii și
+  scriptul le-a șters din 14 produse. Implicit „moartă" înseamnă doar 404/410
+  tocmai din motivul ăsta; `CHECK_STRICT=1` revine la comportamentul vechi.
 - Sare peste descrierile care nu mai seamănă cu sursa (editate în Admin);
   `FORCE=1` le rescrie și pe alea.
 - Idempotent: a doua rulare raportează totul „neschimbat".

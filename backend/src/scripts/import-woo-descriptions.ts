@@ -26,6 +26,10 @@
  *   cd backend && yarn medusa exec ./src/scripts/import-woo-descriptions.ts
  *   APPLY=1 ...                     scrie în baza de date
  *   CHECK_IMAGES=1 ...              cere fiecare poză și le scoate pe cele moarte
+ *                                   (404/410); NU rula asta din containerul de
+ *                                   pe server — unele CDN-uri refuză IP-urile de
+ *                                   datacenter și ar șterge poze bune
+ *   CHECK_STRICT=1 ...              scoate și 403-urile/timeout-urile
  *   ONLY=handle-1,handle-2 ...      doar produsele astea (verificare punctuală)
  *   FORCE=1 ...                     rescrie și descrierile editate manual
  *   WC_EXPORT=/cale/altfel.json     alt fișier de export
@@ -56,17 +60,32 @@ const ONLY = (process.env.ONLY || "")
   .filter(Boolean)
 const CHECK_IMAGES = !!process.env.CHECK_IMAGES
 const CHECK_CONCURRENCY = Number(process.env.CHECK_CONCURRENCY || "24")
+const CHECK_STRICT = !!process.env.CHECK_STRICT
 
 /**
- * Cere fiecare URL o dată și ține minte verdictul. La ultima verificare, 77 din
- * 2.839 de poze erau moarte la sursă (mai ales linkuri Apple vechi).
+ * Cere fiecare URL o dată și ține minte verdictul.
+ *
+ * „Moartă" înseamnă implicit DOAR 404/410 — adică poza chiar nu mai există la
+ * sursă. Un 403 sau un timeout nu e o dovadă: rulat din containerul de pe
+ * Hetzner, `www.sony.ro` a refuzat 162 de imagini care se încarcă perfect din
+ * browserul unui client, iar scriptul le-a șters din 14 produse. De aceea, cu
+ * `CHECK_STRICT=1` (vechiul comportament) scoate și 403-urile/erorile — de
+ * folosit doar de pe o conexiune obișnuită, niciodată din datacenter.
  */
-async function findDeadImages(urls: string[]): Promise<Set<string>> {
+async function findDeadImages(
+  urls: string[],
+  logger: { info: (m: string) => void }
+): Promise<Set<string>> {
   const unique = [...new Set(urls)]
   const dead = new Set<string>()
+  const byStatus: Record<string, number> = {}
+
+  const isDead = (status: number | string) =>
+    CHECK_STRICT ? status !== 200 && status !== 206 : status === 404 || status === 410
 
   const worker = async (queue: string[]) => {
     for (const url of queue) {
+      let status: number | string
       try {
         const signal = AbortSignal.timeout(15_000)
         let res = await fetch(url, { method: "HEAD", signal })
@@ -74,10 +93,14 @@ async function findDeadImages(urls: string[]): Promise<Set<string>> {
         if (res.status === 403 || res.status === 405) {
           res = await fetch(url, { headers: { range: "bytes=0-100" }, signal })
         }
-        if (res.status !== 200 && res.status !== 206) dead.add(url)
-      } catch {
-        dead.add(url)
+        status = res.status
+      } catch (e) {
+        status = `ERR:${(e as Error).name}`
       }
+      if (status !== 200 && status !== 206) {
+        byStatus[String(status)] = (byStatus[String(status)] || 0) + 1
+      }
+      if (isDead(status)) dead.add(url)
     }
   }
 
@@ -87,6 +110,17 @@ async function findDeadImages(urls: string[]): Promise<Set<string>> {
       worker(unique.filter((_, j) => j % n === i))
     )
   )
+
+  const summary = Object.entries(byStatus)
+    .sort((a, b) => b[1] - a[1])
+    .map(([s, n]) => `${s}: ${n}`)
+    .join(", ")
+  if (summary) {
+    logger.info(
+      `Răspunsuri non-200: ${summary}` +
+        (CHECK_STRICT ? " (toate tratate ca moarte)" : " — moarte doar 404/410")
+    )
+  }
   return dead
 }
 
@@ -214,7 +248,7 @@ export default async function importWooDescriptions({ container }: ExecArgs) {
   if (CHECK_IMAGES) {
     const urls = pending.flatMap((x) => x.res.images)
     logger.info(`Verific ${new Set(urls).size} URL-uri de imagini...`)
-    deadImages = await findDeadImages(urls)
+    deadImages = await findDeadImages(urls, logger)
     logger.info(`Poze moarte la sursă: ${deadImages.size} — se scot din descrieri.`)
   }
 
