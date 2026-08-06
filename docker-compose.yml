@@ -39,6 +39,12 @@ services:
 
   backend:
     image: ghcr.io/danovici03/site.onlybestdevice-backend:latest
+    # Dokploy deployează cu `docker compose up -d`, fără `--pull`. Fără linia de
+    # mai jos, Docker vede că are deja local tag-ul `:latest`, nu mai întreabă
+    # registry-ul și lasă containerul vechi în picioare — deploy-ul iese verde
+    # dar rulează codul precedent. `always` îl obligă să verifice ghcr de
+    # fiecare dată (dacă digest-ul e același, nu descarcă nimic).
+    pull_policy: always
     restart: unless-stopped
     depends_on:
       postgres:
