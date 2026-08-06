@@ -63,6 +63,22 @@ const QuerySchema = z.object({
     .union([z.literal("true"), z.literal("1"), z.literal("false"), z.literal("0")])
     .optional()
     .transform((v) => v === "true" || v === "1"),
+  /**
+   * Doar produsele care poartă tagul dat (ex. `recomandat`, scris de bifa
+   * „Recomandat" din admin).
+   *
+   * Complementar lui `sale`, care are parametru propriu pentru că e criteriul
+   * paginii /oferte. Aici selecția e liberă, ca prima pagină să poată cere
+   * „produsele bifate din categoria asta" fără să aducă tot catalogul și să
+   * caute tagul în memorie — un produs bifat dar aflat pe pagina a treia n-ar
+   * urca niciodată în vitrină.
+   */
+  tag: z
+    .string()
+    .trim()
+    .max(64)
+    .optional()
+    .transform((v) => (v ? v.toLowerCase() : undefined)),
   sort: z.enum(["created_at", "price_asc", "price_desc"]).default("created_at"),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(12),
@@ -279,6 +295,19 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
         FROM product_tags pt
         JOIN product_tag t ON t.id = pt.product_tag_id AND t.deleted_at IS NULL
         WHERE LOWER(t.value) = ${bind(SALE_TAG, "sale")}
+      )`
+    )
+  }
+
+  // Același filtru, cu tagul cerut de client (ex. `recomandat`). Îngustează tot
+  // scope-ul, ca fațetele și prețurile să descrie selecția, nu tot catalogul.
+  if (q.tag) {
+    scopeWhere.push(
+      `p.id IN (
+        SELECT pt.product_id
+        FROM product_tags pt
+        JOIN product_tag t ON t.id = pt.product_tag_id AND t.deleted_at IS NULL
+        WHERE LOWER(t.value) = ${bind(q.tag, "tag")}
       )`
     )
   }

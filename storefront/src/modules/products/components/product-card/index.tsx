@@ -111,6 +111,9 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
     <LocalizedClientLink
       href={`/products/${product.handle}`}
       className="group block h-full"
+      // Cardul stă și în carusele: drag-ul nativ de link/imagine ar concura cu
+      // drag-ul caruselului (vezi rețeta Embla din product-rail).
+      draggable={false}
       data-testid="product-wrapper"
     >
       <div className="flex h-full flex-col rounded-[1.5rem] border border-brand-dark/[0.07] bg-white p-2.5 sm:p-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-shadow duration-300 hover:shadow-[0_14px_30px_-14px_rgba(16,24,40,0.22)]">
@@ -125,6 +128,7 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
               fill
               sizes="(min-width: 1280px) 22vw, (min-width: 640px) 33vw, 50vw"
               priority={priority}
+              draggable={false}
               className="object-contain sm:object-cover transition-transform duration-700 group-hover:scale-105"
             />
           )}

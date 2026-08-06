@@ -172,6 +172,7 @@ export const listCatalog = async ({
   selected,
   q,
   sale,
+  tag,
   sortBy = "created_at",
   page = 1,
   limit = 12,
@@ -183,6 +184,8 @@ export const listCatalog = async ({
   selected: SelectedFilters
   /** Doar produsele bifate „La ofertă" în admin. */
   sale?: boolean
+  /** Doar produsele care poartă tagul dat (ex. `recomandat`). */
+  tag?: string
   /** Căutare liberă; îngustează și fațetele, nu doar lista de produse. */
   q?: string
   sortBy?: SortOptions
@@ -203,6 +206,7 @@ export const listCatalog = async ({
   if (categoryIds?.length) query.category_id = categoryIds
   if (collectionId) query.collection_id = collectionId
   if (sale) query.sale = "true"
+  if (tag) query.tag = tag
   // Peste 120 de caractere `/store/catalog` respinge cererea cu 400, iar
   // clientul ar vedea „niciun rezultat" fără să înțeleagă de ce — un titlu de
   // produs lipit în bară trece ușor de limită. Tăiem în loc să refuzăm.
