@@ -1,8 +1,8 @@
 import { Metadata } from "next"
 
 import BestSellers from "@modules/home/components/best-sellers"
+import FeaturedRail from "@modules/home/components/featured-rail"
 import Hero from "@modules/home/components/hero"
-import IconicProducts from "@modules/home/components/iconic-products"
 import OffersRail from "@modules/home/components/offers-rail"
 import Rooms from "@modules/home/components/rooms"
 import { getRegion } from "@lib/data/regions"
@@ -29,7 +29,7 @@ export default async function Home(props: {
     <>
       <Hero />
       <Rooms />
-      <IconicProducts countryCode={countryCode} />
+      <FeaturedRail countryCode={countryCode} />
       <OffersRail countryCode={countryCode} />
       <BestSellers countryCode={countryCode} />
     </>
