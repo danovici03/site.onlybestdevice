@@ -9,6 +9,7 @@ import {
 } from "@lib/util/description-text"
 import ProductTemplate from "@modules/products/templates"
 import { HttpTypes } from "@medusajs/types"
+import { failStaticParams } from "@lib/util/static-params"
 
 type Props = {
   params: Promise<{ countryCode: string; handle: string }>
@@ -48,12 +49,7 @@ export async function generateStaticParams() {
       )
       .filter((param) => param.handle)
   } catch (error) {
-    console.error(
-      `Failed to generate static paths for product pages: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }.`
-    )
-    return []
+    failStaticParams("produse", error)
   }
 }
 

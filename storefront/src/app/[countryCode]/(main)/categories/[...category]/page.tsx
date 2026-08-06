@@ -14,6 +14,7 @@ import { StoreRegion } from "@medusajs/types"
 import CategoryTemplate from "@modules/categories/templates"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import { parseSelectedFilters } from "@lib/util/product-filters"
+import { failStaticParams } from "@lib/util/static-params"
 
 type Props = {
   params: Promise<{ category: string[]; countryCode: string }>
@@ -70,12 +71,7 @@ export async function generateStaticParams() {
 
     return staticParams
   } catch (error) {
-    console.error(
-      `Failed to generate static paths for category pages: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }.`
-    )
-    return []
+    failStaticParams("categorii", error)
   }
 }
 

@@ -7,6 +7,7 @@ import { StoreCollection, StoreRegion } from "@medusajs/types"
 import CollectionTemplate from "@modules/collections/templates"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import { parseSelectedFilters } from "@lib/util/product-filters"
+import { failStaticParams } from "@lib/util/static-params"
 
 type Props = {
   params: Promise<{ handle: string; countryCode: string }>
@@ -56,12 +57,7 @@ export async function generateStaticParams() {
 
     return staticParams
   } catch (error) {
-    console.error(
-      `Failed to generate static paths for collection pages: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }.`
-    )
-    return []
+    failStaticParams("colecții", error)
   }
 }
 
