@@ -86,6 +86,47 @@ const EXCLUDED_ROOTS = [
   "suporturi-auto",
 ]
 
+/**
+ * Produse judecate manual ca eligibile, pe care categoriile nu le puteau
+ * decide: stau în „Diverse" sau fără categorie, iar lista lor a ieșit din
+ * secțiunea „De decis manual" a unei rulări anterioare (10.08.2026).
+ *
+ * Sunt aici, nu doar bifate din Admin, ca decizia să fie idempotentă: o bifă
+ * pusă manual n-ar supraviețui unei rulări cu `PRUNE=1`, iar peste șase luni
+ * nimeni n-ar mai ști de ce produsul ăsta are garanție și vecinul lui nu.
+ *
+ * Pragul de preț se aplică și lor — lista spune „merită garanție", nu
+ * „ocolește regulile". Categoriile de accesorii bat lista, ca peste tot.
+ */
+const EXTRA_HANDLES = [
+  "sistem-desktop-pc-imac-24-2024-cu-procesor-apple-m4-10-nuclee-cpu-and-10-nuclee-gpu-24-display-standard-16gb-256gb-ssd-layout-int-blue",
+  "apple-ipad-air-11-m3-128gb-wi-fi-space-grey",
+  "apple-ipad-11-128gb-wi-fi-cellular-silver",
+  "awow-mini-pc-w-11-pro-intel-core-i5-13500hx-14c-2-5-4-7ghz-32gb-ddr4-3200mhz-1tb-m-2-pcie3-0-ssd-4k-60hz-dp-type-c-2-5g",
+  "gopro-hero12-black-camera-de-actiune-5-3",
+  "sistem-de-navigatie-garmin-zumo-xt2-motorcycle-sat-nav",
+  "ceas-sport-suunto-9-peak-pro-all-black",
+  "sony-linkbuds",
+  "casti-over-the-ear-sony-ult-wear-wireless-bluetooth-ult-power-sound-noise-cancelling-autonomie-baterie-30-ore-microfon-ios-si-android-negru",
+  "tableta-xiaomi-redmi-pad-se-11-4gb-ram-128gb-graphite-gray",
+  "sistem-mesh-wi-fi-asus-xt8b-1-pk-ax6600-tri-band-wi-fi-6-aimesh-acoperire-pentru-intreaga-casa",
+  "videoproiector-portabil-xgimi-mogo-2-pro-1080p-google-tv-400-iso-lumeni-focalizare-automata-wifi-bluetooth-alimentare-usb-c",
+  "trotineta-electrica-cecotec-bongo-serie-d20",
+  "stylus-apple-pencil-pro-2024",
+  "feelworld-fw568-v3-monitor-6-3d-lut-ips-full-hd",
+  // Stă în „Smartwatch & Wearables", categorie duplicat cu handle-ul scris cu
+  // `&`. Nu adăugăm handle-ul ăla în `ELIGIBLE_ROOTS` fiindcă e singurul
+  // produs din el — restul ceasurilor stau în `smartatch-si-wearables`.
+  "smartwatch-active-2",
+]
+
+/**
+ * Electrocasnicele și roboții de curățenie (aspiratoare iRobot/Dreame/Mova,
+ * espressoare, Dyson) au rămas DELIBERAT pe dinafară la 10.08.2026: garanția
+ * extinsă acoperă electronice, nu electrocasnice. Apar în continuare în lista
+ * „De decis manual" la fiecare rulare — e zgomot așteptat, nu ceva de reparat.
+ */
+
 /** Produsul de serviciu însuși — el nu poate avea garanție pe el. */
 const WARRANTY_HANDLE = "garantie-extinsa"
 
@@ -146,6 +187,15 @@ export default async function seedWarrantyTag({ container }: ExecArgs) {
     ],
   })
 
+  // Un handle scris greșit sau al unui produs șters ar tăcea la nesfârșit —
+  // produsul n-ar fi tagat și nimeni n-ar ști de ce.
+  const productHandles = new Set((products as any[]).map((p) => p.handle))
+  for (const h of EXTRA_HANDLES) {
+    if (!productHandles.has(h)) {
+      logger.warn(`EXTRA_HANDLES: „${h}" nu există printre produse — ignorat.`)
+    }
+  }
+
   /** Cel mai mic preț al produsului în moneda noastră, dacă are vreunul. */
   const lowestPrice = (p: any): number | null => {
     const amounts = (p.variants ?? []).flatMap((v: any) =>
@@ -168,7 +218,9 @@ export default async function seedWarrantyTag({ container }: ExecArgs) {
 
     const chains = (p.categories ?? []).flatMap((c: any) => ancestry(c.id))
     const isExcluded = chains.some((h) => EXCLUDED_ROOTS.includes(h))
-    const isEligible = chains.some((h) => ELIGIBLE_ROOTS.includes(h))
+    const isEligible =
+      chains.some((h) => ELIGIBLE_ROOTS.includes(h)) ||
+      EXTRA_HANDLES.includes(p.handle)
 
     if (isExcluded) {
       excluded.push(p)
@@ -263,12 +315,17 @@ export default async function seedWarrantyTag({ container }: ExecArgs) {
       `── De decis manual (${unresolved.length}) ─────────────────────────`
     )
     logger.info(
-      "Categoriile lor nu spun dacă merită garanție. Bifează-le din Admin:"
+      "Categoriile lor nu spun dacă merită garanție. Handle-ul e primul, ca să-l"
+    )
+    logger.info(
+      "poți muta direct în `EXTRA_HANDLES` — sau bifează-le din Admin:"
     )
     for (const p of unresolved) {
       const cats = (p.categories ?? []).map((c: any) => c.handle).join(", ")
       const price = lowestPrice(p)
-      logger.info(`  ${price ?? "?"} lei  ${p.title}  [${cats || "fără categorie"}]`)
+      logger.info(
+        `  "${p.handle}",  // ${price ?? "?"} lei — ${p.title}  [${cats || "fără categorie"}]`
+      )
     }
   }
 }
