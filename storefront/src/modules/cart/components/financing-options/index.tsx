@@ -2,13 +2,20 @@
 
 /**
  * Selectorul de finanțatori din coș: titlu „Cumpără în rate" + câte un rând
- * expandabil pe finanțator. UniCredit deschide calculatorul de rate
- * (`Installments` în modul embedded); TBI Bank rămâne doar descriptiv — fără
- * cifre până primim parametrii de cost (OUG 50/2010 cere DAE la publicitatea
- * creditelor).
+ * expandabil pe finanțator. Fiecare rând deschide calculatorul de rate
+ * (`Installments` în modul embedded, fixat pe finanțatorul lui). Rândul TBI
+ * rămâne descriptiv cât timp providerul nu e activ pe regiune.
  */
 
-import { availableTerms, supportsInstallments } from "@lib/util/installments"
+import {
+  Financier,
+  TBI_MAX,
+  TBI_MIN,
+  availableTerms,
+  formatLei,
+  lowestOffer,
+  supportsInstallments,
+} from "@lib/util/installments"
 import { clx } from "@medusajs/ui"
 import {
   TbiBadge,
@@ -30,18 +37,28 @@ type FinancingOptionsProps = {
   tbiAvailable?: boolean
 }
 
-type Provider = "ucfin" | "tbi"
+type Provider = Financier
 
 const FinancingOptions = ({
   amount,
   currency,
   tbiAvailable = false,
 }: FinancingOptionsProps) => {
-  const [open, setOpen] = useState<Provider | null>("ucfin")
+  // Deschis implicit pe finanțatorul cu rata cea mai mică pentru coșul
+  // curent. Se evaluează doar la montare — un coș modificat între timp nu
+  // sare peste alegerea clientului.
+  const [open, setOpen] = useState<Provider | null>(
+    () =>
+      lowestOffer(amount, tbiAvailable ? ["ucfin", "tbi"] : ["ucfin"])
+        ?.financier ?? "ucfin"
+  )
 
   if (!supportsInstallments(currency)) return null
 
-  const hasUcfin = availableTerms(amount).length > 0
+  const hasUcfin = availableTerms("ucfin", amount).length > 0
+  const hasTbiTerms = availableTerms("tbi", amount).length > 0
+  const tbiTeaser = tbiAvailable ? lowestOffer(amount, ["tbi"]) : null
+  const ucfinTeaser = lowestOffer(amount, ["ucfin"])
 
   const toggle = (p: Provider) => setOpen((cur) => (cur === p ? null : p))
 
@@ -78,7 +95,9 @@ const FinancingOptions = ({
                   UniCredit Consumer Financing
                 </span>
                 <span className="block text-xs text-brand-dark/55 mt-0.5">
-                  Credit online, răspuns în maximum 15 minute
+                  {ucfinTeaser
+                    ? `De la ${formatLei(ucfinTeaser.monthly)}/lună · răspuns în maximum 15 minute`
+                    : "Credit online, răspuns în maximum 15 minute"}
                 </span>
               </span>
               <UniCreditBadge />
@@ -96,6 +115,7 @@ const FinancingOptions = ({
                 <Installments
                   amount={amount}
                   currency={currency}
+                  financier="ucfin"
                   compact
                   embedded
                 />
@@ -121,8 +141,8 @@ const FinancingOptions = ({
                 )}
               </span>
               <span className="block text-xs text-brand-dark/55 mt-0.5">
-                {tbiAvailable
-                  ? "Plată în rate 100% online, fără card de credit"
+                {tbiTeaser
+                  ? `De la ${formatLei(tbiTeaser.monthly)}/lună · fără card de credit`
                   : "Plată în rate 100% online"}
               </span>
             </span>
@@ -136,26 +156,37 @@ const FinancingOptions = ({
               )}
             />
           </button>
-          {open === "tbi" && (
-            <div className="border-t border-brand-dark/10 px-4 py-3 text-xs leading-relaxed text-brand-dark/70">
-              {tbiAvailable ? (
-                <>
-                  Alegi „TBI Bank” la finalizarea comenzii și aplici online,
-                  fără card de credit. Numărul de rate, dobânda și DAE se
-                  calculează și se afișează pe pagina securizată TBI Bank,
-                  înainte de semnarea contractului.
-                </>
-              ) : (
-                <>
-                  În curând vei putea plăti în rate și prin TBI Bank: aplici
-                  online direct din finalizarea comenzii, iar aprobarea vine în
-                  câteva minute. Ratele, dobânda și DAE se calculează și se
-                  afișează pe pagina securizată TBI Bank, înainte de semnarea
-                  contractului.
-                </>
-              )}
-            </div>
-          )}
+          {open === "tbi" &&
+            (tbiAvailable && hasTbiTerms ? (
+              <div className="border-t border-brand-dark/10">
+                <Installments
+                  amount={amount}
+                  currency={currency}
+                  financier="tbi"
+                  compact
+                  embedded
+                />
+              </div>
+            ) : (
+              <div className="border-t border-brand-dark/10 px-4 py-3 text-xs leading-relaxed text-brand-dark/70">
+                {!tbiAvailable ? (
+                  <>
+                    În curând vei putea plăti în rate și prin TBI Bank: aplici
+                    online direct din finalizarea comenzii, iar aprobarea vine
+                    în câteva minute. Ratele, dobânda și DAE se calculează și se
+                    afișează pe pagina securizată TBI Bank, înainte de semnarea
+                    contractului.
+                  </>
+                ) : (
+                  <>
+                    Valoarea coșului este în afara sumelor finanțabile de TBI
+                    Bank ({formatLei(TBI_MIN)} – {formatLei(TBI_MAX)}). Alegi
+                    „TBI Bank” la finalizarea comenzii doar pentru comenzi din
+                    acest interval.
+                  </>
+                )}
+              </div>
+            ))}
         </div>
       </div>
     </section>

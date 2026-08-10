@@ -32,8 +32,11 @@ import { signup } from "@lib/data/customer"
 import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
 import { convertToLocale } from "@lib/util/money"
 import {
+  TBI_MAX,
+  TBI_MIN,
   UCFIN_GDPR_URL,
   availableTerms,
+  lowestOfferFrom,
   supportsInstallments,
 } from "@lib/util/installments"
 import { HttpTypes } from "@medusajs/types"
@@ -161,7 +164,7 @@ const methodMeta = (
     return {
       title: "TBI Bank – plată în rate online",
       description:
-        "Aplici online, fără card de credit. Vei fi redirecționat către TBI Bank, unde alegi numărul de rate și primești răspunsul pe loc.",
+        "Aplici online, fără card de credit. Alegi numărul de rate mai jos, apoi ești redirecționat către TBI Bank pentru semnare și primești răspunsul pe loc.",
       badges: <TbiBadge />,
     }
   }
@@ -472,7 +475,7 @@ const OnePageCheckout = ({
   }
 
   const cartTotal = cart?.total ?? 0
-  const financingTerms = availableTerms(cartTotal)
+  const financingTerms = availableTerms("ucfin", cartTotal)
   const financeable =
     supportsInstallments(cart?.currency_code) && financingTerms.length > 0
   const [creditMonths, setCreditMonths] = useState<number | null>(
@@ -483,6 +486,22 @@ const OnePageCheckout = ({
       ? creditMonths
       : financingTerms[financingTerms.length - 1]
 
+  // TBI are propriile praguri și termene (inclusiv 4 rate fixe sub 2.000 lei),
+  // deci alegerea lui se ține separat de cea a UniCredit.
+  const tbiTerms = supportsInstallments(cart?.currency_code)
+    ? availableTerms("tbi", cartTotal)
+    : []
+  // Seed din sesiunea pendinte, ca termenul ales înainte de o revenire de la
+  // TBI (anulare, eroare) să nu fie înlocuit tăcut cu implicitul.
+  const [tbiMonths, setTbiMonths] = useState<number | null>(
+    (activeSession?.data?.credit_period as number) ?? null
+  )
+  const selectedTbiMonths = !tbiTerms.length
+    ? undefined
+    : tbiMonths && tbiTerms.includes(tbiMonths)
+      ? tbiMonths
+      : lowestOfferFrom("tbi", cartTotal)?.months
+
   /** Ramburs-ul cade peste plafonul legal de numerar (Legea 70/2015). */
   const cashAllowed = codAvailable(cartTotal, cart?.currency_code)
 
@@ -490,13 +509,16 @@ const OnePageCheckout = ({
     const filtered = paymentMethods
       .filter((pm) => !pm.id.startsWith("pp_stripe-")) // sub-providerii Stripe
       .filter((pm) => !isUnicredit(pm.id) || financeable)
+      // TBI are alte praguri decât UCFin (vezi TBI_MIN/TBI_MAX): în afara lor
+      // cererea de credit ar fi respinsă, deci nici nu oferim metoda.
+      .filter((pm) => !isTbi(pm.id) || tbiTerms.length > 0)
       .filter((pm) => !isCod(pm.id) || cashAllowed)
     return filtered.sort((a, b) => {
       const ia = METHOD_ORDER.indexOf(a.id)
       const ib = METHOD_ORDER.indexOf(b.id)
       return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
     })
-  }, [paymentMethods, financeable, cashAllowed])
+  }, [paymentMethods, financeable, cashAllowed, tbiTerms.length])
 
   /**
    * Coșul poate depăși plafonul după ce clientul alesese deja ramburs-ul
@@ -513,7 +535,19 @@ const OnePageCheckout = ({
     }
   }, [cashAllowed, selectedPayment])
 
+  /** Aceeași poveste pentru TBI: coșul poate ieși din plafoanele lui. */
+  useEffect(() => {
+    if (selectedPayment && isTbi(selectedPayment) && !tbiTerms.length) {
+      setSelectedPayment("")
+      setPaymentError(
+        `Plata în rate prin TBI Bank este disponibilă pentru comenzi între ${TBI_MIN.toLocaleString("ro-RO")} și ${TBI_MAX.toLocaleString("ro-RO")} lei. Alege altă metodă de plată.`
+      )
+    }
+  }, [tbiTerms.length, selectedPayment])
+
   const hasTbi = paymentMethods.some((pm) => pm.id.startsWith("pp_tbi"))
+  /** Providerul TBI e activ, dar plafoanele lui scot metoda din listă. */
+  const tbiOutOfRange = hasTbi && !tbiTerms.length
 
   /** Providerul e activ pe regiune, dar plafonul îl scoate din listă. */
   const hasCod = paymentMethods.some((pm) => isCod(pm.id))
@@ -597,13 +631,15 @@ const OnePageCheckout = ({
         })
         await placeFinancedOrder("unicredit")
       } else if (isTbi(selectedPayment)) {
-        // Selectorul de rate se afișează doar la UniCredit, deci pentru TBI
-        // `creditMonths` e de regulă null — trimitem doar o alegere explicită,
-        // altfel backend-ul pune 12. `selectedCreditMonths` ar da termenul
-        // maxim, pe care clientul nu l-a ales. Oricum îl schimbă la TBI.
+        // Termenul ales în calculatorul TBI de mai jos; dacă suma nu e
+        // finanțabilă de TBI nu trimitem nimic și backend-ul pune 12 (oricum
+        // clientul îl poate schimba pe pagina TBI).
         await initiatePaymentSession(cart, {
           provider_id: selectedPayment,
-          data: { credit_period: creditMonths ?? undefined, gdpr: gdprAccepted },
+          data: {
+            credit_period: selectedTbiMonths ?? undefined,
+            gdpr: gdprAccepted,
+          },
         })
         await placeFinancedOrder("tbi")
       } else if (isNetopia(selectedPayment)) {
@@ -1047,15 +1083,26 @@ const OnePageCheckout = ({
                           <SkeletonCardDetails />
                         ))}
 
+                      {isTbi(pm.id) && !!selectedTbiMonths && (
+                        <Installments
+                          amount={cartTotal}
+                          currency={cart?.currency_code}
+                          financier="tbi"
+                          compact
+                          initialMonths={selectedTbiMonths}
+                          onSelectMonths={setTbiMonths}
+                        />
+                      )}
+
                       {isUnicredit(pm.id) && (
                         <>
                           <Installments
                             amount={cartTotal}
                             currency={cart?.currency_code}
+                            financier="ucfin"
                             compact
                             initialMonths={selectedCreditMonths}
                             onSelectMonths={setCreditMonths}
-                            tbiAvailable={hasTbi}
                           />
                           <label className="flex items-start gap-2.5 rounded-2xl border border-brand-dark/10 bg-white px-4 py-3 text-xs leading-relaxed text-brand-dark/70 cursor-pointer">
                             <input
@@ -1111,6 +1158,19 @@ const OnePageCheckout = ({
               </div>
             )}
           </RadioGroup>
+          {/* La fel ca la ramburs: clientul a văzut rate TBI pe produs și în
+              coș, deci dispariția metodei fără explicație arată ca un bug. */}
+          {tbiOutOfRange && (
+            <p
+              className="mt-3 text-xs leading-relaxed text-brand-dark/55"
+              data-testid="tbi-limit-notice"
+            >
+              Plata în rate prin TBI Bank este disponibilă pentru comenzi între{" "}
+              {TBI_MIN.toLocaleString("ro-RO")} și{" "}
+              {TBI_MAX.toLocaleString("ro-RO")} lei — valoarea coșului tău este
+              în afara acestui interval.
+            </p>
+          )}
           {/* Fără explicație, dispariția ramburs-ului peste plafon arată ca un bug. */}
           {!cashAllowed && hasCod && (
             <p

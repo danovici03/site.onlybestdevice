@@ -130,7 +130,7 @@ export default function CreditOnlinePage() {
                 <td>
                   {p.minMonths} → {p.maxMonths} luni
                 </td>
-                <td>{p.dae.toLocaleString("ro-RO")}%</td>
+                <td>{p.publishedDae?.toLocaleString("ro-RO")}%</td>
               </tr>
             ))}
           </tbody>

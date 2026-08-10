@@ -248,15 +248,22 @@ export default function ProductActions({
   const selectedPrice = selectedVariant ? variantPrice : cheapestPrice
   const onSale = selectedPrice?.price_type === "sale"
 
-  // Rata cea mai mică posibilă, pentru rezumatul de lângă preț. Aceeași sursă
-  // ca în cardul de rate de mai jos, ca cifrele să nu se contrazică.
+  // Rata cea mai mică posibilă, indiferent de finanțator, pentru rezumatul de
+  // lângă preț. Aceeași sursă ca în calculatorul de mai jos (care se deschide
+  // pe același finanțator), ca cifrele să nu se contrazică. TBI intră în
+  // comparație doar dacă providerul e activ pe regiune — altfel am promite o
+  // rată pe care clientul n-o poate alege la finalizare.
   const teaserOffer = useMemo(() => {
     const amount = selectedPrice?.calculated_price_number
     if (!amount || !supportsInstallments(selectedPrice?.currency_code)) {
       return null
     }
-    return lowestOffer(amount)
-  }, [selectedPrice?.calculated_price_number, selectedPrice?.currency_code])
+    return lowestOffer(amount, tbiAvailable ? ["ucfin", "tbi"] : ["ucfin"])
+  }, [
+    selectedPrice?.calculated_price_number,
+    selectedPrice?.currency_code,
+    tbiAvailable,
+  ])
 
   const actionsRef = useRef<HTMLDivElement>(null)
   const inView = useIntersection(actionsRef, "0px")
