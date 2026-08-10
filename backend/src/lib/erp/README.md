@@ -11,6 +11,9 @@ Medusa ────────────────────────�
       stoc disponibil (absolut, nu delta)
 Medusa ◄───────────────────────────── Laravel   POST /admin/erp/stock
                                                 (HTTP Basic cu Secret API Key)
+
+      produse noi (draft)
+Medusa ◄───────────────────────────── Laravel   POST /admin/erp/products
 ```
 
 ## Config
@@ -22,6 +25,7 @@ Medusa ◄───────────────────────�
 | `ERP_WEBHOOK_URL`       | `https://<gestiune>/webhooks/medusa/order`                        |
 | `ERP_WEBHOOK_SECRET`    | identic cu `MEDUSA_WEBHOOK_SECRET` din `.env`-ul Laravel          |
 | `ERP_STOCK_LOCATION_ID` | opțional; implicit prima stock location din Medusa                |
+| `ERP_CURRENCY`          | opțional; implicit moneda default a magazinului                    |
 
 Fără primele două, subscriberul se autodezactivează în tăcere (log `info`) —
 comenzile **nu** ajung în gestiune și stocul nu se scade.
@@ -93,6 +97,53 @@ Ruta face tot upsert-ul într-un apel: aprinde `manage_inventory` (cu
 dacă lipsesc, apoi scrie nivelul. Un singur request per lot, ca ERP-ul să nu
 rămână la jumătate dacă pică rețeaua.
 
+## Produsele noi (`/admin/erp/products`)
+
+Un produs se naște în gestiune (acolo intră marfa la recepție). Marcat „Publicat
+pe site", ERP-ul îl împinge aici ca **draft**, ca să nu fie tastat a doua oară:
+
+```
+POST /admin/erp/products
+{ "items": [ { "sku": "IPH15-128-BLK", "title": "iPhone 15 128GB Negru",
+               "description": "…", "handle": "iphone-15-128gb-negru",
+               "price": 3999, "quantity": 3, "ean": "194253…",
+               "specs": { "Display": "6.7 inch", "Memorie RAM": "8GB" } } ] }
+```
+
+Un produs Laravel = un produs Medusa cu **o singură variantă**, cu opțiunea
+`Variantă: Standard` — aceeași formă pe care o are un produs simplu importat din
+WooCommerce. Varianta e unitatea de stoc, deci răspunsul întoarce `variant_id`
+(+ `product_id`), pe care ERP-ul le salvează și de acolo încolo merge pe
+`/admin/erp/stock`.
+
+Ruta rezolvă singură sales channel-ul implicit, profilul de livrare, moneda
+magazinului și locația de stoc, aplică `manage_inventory` și scrie stocul inițial
+prin același mecanism ca `/admin/erp/stock` — un apel, nu patru din PHP.
+
+`specs` ajunge în `product.metadata.specs`, exact unde scrie și
+`extract-product-specs.ts` și de unde citește tab-ul de specificații din
+storefront. Ruta acceptă doar perechi **plate** etichetă → text (gestiunea le
+aplatizează înainte); ce nu e text, număr sau boolean se aruncă, fiindcă
+storefront-ul afișează fiecare valoare cu `String(value)`.
+
+Rămâne **draft**: prețul brut, SKU-ul, EAN-ul, numele și fișa tehnică vin din
+gestiune, dar pozele, categoria și textele de magazin nu au de unde, se
+completează în Admin.
+
+La un SKU deja existent metadata **nu** se suprascrie: produsul e deja al
+Medusei, ERP-ul doar se leagă de el.
+
+**Idempotent pe SKU.** Un SKU care există deja nu se duplică; se întoarce varianta
+găsită cu `created: false`, ca ERP-ul să se lege de ea. Un retry după timeout sau
+un produs creat între timp manual se rezolvă de la sine.
+
+Handle-ul e unic în Medusa, deci două produse cu același nume ar pica la creare;
+ruta dezambiguizează cu SKU-ul (`iphone-15` → `iphone-15-iph15-128-blk`).
+Un produs picat nu oprește lotul — apare în `errors` și ERP-ul îl reia, fiindcă
+a rămas fără `medusa_variant_id`.
+
+`ERP_CURRENCY` forțează moneda prețurilor; implicit e moneda default a magazinului.
+
 ## Comenzi din gestiune
 
 ```bash
@@ -102,3 +153,6 @@ php artisan medusa:sync-stock                # trimite tot stocul legat
 php artisan medusa:audit-unlinked            # ce a rămas nelegat
 php artisan medusa:reimport-order order_01…  # comandă pierdută de webhook
 ```
+
+Produsele noi nu au comandă separată: pleacă automat din `ProductObserver` la
+salvare (job-ul `CreateProductInMedusa`).
