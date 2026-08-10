@@ -92,7 +92,7 @@ const TopBar = () => {
         </button>
         <span
           key={index}
-          className="tracking-widest uppercase flex items-center gap-2 text-center transition-opacity duration-300"
+          className="tracking-wide flex items-center gap-2 text-center transition-opacity duration-300"
         >
           <Icon size={16} className="hidden sm:inline-block" />
           {text}

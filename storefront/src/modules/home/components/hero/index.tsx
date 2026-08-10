@@ -33,6 +33,34 @@ const FALLBACK_SLIDES: Slide[] = [
   },
 ]
 
+// Titlurile introduse din admin ajung uneori scrise integral cu majuscule.
+// Le readucem la formatul propoziției (doar prima literă mare) — dar *numai*
+// dacă textul e all-caps, ca „iPhone 15 Pro" scris corect să rămână intact.
+const isAllCaps = (text: string) =>
+  text === text.toUpperCase() && text !== text.toLowerCase()
+
+const sentenceCase = (text: string): string => {
+  if (!isAllCaps(text)) {
+    return text
+  }
+
+  // Prima literă a liniei, nu primul caracter — titlurile pot începe cu „«" etc.
+  // Fără regex unicode (`\p{L}`), pentru că tsconfig țintește es5.
+  const lower = text.toLowerCase()
+  for (let i = 0; i < lower.length; i++) {
+    const char = lower[i]
+    if (char.toUpperCase() !== char) {
+      return lower.slice(0, i) + char.toUpperCase() + lower.slice(i + 1)
+    }
+  }
+  return lower
+}
+
+// A doua linie continuă propoziția începută pe prima („Cele mai noi” /
+// „telefoane mobile”), deci rămâne cu literă mică.
+const continuationCase = (text: string): string =>
+  isAllCaps(text) ? text.toLowerCase() : text
+
 const Hero = async () => {
   const dbSlides = await listHeroSlides()
 
@@ -40,8 +68,8 @@ const Hero = async () => {
     ? dbSlides.map((s) => ({
         image: s.image_url,
         alt: s.alt,
-        titleLine1: s.title_line_1,
-        titleLine2: s.title_line_2 ?? "",
+        titleLine1: sentenceCase(s.title_line_1),
+        titleLine2: continuationCase(s.title_line_2 ?? ""),
         cta: s.cta_text ?? "",
         href: s.cta_href ?? "",
       }))
