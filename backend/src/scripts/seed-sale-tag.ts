@@ -12,6 +12,9 @@
  *
  * Rulare:  cd backend && yarn medusa exec ./src/scripts/seed-sale-tag.ts
  *   Opțional: DRY_RUN=1 (doar raport, fără scriere)
+ *
+ * La final revalidează storefront-ul manual — vezi nota din
+ * `seed-warranty-tag.ts`: `medusa exec` n-o face singur.
  */
 import { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"

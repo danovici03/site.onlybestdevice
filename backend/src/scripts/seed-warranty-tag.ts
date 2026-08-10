@@ -27,6 +27,16 @@
  *                          ca să repare o rulare anterioară prea permisivă;
  *                          șterge și bifele manuale puse pe astfel de produse.
  *   WARRANTY_MIN_PRICE=400 pragul, în lei
+ *
+ * ATENȚIE la final: `medusa exec` NU revalidează storefront-ul. Subscriberul
+ * `revalidate-storefront.ts` primește evenimentele, dar procesul CLI iese
+ * înainte ca fetch-ul lui să plece, deci paginile rămân pe cache-ul vechi și
+ * bifa pare că n-a avut efect. Cheamă revalidarea manual:
+ *
+ *   curl -X POST $STOREFRONT_REVALIDATE_URL \
+ *     -H "Authorization: Bearer $REVALIDATE_SECRET" \
+ *     -H 'Content-Type: application/json' \
+ *     -d '{"tags":["products","categories","carts","best-sellers"]}'
  */
 import { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
