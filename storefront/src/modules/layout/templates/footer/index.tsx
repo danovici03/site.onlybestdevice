@@ -1,4 +1,5 @@
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import Logo from "@modules/common/components/logo"
 import {
   FacebookLogo,
   InstagramLogo,
@@ -50,9 +51,9 @@ export default function Footer() {
               className="inline-flex mb-8"
               aria-label="onlybestdevice — Acasă"
             >
-              <span className="font-serif text-3xl md:text-4xl font-bold tracking-tight text-white select-none">
-                onlybest<span className="text-brand-accent">device</span>
-              </span>
+              {/* Aici nu concurează cu nimic pe orizontală, deci logo-ul poate
+                  fi mai lat decât în nav — dar rămâne sub lățimea coloanei. */}
+              <Logo className="w-[15rem] md:w-[17rem] text-white" />
             </LocalizedClientLink>
             <p className="text-white/60 font-medium max-w-sm mb-8">
               Cele mai noi device-uri, cu garanție 24 de luni, plata cu cardul

@@ -2,6 +2,7 @@ import { listRegions } from "@lib/data/regions"
 import { listLocales } from "@lib/data/locales"
 import { StoreRegion } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import Logo from "@modules/common/components/logo"
 import CartButton from "@modules/layout/components/cart-button"
 import SideMenu from "@modules/layout/components/side-menu"
 import SideMenuCartCount from "@modules/layout/components/side-menu/cart-count"
@@ -47,12 +48,12 @@ export default async function Nav({ countryCode }: { countryCode: string }) {
         data-testid="nav-store-link"
         aria-label="onlybestdevice — Acasă"
       >
-        {/* La 1024–1279 logo-ul revine la dimensiunea mică: acolo încap greu
+        {/* Lățimea vine din `--logo-w`, setat de fiecare bară în parte
+            (NavShell): bara de sus și pastila de la scroll au spații diferite.
+            La 1024–1279 logo-ul revine la dimensiunea mică: acolo încap greu
             logo + „Toate produsele" + o căutare centrată, iar din cele trei el e
             singurul care nu pierde nimic din câteva puncte de mărime. */}
-        <span className="font-serif text-xl sm:text-2xl lg:text-xl xl:text-2xl font-bold tracking-tight select-none">
-          onlybest<span className="text-brand-accent">device</span>
-        </span>
+        <Logo className="w-[var(--logo-w)]" />
       </LocalizedClientLink>
     </>
   )

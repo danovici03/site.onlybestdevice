@@ -1,4 +1,5 @@
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import Logo from "@modules/common/components/logo"
 import ChevronDown from "@modules/common/icons/chevron-down"
 import { Lock } from "@phosphor-icons/react/dist/ssr"
 
@@ -30,9 +31,7 @@ export default function CheckoutLayout({
             data-testid="store-link"
             aria-label="onlybestdevice — Acasă"
           >
-            <span className="font-serif text-lg lg:text-xl font-bold tracking-tight text-brand-dark select-none">
-              onlybest<span className="text-brand-accent">device</span>
-            </span>
+            <Logo className="w-[9rem] lg:w-[10.5rem] text-brand-dark" />
           </LocalizedClientLink>
           <div className="flex-1 basis-0 flex justify-end">
             <span className="hidden small:inline-flex items-center gap-1.5 text-xs font-bold text-brand-dark/50">

@@ -36,6 +36,20 @@ const renderSlot = (slot: Slot, ctx: SlotContext): React.ReactNode =>
 const BAR_CENTER = "lg:w-[22%] xl:w-[34%] 2xl:w-[36%]"
 const PILL_CENTER = "lg:w-[42%] xl:w-[44%]"
 
+/**
+ * `--logo-w` e lățimea logo-ului, setată pe fiecare bară în parte pentru că
+ * spațiul din stânga diferă: în pastilă butonul „Toate produsele" e doar
+ * iconiță, dar câmpul de căutare ia un procent mult mai mare din bară.
+ *
+ * Logo-ul e un wordmark de ~6,8:1, deci se dimensionează pe lățime — la
+ * înălțimea uzuală a unui logo ar trece de 400px lățime și ar împinge căutarea
+ * din centru. Valorile de aici sunt plafonul la care logo-ul plus butonul de
+ * meniu încap în jumătatea din stânga a barei, la fiecare breakpoint.
+ */
+const BAR_LOGO =
+  "[--logo-w:10.5rem] sm:[--logo-w:12rem] lg:[--logo-w:11rem] xl:[--logo-w:12.5rem] 2xl:[--logo-w:14rem]"
+const PILL_LOGO = "[--logo-w:9.5rem] sm:[--logo-w:11rem]"
+
 const NavShell = ({ left, center, right, menuOpen = false }: Props) => {
   const [scrolled, setScrolled] = useState(false)
   const pathname = usePathname()
@@ -136,7 +150,7 @@ const NavShell = ({ left, center, right, menuOpen = false }: Props) => {
         aria-hidden={scrolled}
         inert={scrolled}
         style={fadeStyle(!scrolled)}
-        className={`absolute inset-x-0 top-0 w-full h-20 px-4 sm:px-8 flex items-center transition-colors duration-300 [--logo-h:2.5rem] sm:[--logo-h:4rem] ${
+        className={`absolute inset-x-0 top-0 w-full h-20 px-4 sm:px-8 flex items-center transition-colors duration-300 ${BAR_LOGO} ${
           overlay
             ? "bg-transparent text-white"
             : "bg-white text-brand-dark border-b border-brand-dark/5"
@@ -160,7 +174,7 @@ const NavShell = ({ left, center, right, menuOpen = false }: Props) => {
         aria-hidden={!scrolled}
         inert={!scrolled}
         style={fadeStyle(scrolled)}
-        className="absolute left-1/2 -translate-x-1/2 top-3 w-[calc(100%-2rem)] sm:w-[calc(100%-4rem)] max-w-6xl h-14 px-6 sm:px-8 flex items-center justify-between bg-white/85 backdrop-blur-md border border-white/60 rounded-full shadow-xl text-brand-dark [--logo-h:2.25rem]"
+        className={`absolute left-1/2 -translate-x-1/2 top-3 w-[calc(100%-2rem)] sm:w-[calc(100%-4rem)] max-w-6xl h-14 px-6 sm:px-8 flex items-center justify-between bg-white/85 backdrop-blur-md border border-white/60 rounded-full shadow-xl text-brand-dark ${PILL_LOGO}`}
       >
         {inner({ overlay: false, compact: true }, PILL_CENTER)}
       </nav>
