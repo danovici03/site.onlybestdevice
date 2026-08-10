@@ -1,5 +1,6 @@
 import { listProducts } from "@lib/data/products"
 import { getRegion } from "@lib/data/regions"
+import { WARRANTY_TAG } from "@lib/util/warranty"
 import { HttpTypes } from "@medusajs/types"
 import Product from "../product-preview"
 
@@ -25,8 +26,18 @@ export default async function RelatedProducts({
   if (product.collection_id) {
     queryParams.collection_id = [product.collection_id]
   }
+  // Doar tagurile editoriale („la ofertă", „recomandat") spun ceva despre ce
+  // seamănă cu ce. `garantie-extinsa` e o bifă de configurare, pusă pe sute de
+  // produse fără nicio legătură între ele — lăsată aici, ar dilua raftul până
+  // la o selecție aleatorie, fiindcă filtrul Medusa pe `tag_id` e un OR și
+  // niciun produs din catalog n-are `collection_id` care să restrângă altfel.
+  //
+  // Lista rămasă se trimite chiar dacă e goală: `tag_id[]=` gol întoarce zero
+  // produse, iar raftul dispare — exact ce se întâmpla înainte pentru produsele
+  // fără taguri. Sărind peste `tag_id` am fi cerut în schimb tot catalogul.
   if (product.tags) {
     queryParams.tag_id = product.tags
+      .filter((t) => (t.value ?? "").toLowerCase() !== WARRANTY_TAG)
       .map((t) => t.id)
       .filter(Boolean) as string[]
   }

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation"
 import { listProducts } from "@lib/data/products"
 import { getRegion, listRegions } from "@lib/data/regions"
 import { listProductReviews } from "@lib/data/reviews"
+import { getWarrantyProduct } from "@lib/data/warranty"
+import { canOfferWarrantyFor } from "@lib/util/warranty"
 import {
   descriptionSnippet,
   descriptionText,
@@ -131,10 +133,11 @@ export default async function ProductPage(props: Props) {
     listProductReviews(pricedProduct.id, { limit: 1 }).then((d) => d.stats),
     // Produsul de serviciu „Garanție extinsă" (ascuns din catalog); cardul
     // de pe PDP îi arată variantele +1 an / +2 ani cu prețurile din Admin.
-    listProducts({
-      countryCode: params.countryCode,
-      queryParams: { handle: "garantie-extinsa" },
-    }).then(({ response }) => response.products[0] ?? undefined),
+    // Îl cerem doar pentru produsele bifate în Admin — pe o husă sau o folie
+    // cardul n-are ce căuta, iar aici scutim și un request.
+    canOfferWarrantyFor(pricedProduct)
+      ? getWarrantyProduct({ countryCode: params.countryCode })
+      : Promise.resolve(undefined),
   ])
 
   // Date structurate Product (schema.org) pentru rezultate îmbogățite în Google.

@@ -12,8 +12,12 @@ const EVENT_TO_TAGS: Record<string, string[]> = {
   "product-category.updated": ["categories", "products", "best-sellers"],
   "product-category.deleted": ["categories", "products", "best-sellers"],
   "product.created": ["products", "categories", "best-sellers"],
-  "product.updated": ["products", "categories", "best-sellers"],
-  "product.deleted": ["products", "categories", "best-sellers"],
+  // `carts` la actualizare: răspunsul coșului include datele produsului, iar
+  // bifa „Garanție extinsă" se citește din tagurile lui. Fără invalidarea
+  // coșurilor, o bifă schimbată din Admin rămâne fără efect pentru clienții
+  // care au deja produsul în coș, până când își modifică ei coșul.
+  "product.updated": ["products", "categories", "best-sellers", "carts"],
+  "product.deleted": ["products", "categories", "best-sellers", "carts"],
   "product-collection.created": ["collections", "products"],
   "product-collection.updated": ["collections", "products"],
   "product-collection.deleted": ["collections", "products"],

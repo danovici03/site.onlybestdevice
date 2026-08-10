@@ -7,6 +7,11 @@ export const runtime = "nodejs"
 const KNOWN_TAGS = new Set([
   "categories",
   "products",
+  // Payload-ul coșului conține date de produs (inclusiv tagurile, de care
+  // depinde oferta de garanție extinsă), deci o schimbare de produs trebuie să
+  // poată invalida și coșurile — altfel bifa debifată din Admin lasă oferta
+  // vizibilă în coșurile deja existente.
+  "carts",
   "collections",
   "regions",
   "locales",

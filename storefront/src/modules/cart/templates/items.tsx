@@ -12,9 +12,14 @@ type ItemsTemplateProps = {
 
 const ItemsTemplate = async ({ cart }: ItemsTemplateProps) => {
   const items = cart?.items
-  const warranty = await getWarrantyProduct({
-    regionId: cart?.region_id ?? undefined,
-  })
+  // Produsul de serviciu se cere doar dacă are cui fi propus — un coș numai cu
+  // accesorii n-are nevoie de el.
+  const offers = new Set(
+    (items ?? []).filter((i) => shouldOfferWarranty(i, cart)).map((i) => i.id)
+  )
+  const warranty = offers.size
+    ? await getWarrantyProduct({ regionId: cart?.region_id ?? undefined })
+    : undefined
 
   return (
     <div className="bg-white rounded-3xl p-4 sm:p-6 lg:p-8 shadow-sm">
@@ -36,7 +41,7 @@ const ItemsTemplate = async ({ cart }: ItemsTemplateProps) => {
                   item={item}
                   currencyCode={cart?.currency_code}
                   warranty={warranty}
-                  offerWarranty={shouldOfferWarranty(item, cart)}
+                  offerWarranty={offers.has(item.id)}
                 />
               ))
           : repeat(3).map((i) => <SkeletonLineItem key={i} />)}

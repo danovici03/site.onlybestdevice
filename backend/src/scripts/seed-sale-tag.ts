@@ -15,10 +15,8 @@
  */
 import { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import {
-  createProductTagsWorkflow,
-  updateProductsWorkflow,
-} from "@medusajs/medusa/core-flows"
+
+import { applyTagToProducts } from "./lib/product-tag-migration"
 
 const SALE_TAG = "oferta"
 const SOURCE_CATEGORY_HANDLE = "oferte"
@@ -78,37 +76,16 @@ export default async function seedSaleTag({ container }: ExecArgs) {
     return
   }
 
-  // Tagul poate să nu existe încă: bifa din admin îl creează la prima folosire,
-  // iar dacă nimeni n-a bifat nimic, nu-l găsim.
-  const { data: tags } = await query.graph({
-    entity: "product_tag",
-    fields: ["id", "value"],
-    filters: { value: SALE_TAG },
-  })
-  let tagId: string | undefined = tags?.[0]?.id
-  if (!tagId) {
-    const { result } = await createProductTagsWorkflow(container).run({
-      input: { product_tags: [{ value: SALE_TAG }] },
-    })
-    tagId = (result as any)[0].id
-    logger.info(`Am creat tagul „${SALE_TAG}" (${tagId}).`)
-  }
-
-  // `update` înlocuiește lista de taguri în întregime — trimitem mereu setul
-  // complet, altfel migrarea ar șterge tagurile existente ale produsului.
-  await updateProductsWorkflow(container).run({
-    input: {
-      products: needsTag.map((p: any) => ({
-        id: p.id,
-        tags: [
-          ...(p.tags ?? []).map((t: any) => ({ id: t.id })),
-          { id: tagId! },
-        ],
-      })),
-    } as any,
+  // Crearea tagului dacă lipsește, recitirea tagurilor înainte de scriere și
+  // loturile stau în helper — aceeași grijă e nevoie la orice migrare de taguri.
+  const written = await applyTagToProducts(container, {
+    productIds: needsTag.map((p: any) => p.id),
+    tagValue: SALE_TAG,
+    mode: "add",
+    onProgress: (done, total) => logger.info(`  … ${done}/${total} tagate`),
   })
 
   logger.info(
-    `Gata: ${needsTag.length} produse marcate „La ofertă". Verifică /oferte în storefront.`
+    `Gata: ${written} produse marcate „La ofertă". Verifică /oferte în storefront.`
   )
 }
