@@ -11,7 +11,7 @@
  *
  * De ce doar telefoanele pentru stocare/RAM/culoare: numele accesoriilor sunt
  * inconsistente și ar produce fațete-gunoi (ex. „layout germania", „22TB").
- * Telefoanele au denumiri regulate (vezi parserul din `link-phone-variants`).
+ * Telefoanele au denumiri regulate (vezi parserul din `lib/phone-group`).
  * Marca e suficient de curată ca să o punem pe tot catalogul.
  *
  * Nedistructiv, idempotent. Rulare:
@@ -21,7 +21,7 @@
 import { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { updateProductsWorkflow } from "@medusajs/medusa/core-flows"
-import { parsePhone } from "./link-phone-variants"
+import { parsePhone } from "../lib/phone-group"
 
 const DRY_RUN = !!process.env.DRY_RUN
 
