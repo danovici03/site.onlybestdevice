@@ -31,14 +31,32 @@ export const getCacheTag = async (tag: string): Promise<string> => {
   return tag
 }
 
+/**
+ * Cât timp poate rămâne o intrare de cache nevalidată, în secunde.
+ *
+ * Invalidarea reală se face prin tag, din backend: o modificare din Admin
+ * lovește `/api/revalidate` și pagina se schimbă instantaneu. TTL-ul e doar
+ * plasa de siguranță de dedesubt, pentru cazul în care apelul acela nu ajunge.
+ *
+ * Fără el, cererile merg cu `force-cache` și fără expirare, deci o singură
+ * revalidare ratată e PERMANENTĂ, nu temporară. S-a întâmplat pe 24 august
+ * 2026: `REVALIDATE_SECRET` lipsea din env-ul backendului de producție, iar un
+ * preț promoțional pus în Admin n-a apărut pe site deloc — pagina produsului
+ * arăta prețul întreg. Doar sortările pe preț erau corecte, fiindcă erau
+ * combinații necerute până atunci, deci neintrate încă în cache: fiecare
+ * combinație de sortare, filtru și pagină e o intrare separată, așa că o
+ * ratare lasă zeci de intrări stricate, nu una.
+ */
+const CACHE_TTL_SECONDS = 3600
+
 export const getCacheOptions = async (
   tag: string
-): Promise<{ tags: string[] } | {}> => {
+): Promise<{ tags: string[]; revalidate: number } | {}> => {
   if (typeof window !== "undefined") {
     return {}
   }
 
-  return { tags: [tag] }
+  return { tags: [tag], revalidate: CACHE_TTL_SECONDS }
 }
 
 /**
