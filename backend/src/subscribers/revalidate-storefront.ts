@@ -18,6 +18,10 @@ const EVENT_TO_TAGS: Record<string, string[]> = {
   // care au deja produsul în coș, până când își modifică ei coșul.
   "product.updated": ["products", "categories", "best-sellers", "carts"],
   "product.deleted": ["products", "categories", "best-sellers", "carts"],
+  // Prețul stă pe variantă, nu pe produs: schimbarea lui din Admin (cardul
+  // „Preț" sau gridul standard „Edit Prices") emite doar `product-variant.updated`.
+  // Fără linia asta, site-ul rămâne pe prețul vechi până expiră cache-ul.
+  "product-variant.updated": ["products", "categories", "best-sellers", "carts"],
   "product-collection.created": ["collections", "products"],
   "product-collection.updated": ["collections", "products"],
   "product-collection.deleted": ["collections", "products"],
