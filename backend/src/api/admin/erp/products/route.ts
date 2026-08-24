@@ -20,7 +20,9 @@ import { upsertProducts, type ProductInput } from "../../../../lib/erp/products"
  * `medusa_product_id` — de acolo incolo stocul curge prin /admin/erp/stock.
  *
  * Idempotent pe SKU: un SKU existent nu se dubleaza, se intoarce varianta gasita
- * (`created: false`), deci un retry dupa timeout e inofensiv.
+ * (`created: false`), deci un retry dupa timeout e inofensiv. Daca pozitia vine cu
+ * `specs`, fisa tehnica a produsului existent se reimprospateaza — asa ajung pe
+ * site si specificatiile completate in gestiune dupa creare.
  *
  * Autentificare: ca toate rutele /admin — Secret API Key in HTTP Basic, cheia pe
  * post de username si parola goala.
@@ -49,7 +51,7 @@ export const POST = async (req: MedusaRequest<Body>, res: MedusaResponse) => {
 
     logger.info(
       `[erp] produse: ${result.created} create, ${result.linked} deja existente (legate), ` +
-        `${result.errors.length} erori.`,
+        `${result.specs_updated} cu fisa tehnica actualizata, ${result.errors.length} erori.`,
     )
 
     return res.json(result)
