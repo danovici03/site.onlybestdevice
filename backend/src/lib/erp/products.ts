@@ -1,6 +1,7 @@
 import { ContainerRegistrationKeys, Modules, ProductStatus } from "@medusajs/framework/utils"
 import { createProductsWorkflow } from "@medusajs/medusa/core-flows"
 
+import { resolveCurrencyCode } from "../currency"
 import { applyStock, type StockInput } from "./stock"
 
 /**
@@ -100,30 +101,6 @@ const normalizeSpecs = (specs: ProductInput["specs"]): Record<string, string> | 
   }
 
   return Object.keys(clean).length ? clean : null
-}
-
-/**
- * Moneda implicita a magazinului. ERP-ul trimite doar numarul; daca am hardcoda
- * "ron" aici, un magazin configurat pe alta moneda ar primi tacut preturi in
- * moneda gresita.
- */
-const resolveCurrencyCode = async (container: any): Promise<string> => {
-  const forced = process.env.ERP_CURRENCY
-  if (forced) return forced.toLowerCase()
-
-  try {
-    const storeService = container.resolve(Modules.STORE)
-    const stores = await storeService.listStores()
-    const currencies = stores?.[0]?.supported_currencies ?? []
-    const preferred =
-      currencies.find((c: any) => c.is_default) ?? currencies[0]
-
-    if (preferred?.currency_code) return String(preferred.currency_code).toLowerCase()
-  } catch {
-    // cade pe implicit
-  }
-
-  return "ron"
 }
 
 /**

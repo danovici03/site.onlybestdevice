@@ -6,11 +6,17 @@ import { batchPriceListPricesWorkflow } from "@medusajs/medusa/core-flows"
  * Adds bed-variant sale prices (default 800 EUR) to the active "Lancio Astin"
  * price list.
  *
- * Background: the previous fix-bed-prices.ts ran `upsertVariantPricesWorkflow`
- * with `previousVariantIds`, which Medusa interprets as "clear all prices for
- * these variants" — including the rule-bound price-list prices. As a result
- * the sale prices for the 26 Astin beds disappeared from "Lancio Astin"
- * (inspect-price-lists confirms 0 bed prices left in the list).
+ * Background: the previous fix-bed-prices.ts wiped the sale prices for the 26
+ * Astin beds out of "Lancio Astin" (inspect-price-lists confirmed 0 bed prices
+ * left in the list).
+ *
+ * The culprit is NOT `previousVariantIds`, as this header used to claim. It is
+ * the replace semantics of the `prices` array: `updatePriceSets_` deletes every
+ * existing price whose `id` is absent from the payload, and fix-bed-prices only
+ * ever sent back the base prices. On the current version (2.13.6) that delete is
+ * scoped to `price_list_id: null` (pricing-module.js:332), so price-list prices
+ * are safe — but any code that rebuilds a price array must still echo back every
+ * row it wants to keep, `id` included. See src/lib/pricing.ts.
  *
  * This script repopulates them at 800 EUR each. It is idempotent: prices that
  * already exist in the price list for these variants are skipped, not
