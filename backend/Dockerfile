@@ -3,7 +3,11 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache python3 make g++ libc6-compat
+# .yarn/patches e obligatoriu: yarn.lock trimite @medusajs/dashboard printr-un
+# patch: (avif în lista de formate acceptate la media), iar --immutable crapă
+# dacă fișierul de patch lipsește.
 COPY package.json yarn.lock ./
+COPY .yarn/patches ./.yarn/patches
 RUN corepack enable \
  && corepack prepare yarn@4.12.0 --activate \
  && yarn config set nodeLinker node-modules \
@@ -36,6 +40,9 @@ RUN apk add --no-cache curl tini
 ENV NODE_ENV=production
 
 COPY --from=builder /app/.medusa/server ./
+# `medusa build` copiază package.json + yarn.lock, dar nu și patch-urile la care
+# trimit. Fără ele, yarn install de mai jos nu mai rezolvă @medusajs/dashboard.
+COPY --from=builder /app/.yarn/patches ./.yarn/patches
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
  && corepack enable \
