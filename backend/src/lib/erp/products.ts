@@ -1,5 +1,5 @@
 import { ContainerRegistrationKeys, Modules, ProductStatus } from "@medusajs/framework/utils"
-import { createProductsWorkflow } from "@medusajs/medusa/core-flows"
+import { createProductsWorkflow, updateProductsWorkflow } from "@medusajs/medusa/core-flows"
 
 import { resolveCurrencyCode } from "../currency"
 import { applyStock, type StockInput } from "./stock"
@@ -25,6 +25,11 @@ import { applyStock, type StockInput } from "./stock"
  * Idempotent pe SKU: daca SKU-ul exista deja in Medusa, NU cream un duplicat —
  * intoarcem varianta gasita, ca ERP-ul sa se lege de ea. Asa, un retry dupa un
  * timeout sau un produs creat intre timp manual in Admin se rezolva de la sine.
+ *
+ * Pe un SKU existent reimprospatam si fisa tehnica (`metadata.specs`), daca vine
+ * una: specificatiile se completeaza in gestiune si dupa creare, iar la creare
+ * sunt adesea goale. Restul continutului (poze, categorie, texte) ramane al
+ * Medusei — se scrie doar cheia `specs`.
  */
 
 export type ProductInput = {
@@ -49,6 +54,8 @@ export type ProductInput = {
 export type ProductResult = {
   created: number
   linked: number
+  /** Produse deja existente carora le-am reimprospatat fisa tehnica. */
+  specs_updated: number
   currency_code: string
   results: Array<{
     sku: string
@@ -165,6 +172,7 @@ export const upsertProducts = async (
   const result: ProductResult = {
     created: 0,
     linked: 0,
+    specs_updated: 0,
     currency_code: currencyCode,
     results: [],
     errors: [],
@@ -196,7 +204,7 @@ export const upsertProducts = async (
   // ---- Ce exista deja: legam, nu duplicam ----------------------------------
   const { data: existingVariants } = await query.graph({
     entity: "product_variant",
-    fields: ["id", "sku", "product_id", "product.handle"],
+    fields: ["id", "sku", "product_id", "product.handle", "product.metadata"],
     filters: { sku: [...bySku.keys()] },
   })
 
@@ -215,6 +223,36 @@ export const upsertProducts = async (
 
     if (typeof input.quantity === "number") {
       stockItems.push({ variant_id: variant.id, quantity: input.quantity })
+    }
+
+    // Fisa tehnica se completeaza in gestiune si dupa ce produsul exista aici
+    // (la creare e adesea goala). Fara asta ar ajunge pe site doar specificatiile
+    // produselor nou create, iar restul catalogului ar ramane fara tab tehnic.
+    //
+    // Pozele, categoria si textele raman ale Medusei: atingem doar cheia `specs`
+    // din metadata, restul metadatelor se pastreaza.
+    const specs = normalizeSpecs(input.specs)
+    const currentSpecs = (variant.product?.metadata as any)?.specs
+
+    // Aceeasi fisa tehnica nu se rescrie: ERP-ul trimite `specs` la fiecare push,
+    // iar o rulare de workflow pe produs nemodificat ar fi zgomot curat.
+    if (specs && JSON.stringify(currentSpecs) !== JSON.stringify(specs)) {
+      try {
+        await updateProductsWorkflow(container).run({
+          input: {
+            selector: { id: variant.product_id },
+            update: {
+              metadata: { ...(variant.product?.metadata ?? {}), specs },
+            },
+          },
+        })
+        result.specs_updated++
+      } catch (e) {
+        result.errors.push({
+          sku: variant.sku,
+          message: `specificatii neactualizate: ${(e as Error).message}`,
+        })
+      }
     }
 
     bySku.delete(variant.sku)
