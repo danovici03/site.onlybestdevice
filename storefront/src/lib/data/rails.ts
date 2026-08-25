@@ -29,7 +29,7 @@ const BEST_SELLERS_RANK_MAX = 48
  * Exact unul, ca la `oferta`: dacă am accepta și sinonime (`iconic`, moștenit
  * din starter), un produs care le poartă ar urca în secțiune fără ca bifa din
  * admin să arate ceva — și n-ar avea cum să fie scos de acolo. Trebuie să
- * rămână aliniat cu widgetul `backend/src/admin/widgets/product-featured.tsx`.
+ * rămână aliniat cu widgetul `backend/src/admin/widgets/product-flags.tsx`.
  */
 const FEATURED_TAG = "recomandat"
 

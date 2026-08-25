@@ -11,7 +11,6 @@ import {
   Text,
   toast,
 } from "@medusajs/ui"
-import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
 
 import {
@@ -21,6 +20,7 @@ import {
   type ProductPrices,
 } from "../lib/product-prices"
 import { hasTag } from "../lib/product-tags"
+import { useOptionalQueryClient } from "../lib/use-optional-query-client"
 
 /**
  * Cardul „Preț" — preț normal și preț promoțional, direct pe pagina produsului.
@@ -65,14 +65,6 @@ const changedUpdates = (data: ProductPrices, draft: Draft): PriceUpdate[] =>
 
     return Object.keys(update).length > 1 ? [update] : []
   })
-
-const useOptionalQueryClient = () => {
-  try {
-    return useQueryClient()
-  } catch {
-    return null
-  }
-}
 
 const ProductPriceWidget = ({ data: product }: DetailWidgetProps<AdminProduct>) => {
   const queryClient = useOptionalQueryClient()

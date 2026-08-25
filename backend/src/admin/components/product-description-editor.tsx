@@ -11,7 +11,6 @@ import {
   clx,
   toast,
 } from "@medusajs/ui"
-import { useQueryClient } from "@tanstack/react-query"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 
@@ -23,6 +22,7 @@ import {
   sanitizeDescription,
   saveProductDescription,
 } from "../lib/product-description"
+import { useOptionalQueryClient } from "../lib/use-optional-query-client"
 import RichTextEditor from "./rich-text-editor"
 
 /**
@@ -40,19 +40,6 @@ import RichTextEditor from "./rich-text-editor"
  * apar, se editează pe HTML brut, nu le pierdem.
  */
 const NEEDS_HTML_MODE = /<(dl|dt|dd|figcaption)\b/i
-
-/**
- * Clientul react-query al dashboard-ului, dacă widgetul chiar rulează în
- * arborele lui. Îl folosim doar ca să împrospătăm pagina după salvare, deci
- * lipsa lui nu justifică un widget care crapă.
- */
-const useOptionalQueryClient = () => {
-  try {
-    return useQueryClient()
-  } catch {
-    return null
-  }
-}
 
 const ProductDescriptionEditor = ({ product }: { product: AdminProduct }) => {
   const { t } = useTranslation()
