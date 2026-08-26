@@ -2,6 +2,7 @@ import { ContainerRegistrationKeys, Modules, ProductStatus } from "@medusajs/fra
 import { createProductsWorkflow, updateProductsWorkflow } from "@medusajs/medusa/core-flows"
 
 import { resolveCurrencyCode } from "../currency"
+import { readProductPrices, writeProductPrices } from "../pricing"
 import { applyStock, type StockInput } from "./stock"
 
 /**
@@ -30,6 +31,12 @@ import { applyStock, type StockInput } from "./stock"
  * una: specificatiile se completeaza in gestiune si dupa creare, iar la creare
  * sunt adesea goale. Restul continutului (poze, categorie, texte) ramane al
  * Medusei — se scrie doar cheia `specs`.
+ *
+ * Tot pe SKU existent actualizam si pretul, daca vine unul: pretul se corecteaza
+ * in gestiune si dupa ce produsul e pe site, iar pana acum pleca doar la creare.
+ * Scrierea trece prin `lib/pricing.ts`, nu direct prin workflow: vectorul `prices`
+ * e set complet, nu patch, deci o scriere naiva ar sterge celelalte preturi ale
+ * variantei (alte monede, preturi pe regiune).
  */
 
 export type ProductInput = {
@@ -56,6 +63,10 @@ export type ProductResult = {
   linked: number
   /** Produse deja existente carora le-am reimprospatat fisa tehnica. */
   specs_updated: number
+  /** Variante deja existente carora le-am schimbat pretul de baza. */
+  prices_updated: number
+  /** Promotii scoase pentru ca ramasesera peste noul pret de baza. */
+  sale_prices_removed: number
   currency_code: string
   results: Array<{
     sku: string
@@ -173,6 +184,8 @@ export const upsertProducts = async (
     created: 0,
     linked: 0,
     specs_updated: 0,
+    prices_updated: 0,
+    sale_prices_removed: 0,
     currency_code: currencyCode,
     results: [],
     errors: [],
@@ -251,6 +264,48 @@ export const upsertProducts = async (
         result.errors.push({
           sku: variant.sku,
           message: `specificatii neactualizate: ${(e as Error).message}`,
+        })
+      }
+    }
+
+    // Pretul se corecteaza in gestiune si dupa ce produsul e pe site (reevaluari,
+    // greseli de tastare). Fara asta site-ul ramanea pe pretul din ziua in care
+    // produsul s-a nascut, oricat de des s-ar fi schimbat in gestiune.
+    //
+    // Scrierea merge prin `lib/pricing.ts`, care retrimite intreg vectorul de
+    // preturi de bază al variantei: `prices` e set complet, nu patch, deci un
+    // update naiv "doar RON" ar sterge tacut preturile pe alte monede sau regiuni.
+    const price =
+      typeof input.price === "number" && input.price > 0
+        ? Math.round(input.price * 100) / 100
+        : null
+
+    if (price != null) {
+      try {
+        const current = await readProductPrices(container, variant.product_id)
+        const row = current.variants.find((v) => v.id === variant.id)
+
+        // Acelasi pret nu se rescrie: ERP-ul poate trimite `price` la fiecare push,
+        // iar un workflow pe o varianta nemodificata ar fi zgomot curat — plus un
+        // eveniment de revalidare degeaba pe storefront.
+        if (row && row.price !== price) {
+          // Promotia ramane a Medusei, dar nu poate ramane peste noul pret de baza:
+          // storefront-ul deduce reducerea din price list vs pret de baza, deci un
+          // promotional de 2500 peste o baza coborata la 2000 ar afisa o "reducere"
+          // in sus. In cazul asta o scoatem si o raportam.
+          const dropSale = row.sale_price != null && row.sale_price >= price
+
+          await writeProductPrices(container, variant.product_id, [
+            { id: variant.id, price, ...(dropSale ? { sale_price: null } : {}) },
+          ])
+
+          result.prices_updated++
+          if (dropSale) result.sale_prices_removed++
+        }
+      } catch (e) {
+        result.errors.push({
+          sku: variant.sku,
+          message: `pret neactualizat: ${(e as Error).message}`,
         })
       }
     }
