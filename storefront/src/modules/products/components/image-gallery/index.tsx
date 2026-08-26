@@ -2,11 +2,13 @@
 
 import { HttpTypes } from "@medusajs/types"
 import { useSearchParams } from "next/navigation"
+import { ArrowsOutSimple } from "@phosphor-icons/react/dist/ssr"
 import Image from "@modules/common/components/image"
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import useEmblaCarousel from "embla-carousel-react"
 
 import { useDotButton } from "@modules/common/components/carousel/embla-carousel-hooks"
+import ImageLightbox from "./lightbox"
 
 type ImageGalleryProps = {
   product: HttpTypes.StoreProduct
@@ -75,10 +77,25 @@ const GalleryInner = ({
     [thumbsApi]
   )
 
+  // Galeria full-screen: se deschide la clic pe orice poză (mobil sau desktop).
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
+
+  const openLightbox = useCallback((index: number) => {
+    setLightboxIndex(index)
+    setLightboxOpen(true)
+  }, [])
+
+  const syncToLightbox = useCallback(
+    (index: number) => {
+      selectThumb(index)
+      emblaApi?.scrollTo(index, true)
+    },
+    [selectThumb, emblaApi]
+  )
+
   if (!images.length) {
-    return (
-      <div className="aspect-[5/4] w-full rounded-[2rem] bg-brand-light" />
-    )
+    return <div className="aspect-[5/4] w-full rounded-[2rem] bg-brand-light" />
   }
 
   const safeSelected = Math.min(selected, images.length - 1)
@@ -95,8 +112,11 @@ const GalleryInner = ({
         >
           <div className="flex gap-3 [touch-action:pan-y_pinch-zoom]">
             {images.map((image, index) => (
-              <div
+              <button
                 key={image.id}
+                type="button"
+                onClick={() => openLightbox(index)}
+                aria-label={`Deschide imaginea ${index + 1} pe tot ecranul`}
                 className="relative aspect-square w-[85vw] shrink-0 min-w-0 rounded-[2rem] overflow-hidden bg-white ring-1 ring-inset ring-brand-dark/[0.07]"
               >
                 {!!image.url && (
@@ -110,7 +130,7 @@ const GalleryInner = ({
                     className="object-contain p-4"
                   />
                 )}
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -132,7 +152,12 @@ const GalleryInner = ({
 
       {/* Desktop: imagine mare + thumbnails */}
       <div className="hidden lg:flex flex-col gap-3 w-full max-w-[460px] mx-auto">
-        <div className="relative aspect-square w-full overflow-hidden rounded-[2rem] bg-white ring-1 ring-inset ring-brand-dark/[0.07] img-zoom-wrapper">
+        <button
+          type="button"
+          onClick={() => openLightbox(safeSelected)}
+          aria-label="Deschide imaginea pe tot ecranul"
+          className="group relative aspect-square w-full cursor-zoom-in overflow-hidden rounded-[2rem] bg-white ring-1 ring-inset ring-brand-dark/[0.07] img-zoom-wrapper"
+        >
           {!!main?.url && (
             <Image
               key={main.id}
@@ -145,7 +170,10 @@ const GalleryInner = ({
               className="object-contain p-6"
             />
           )}
-        </div>
+          <span className="pointer-events-none absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-brand-dark/70 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            <ArrowsOutSimple size={18} />
+          </span>
+        </button>
 
         {images.length > 1 && (
           <div className="overflow-hidden" ref={thumbsRef}>
@@ -166,7 +194,9 @@ const GalleryInner = ({
                   {!!image.url && (
                     <Image
                       src={image.url}
-                      alt={`${product.title ?? "Product"} — miniatură ${index + 1}`}
+                      alt={`${product.title ?? "Product"} — miniatură ${
+                        index + 1
+                      }`}
                       fill
                       sizes="(min-width: 1024px) 150px, 30vw"
                       className="object-contain p-2"
@@ -178,6 +208,15 @@ const GalleryInner = ({
           </div>
         )}
       </div>
+
+      <ImageLightbox
+        images={images}
+        startIndex={lightboxIndex}
+        title={product.title ?? "Produs"}
+        isOpen={lightboxOpen}
+        close={() => setLightboxOpen(false)}
+        onIndexChange={syncToLightbox}
+      />
     </>
   )
 }
