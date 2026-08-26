@@ -1,8 +1,9 @@
 import { HttpTypes } from "@medusajs/types"
 
 /**
- * Citește gruparea de telefoane scrisă de scriptul backend
- * `link-phone-variants.ts` în `product.metadata`. Produsele de același model
+ * Citește gruparea de telefoane scrisă în `product.metadata` de backend
+ * (`src/lib/phone-group.ts`, aplicată automat de subscriberul
+ * `phone-group-link.ts` la fiecare salvare de produs). Produsele de același model
  * (ex. toate variantele iPhone 16) rămân produse separate, dar sunt legate
  * prin `phone_siblings` ca să poți comuta între stocări/culori.
  */

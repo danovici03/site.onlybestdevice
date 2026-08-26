@@ -1,0 +1,40 @@
+diff --git a/dist/app.js b/dist/app.js
+index b7de0a149c86fe936d464b603767a77372aa7f0c..92929f2db99afa0a0c0b9d60f7778bf5162bb88b 100644
+--- a/dist/app.js
++++ b/dist/app.js
+@@ -111023,6 +111023,7 @@ var init_upload_media_form_item = __esm({
+       "image/gif",
+       "image/webp",
+       "image/heic",
++      "image/avif",
+       "image/svg+xml"
+     ];
+     SUPPORTED_FORMATS_FILE_EXTENSIONS = [
+@@ -111031,6 +111032,7 @@ var init_upload_media_form_item = __esm({
+       ".gif",
+       ".webp",
+       ".heic",
++      ".avif",
+       ".svg"
+     ];
+     UploadMediaFormItem = ({
+diff --git a/dist/chunk-UQZ37AO7.mjs b/dist/chunk-UQZ37AO7.mjs
+index 9a0dd6e15d0a30f2b965cf9123ecb840d4cb36bd..e050ea75c7a7a5a5f01c65a9040057a409a36616 100644
+--- a/dist/chunk-UQZ37AO7.mjs
++++ b/dist/chunk-UQZ37AO7.mjs
+@@ -265,6 +265,7 @@ var SUPPORTED_FORMATS = [
+   "image/gif",
+   "image/webp",
+   "image/heic",
++  "image/avif",
+   "image/svg+xml"
+ ];
+ var SUPPORTED_FORMATS_FILE_EXTENSIONS = [
+@@ -273,6 +274,7 @@ var SUPPORTED_FORMATS_FILE_EXTENSIONS = [
+   ".gif",
+   ".webp",
+   ".heic",
++  ".avif",
+   ".svg"
+ ];
+ var UploadMediaFormItem = ({

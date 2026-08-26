@@ -5,7 +5,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 /**
  * Selector de stocare + culoare pentru telefoanele aceluiași model. Fiecare
  * variantă e un produs separat, legat prin `metadata.phone_siblings` (vezi
- * scriptul backend `link-phone-variants.ts`). Comutarea înseamnă navigare
+ * backend, `src/lib/phone-group.ts`). Comutarea înseamnă navigare
  * către produsul-frate — de aceea opțiunile sunt simple link-uri, calculabile
  * pe server, fără stare de client.
  */

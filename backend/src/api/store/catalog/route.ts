@@ -2,6 +2,8 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import {
   ContainerRegistrationKeys,
   QueryContext,
+  getTotalVariantAvailability,
+  getVariantAvailability,
 } from "@medusajs/framework/utils"
 import { z } from "zod"
 
@@ -197,6 +199,40 @@ const foldTerm = (s: string): string =>
 const foldSql = (expr: string): string =>
   `TRANSLATE(LOWER(${expr}), '${DIACRITICS_FROM}', '${DIACRITICS_TO}')`
 
+/**
+ * `inventory_quantity` NU e o coloană a variantei — `/store/products` o
+ * calculează într-un middleware, iar `query.graph` o întoarce mereu `null`.
+ * Fără pasul ăsta, orice variantă cu `manage_inventory` ajunge în storefront cu
+ * stoc necunoscut, iar cardul din listă o arată drept „Stoc epuizat" chiar dacă
+ * mai e marfă.
+ *
+ * Se calculează pe canalul de vânzare al publishable key-ului (ca la
+ * `/store/products`); fără un canal unic, cădem pe disponibilitatea totală.
+ */
+const attachInventoryQuantity = async (
+  query: any,
+  products: any[],
+  channelIds: string[]
+) => {
+  const managed = products
+    .flatMap((p: any) => p.variants ?? [])
+    .filter((v: any) => v?.id && v.manage_inventory)
+  if (!managed.length) return
+
+  const variant_ids = managed.map((v: any) => v.id)
+  const availability =
+    channelIds.length === 1
+      ? await getVariantAvailability(query, {
+          variant_ids,
+          sales_channel_id: channelIds[0],
+        })
+      : await getTotalVariantAvailability(query, { variant_ids })
+
+  for (const v of managed) {
+    v.inventory_quantity = availability[v.id]?.availability ?? 0
+  }
+}
+
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const logger = req.scope.resolve(ContainerRegistrationKeys.LOGGER)
   const knex: any = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
@@ -340,6 +376,16 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     )`)
   }
 
+  /**
+   * Scope-ul, cu prețul pe care îl vede clientul.
+   *
+   * Nu prețul de bază: un produs cu preț promoțional se afișează cu prețul
+   * redus, deci după el trebuie și sortat și filtrat — altfel un telefon arătat
+   * la 2.999 lei ar cădea în intervalul 3.000–3.500. Prețul efectiv e cel mai
+   * mic dintre prețul de bază și prețurile din listele `sale` active care se
+   * aplică tuturor (`rules_count = 0`; o listă legată de un grup de clienți nu
+   * are ce căuta în fațetele publice).
+   */
   const scopedCte = `
     scoped AS (
       SELECT p.id,
@@ -350,14 +396,27 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
              p.metadata->>'filter_ram'       AS ram,
              p.metadata->>'filter_color'     AS color,
              p.metadata->>'filter_color_hex' AS color_hex,
-             MIN(pr.amount) AS price
+             MIN(ep.amount) AS price
       FROM product p
       LEFT JOIN product_variant v ON v.product_id = p.id AND v.deleted_at IS NULL
       LEFT JOIN product_variant_price_set vps ON vps.variant_id = v.id
-      LEFT JOIN price pr ON pr.price_set_id = vps.price_set_id
-                        AND pr.deleted_at IS NULL
-                        AND pr.price_list_id IS NULL
-                        AND pr.currency_code = :currency
+      LEFT JOIN LATERAL (
+        SELECT MIN(pr.amount) AS amount
+        FROM price pr
+        LEFT JOIN price_list pl ON pl.id = pr.price_list_id AND pl.deleted_at IS NULL
+        WHERE pr.price_set_id = vps.price_set_id
+          AND pr.deleted_at IS NULL
+          AND pr.currency_code = :currency
+          AND (
+            pr.price_list_id IS NULL
+            OR (
+              pl.status = 'active'
+              AND pl.rules_count = 0
+              AND (pl.starts_at IS NULL OR pl.starts_at <= NOW())
+              AND (pl.ends_at   IS NULL OR pl.ends_at   >= NOW())
+            )
+          )
+      ) ep ON TRUE
       WHERE ${scopeWhere.join(" AND ")}
       GROUP BY p.id
     )`
@@ -565,6 +624,8 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     // query.graph nu garantează ordinea din `filters.id` — o reimpunem.
     const byId = new Map(data.map((p: any) => [p.id, p]))
     products = pageIds.map((id) => byId.get(id)).filter(Boolean)
+
+    await attachInventoryQuantity(query, products, channelIds)
   }
 
   /* ---------------- Formatarea fațetelor ---------------- */

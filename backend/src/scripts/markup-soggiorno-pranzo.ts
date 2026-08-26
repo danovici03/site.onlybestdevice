@@ -24,10 +24,11 @@ import {
  * out of variants.calculated_price (see lib/util/get-product-price.ts).
  *
  * Order of writes is deliberate (and forced by a Medusa quirk):
- *   1. Bump variant base prices to inflated values. Done first because
- *      `upsertVariantPricesWorkflow` with `previousVariantIds` deletes ALL
- *      prices for those variants — including price-list-bound ones
- *      (see add-bed-sale-prices.ts header for the incident this caused).
+ *   1. Bump variant base prices to inflated values. Done first because writing
+ *      a `prices` array replaces the variant's price set: anything not echoed
+ *      back with its `id` is deleted (see add-bed-sale-prices.ts header for the
+ *      incident this caused). Doing it after step 2 risked taking the freshly
+ *      written sale prices with it.
  *   2. Add sale prices in the "Saldi" price list (= original current base).
  *
  *   There is a brief window between steps 1 and 2 where customers see the

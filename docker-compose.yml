@@ -107,6 +107,12 @@ services:
       STOREFRONT_REVALIDATE_URL: ${STOREFRONT_REVALIDATE_URL:-}
       REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
 
+      # ── Legarea automată a variantelor de culoare la telefoane ──
+      #    `0` oprește subscriberul `phone-group-link`. Fără linia asta,
+      #    variabila setată în Dokploy rămâne în .env-ul de lângă compose și nu
+      #    intră niciodată în container — adică frâna de mână n-ar exista.
+      PHONE_GROUP_AUTOLINK: ${PHONE_GROUP_AUTOLINK:-}
+
       # ── UniCredit ePOS (rate) — gol = provider dezactivat ──
       UNICREDIT_EPOS_BASE_URL: ${UNICREDIT_EPOS_BASE_URL:-}
       UNICREDIT_EPOS_EMAIL: ${UNICREDIT_EPOS_EMAIL:-}
