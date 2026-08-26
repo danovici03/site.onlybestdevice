@@ -2,6 +2,8 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import {
   ContainerRegistrationKeys,
   QueryContext,
+  getTotalVariantAvailability,
+  getVariantAvailability,
 } from "@medusajs/framework/utils"
 import { z } from "zod"
 
@@ -196,6 +198,40 @@ const foldTerm = (s: string): string =>
 /** Aceeași normalizare, dar pentru o expresie SQL. */
 const foldSql = (expr: string): string =>
   `TRANSLATE(LOWER(${expr}), '${DIACRITICS_FROM}', '${DIACRITICS_TO}')`
+
+/**
+ * `inventory_quantity` NU e o coloană a variantei — `/store/products` o
+ * calculează într-un middleware, iar `query.graph` o întoarce mereu `null`.
+ * Fără pasul ăsta, orice variantă cu `manage_inventory` ajunge în storefront cu
+ * stoc necunoscut, iar cardul din listă o arată drept „Stoc epuizat" chiar dacă
+ * mai e marfă.
+ *
+ * Se calculează pe canalul de vânzare al publishable key-ului (ca la
+ * `/store/products`); fără un canal unic, cădem pe disponibilitatea totală.
+ */
+const attachInventoryQuantity = async (
+  query: any,
+  products: any[],
+  channelIds: string[]
+) => {
+  const managed = products
+    .flatMap((p: any) => p.variants ?? [])
+    .filter((v: any) => v?.id && v.manage_inventory)
+  if (!managed.length) return
+
+  const variant_ids = managed.map((v: any) => v.id)
+  const availability =
+    channelIds.length === 1
+      ? await getVariantAvailability(query, {
+          variant_ids,
+          sales_channel_id: channelIds[0],
+        })
+      : await getTotalVariantAvailability(query, { variant_ids })
+
+  for (const v of managed) {
+    v.inventory_quantity = availability[v.id]?.availability ?? 0
+  }
+}
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const logger = req.scope.resolve(ContainerRegistrationKeys.LOGGER)
@@ -588,6 +624,8 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     // query.graph nu garantează ordinea din `filters.id` — o reimpunem.
     const byId = new Map(data.map((p: any) => [p.id, p]))
     products = pageIds.map((id) => byId.get(id)).filter(Boolean)
+
+    await attachInventoryQuantity(query, products, channelIds)
   }
 
   /* ---------------- Formatarea fațetelor ---------------- */
