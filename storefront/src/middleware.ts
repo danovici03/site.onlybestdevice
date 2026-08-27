@@ -180,6 +180,14 @@ const LEGACY_SYSTEM_PAGES: Record<string, string> = {
 function legacyRedirect(request: NextRequest): NextResponse | null {
   const pathname = request.nextUrl.pathname.replace(/\/+$/, "") || "/"
 
+  // Linkurile vechi circulă și cu prefix de regiune (`/ro/cos`), fiindcă
+  // middleware-ul îl adăuga înainte ca cineva să le copieze din bara de
+  // adrese. Îl luăm deoparte ca să se potrivească aceleași reguli, apoi îl
+  // punem la loc în destinație. Fără asta, `/cos` mergea dar `/ro/cos` da 404.
+  const prefixed = pathname.match(/^\/([a-z]{2})(\/.+)$/)
+  const region = prefixed?.[1] ?? DEFAULT_REGION
+  const bare = prefixed?.[2] ?? pathname
+
   // Categorii retrase: prinde și forma cu prefix de regiune (`/ro/categories/…`)
   // și pe cea fără, pe care o localizează pasul următor din middleware.
   const retired = pathname.match(
@@ -206,31 +214,32 @@ function legacyRedirect(request: NextRequest): NextResponse | null {
     }
   }
 
-  const product = pathname.match(/^\/produs\/([^/]+)$/)
+  const product = bare.match(/^\/produs\/([^/]+)$/)
   if (product) {
     return NextResponse.redirect(
-      new URL(`/${DEFAULT_REGION}/products/${product[1]}`, request.url),
+      new URL(`/${region}/products/${product[1]}`, request.url),
       308
     )
   }
 
   // Categorii (posibil imbricate în URL): folosim ultimul segment ca handle.
-  const category = pathname.match(/^\/(?:categorie-produs|product-category)\/(.+)$/)
+  const category = bare.match(/^\/(?:categorie-produs|product-category)\/(.+)$/)
   if (category) {
     const segs = category[1].split("/").filter(Boolean)
     const leaf = segs[segs.length - 1]
     return NextResponse.redirect(
-      new URL(`/${DEFAULT_REGION}/categories/${leaf}`, request.url),
+      new URL(`/${region}/categories/${leaf}`, request.url),
       308
     )
   }
 
-  const sys = LEGACY_SYSTEM_PAGES[pathname]
-  if (sys) {
-    return NextResponse.redirect(
-      new URL(`/${DEFAULT_REGION}${sys}`, request.url),
-      308
-    )
+  const sys = LEGACY_SYSTEM_PAGES[bare]
+  const sysTarget = sys ? `/${region}${sys}` : null
+  // `/oferte` se redirectează către `/ro/oferte`, dar `/ro/oferte` e deja
+  // destinația: fără verificarea asta, prefixul de mai sus l-ar trimite la el
+  // însuși, la nesfârșit.
+  if (sysTarget && sysTarget !== pathname) {
+    return NextResponse.redirect(new URL(sysTarget, request.url), 308)
   }
 
   return null
@@ -292,6 +301,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(
       `${request.nextUrl.origin}/${DEFAULT_REGION}${path}${request.nextUrl.search}`,
       307
+    )
+  }
+
+  // `/RO/cart` → `/ro/cart`. `getCountryCode` recunoaște regiunea (compară în
+  // litere mici), dar `urlHasCountryCode` de mai jos compară segmentul brut,
+  // deci ar crede că prefixul lipsește și l-ar mai lipi o dată: `/ro/RO/cart`,
+  // adică 404. Redirect permanent, ca forma canonică să fie una singură.
+  const firstSegment = request.nextUrl.pathname.split("/")[1] ?? ""
+  if (
+    firstSegment !== firstSegment.toLowerCase() &&
+    regionMap.has(firstSegment.toLowerCase())
+  ) {
+    const rest = request.nextUrl.pathname.slice(firstSegment.length + 1)
+    return NextResponse.redirect(
+      `${request.nextUrl.origin}/${firstSegment.toLowerCase()}${rest}${request.nextUrl.search}`,
+      308
     )
   }
 
