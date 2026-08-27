@@ -38,15 +38,11 @@ export default async function PageLayout(props: {
           <CartMismatchBanner />
 
           {props.children}
+          {/* Spațiul pentru bara de jos e padding pe footer, nu un div după
+              el: bara se ascunde tocmai când footerul intră în cadru, iar un
+              div separat rămânea ca o bandă goală, în culoarea paginii, sub
+              footerul închis la culoare. */}
           <Footer />
-          <div
-            aria-hidden
-            className="lg:hidden"
-            style={{
-              height:
-                "calc(max(0.75rem, env(safe-area-inset-bottom)) + 4.5rem)",
-            }}
-          />
           <BottomNav />
           <CartDrawer />
           <CookieConsent />
