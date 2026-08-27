@@ -56,6 +56,10 @@ import { StripeContext } from "@modules/checkout/components/payment-wrapper/stri
 import CartTotals from "@modules/common/components/cart-totals"
 import Input from "@modules/common/components/input"
 import CountySelect from "@modules/common/components/county-select"
+import LocalitySelect, {
+  type LocalitySuggestion,
+} from "@modules/common/components/locality-select"
+import LocateMeButton from "@modules/common/components/locate-me-button"
 import { matchCounty } from "@lib/util/counties"
 import {
   COURIER_NAME,
@@ -77,13 +81,7 @@ import {
 } from "@phosphor-icons/react/dist/ssr"
 import { PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js"
 import { useRouter, useSearchParams } from "next/navigation"
-import {
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { useContext, useEffect, useMemo, useRef, useState } from "react"
 
 /* ------------------------------------------------------------------ */
 /* Metadatele metodelor de plată (ordinea, titluri RO, logo-uri)       */
@@ -230,7 +228,11 @@ const fromCart = (cart: any, customer: any): AddressForm => ({
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-const missingFields = (f: AddressForm, billingSame: boolean, b: AddressForm) => {
+const missingFields = (
+  f: AddressForm,
+  billingSame: boolean,
+  b: AddressForm
+) => {
   const missing: string[] = []
   if (!EMAIL_RE.test(f.email)) missing.push("email")
   if (!f.phone.trim()) missing.push("telefon")
@@ -334,9 +336,56 @@ const OnePageCheckout = ({
   const setField = (name: keyof AddressForm, value: string) => {
     setForm((f) => ({ ...f, [name]: value }))
     setDirty(true)
+    if (name === "postal_code") postalAuto.current = false
   }
   const setBillingField = (name: keyof AddressForm, value: string) => {
     setBilling((f) => ({ ...f, [name]: value }))
+    setDirty(true)
+    if (name === "postal_code") billingPostalAuto.current = false
+  }
+
+  // Codul poștal completat de noi poate fi înlocuit la următoarea alegere de
+  // localitate; cel scris de client, nu — el își știe strada, noi doar
+  // localitatea.
+  const postalAuto = useRef(false)
+  const billingPostalAuto = useRef(false)
+
+  /**
+   * Alegere din nomenclator: numele oficial al localității, județul ei și —
+   * doar unde codul poștal e unic pe localitate — și codul poștal.
+   *
+   * `fromGps` vine de la butonul de detectare, unde regula se inversează: acolo
+   * codul e al punctului exact, nu al localității, iar clientul tocmai a cerut
+   * explicit să fie completat — deci bate și ce scrisese înainte.
+   */
+  const applyLocality = (locality: LocalitySuggestion, fromGps = false) => {
+    const canFillPostal =
+      !!locality.postalCode &&
+      (fromGps || !form.postal_code || postalAuto.current)
+    setForm((f) => ({
+      ...f,
+      city: locality.name,
+      province: locality.county,
+      postal_code: canFillPostal ? locality.postalCode : f.postal_code,
+    }))
+    if (canFillPostal) postalAuto.current = true
+    setDirty(true)
+  }
+
+  const applyBillingLocality = (
+    locality: LocalitySuggestion,
+    fromGps = false
+  ) => {
+    const canFillPostal =
+      !!locality.postalCode &&
+      (fromGps || !billing.postal_code || billingPostalAuto.current)
+    setBilling((f) => ({
+      ...f,
+      city: locality.name,
+      province: locality.county,
+      postal_code: canFillPostal ? locality.postalCode : f.postal_code,
+    }))
+    if (canFillPostal) billingPostalAuto.current = true
     setDirty(true)
   }
 
@@ -659,8 +708,7 @@ const OnePageCheckout = ({
         window.location.href = fields.fallback_url
         return
       } else {
-        const sessionOk =
-          activeSession?.provider_id === selectedPayment
+        const sessionOk = activeSession?.provider_id === selectedPayment
         if (!sessionOk) {
           await initiatePaymentSession(cart, { provider_id: selectedPayment })
         }
@@ -686,7 +734,9 @@ const OnePageCheckout = ({
         setPlacing(false)
       })
     } else if (redirectStatus === "failed") {
-      setPlaceError("Plata nu a reușit. Încearcă din nou sau alege altă metodă.")
+      setPlaceError(
+        "Plata nu a reușit. Încearcă din nou sau alege altă metodă."
+      )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
@@ -747,12 +797,13 @@ const OnePageCheckout = ({
                 data-testid="shipping-address-input"
               />
             </div>
-            <Input
+            <LocalitySelect
               label="Oraș / localitate"
               name="city"
-              autoComplete="address-level2"
               value={form.city}
-              onChange={(e) => setField("city", e.target.value)}
+              county={form.province}
+              onChange={(city) => setField("city", city)}
+              onSelect={applyLocality}
               required
               data-testid="shipping-city-input"
             />
@@ -782,6 +833,12 @@ const OnePageCheckout = ({
               data-testid="shipping-company-input"
             />
           </div>
+
+          <LocateMeButton
+            onResolve={(l) => applyLocality(l, true)}
+            invite={!form.city && !form.province}
+            className="mt-3"
+          />
 
           <label className="mt-4 flex items-center gap-2.5 text-sm text-brand-dark/80 cursor-pointer">
             <input
@@ -825,11 +882,13 @@ const OnePageCheckout = ({
                   required
                 />
               </div>
-              <Input
+              <LocalitySelect
                 label="Oraș / localitate"
                 name="billing_city"
                 value={billing.city}
-                onChange={(e) => setBillingField("city", e.target.value)}
+                county={billing.province}
+                onChange={(city) => setBillingField("city", city)}
+                onSelect={applyBillingLocality}
                 required
               />
               <CountySelect
@@ -851,6 +910,11 @@ const OnePageCheckout = ({
                 value={billing.company}
                 onChange={(e) => setBillingField("company", e.target.value)}
               />
+              <div className="small:col-span-2">
+                <LocateMeButton
+                  onResolve={(l) => applyBillingLocality(l, true)}
+                />
+              </div>
             </div>
           )}
 
@@ -893,8 +957,8 @@ const OnePageCheckout = ({
                       data-testid="marketing-opt-in-checkbox"
                     />
                     <span>
-                      Vreau să primesc pe email oferte și noutăți
-                      onlybestdevice (opțional — te poți dezabona oricând).
+                      Vreau să primesc pe email oferte și noutăți onlybestdevice
+                      (opțional — te poți dezabona oricând).
                     </span>
                   </label>
                 </div>
