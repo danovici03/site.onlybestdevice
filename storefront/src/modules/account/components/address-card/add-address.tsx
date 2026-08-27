@@ -7,7 +7,7 @@ import { useEffect, useState, useActionState } from "react"
 import useToggleState from "@lib/hooks/use-toggle-state"
 import CountrySelect from "@modules/checkout/components/country-select"
 import Input from "@modules/common/components/input"
-import CountySelect from "@modules/common/components/county-select"
+import AddressLocalityFields from "@modules/common/components/address-locality-fields"
 import Modal from "@modules/common/components/modal"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import { HttpTypes } from "@medusajs/types"
@@ -114,31 +114,13 @@ const AddAddress = ({ region, addresses, variant = "card" }: AddAddressProps) =>
                 autoComplete="address-line2"
                 data-testid="address-2-input"
               />
-              {/* Județul are rând propriu: numele complete („Bistrița-Năsăud")
-                  nu încap în coloana de 100px de dinainte. */}
-              <div className="grid grid-cols-[120px_1fr] gap-3">
-                <Input
-                  label={t.addresses.postalCode}
-                  name="postal_code"
-                  required
-                  autoComplete="postal-code"
-                  pattern="\d{5}"
-                  title={t.addresses.invalidCap}
-                  data-testid="postal-code-input"
-                />
-                <Input
-                  label={t.addresses.city}
-                  name="city"
-                  required
-                  autoComplete="locality"
-                  data-testid="city-input"
-                />
-              </div>
-              <CountySelect
-                label={t.addresses.province}
-                name="province"
-                required
-                data-testid="state-input"
+              <AddressLocalityFields
+                labels={{
+                  city: t.addresses.city,
+                  province: t.addresses.province,
+                  postalCode: t.addresses.postalCode,
+                  invalidPostalCode: t.addresses.invalidCap,
+                }}
               />
               <CountrySelect
                 region={region}

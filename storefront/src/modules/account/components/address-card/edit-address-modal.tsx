@@ -7,8 +7,7 @@ import { Heading, clx } from "@medusajs/ui"
 import useToggleState from "@lib/hooks/use-toggle-state"
 import CountrySelect from "@modules/checkout/components/country-select"
 import Input from "@modules/common/components/input"
-import CountySelect from "@modules/common/components/county-select"
-import { matchCounty } from "@lib/util/counties"
+import AddressLocalityFields from "@modules/common/components/address-locality-fields"
 import Modal from "@modules/common/components/modal"
 import Spinner from "@modules/common/icons/spinner"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
@@ -204,33 +203,16 @@ const EditAddress: React.FC<EditAddressProps> = ({ region, address }) => {
                 defaultValue={address.address_2 || undefined}
                 data-testid="address-2-input"
               />
-              <div className="grid grid-cols-[120px_1fr] gap-3">
-                <Input
-                  label={t.addresses.postalCode}
-                  name="postal_code"
-                  required
-                  autoComplete="postal-code"
-                  pattern="\d{5}"
-                  title={t.addresses.invalidCap}
-                  defaultValue={address.postal_code || undefined}
-                  data-testid="postal-code-input"
-                />
-                <Input
-                  label={t.addresses.city}
-                  name="city"
-                  required
-                  autoComplete="locality"
-                  defaultValue={address.city || undefined}
-                  data-testid="city-input"
-                />
-              </div>
-              <CountySelect
-                label={t.addresses.province}
-                name="province"
-                required
-                // Adresa salvată poate avea „BN" sau text fără diacritice.
-                defaultValue={matchCounty(address.province) ?? ""}
-                data-testid="state-input"
+              <AddressLocalityFields
+                labels={{
+                  city: t.addresses.city,
+                  province: t.addresses.province,
+                  postalCode: t.addresses.postalCode,
+                  invalidPostalCode: t.addresses.invalidCap,
+                }}
+                defaultCity={address.city}
+                defaultProvince={address.province}
+                defaultPostalCode={address.postal_code}
               />
               <CountrySelect
                 name="country_code"

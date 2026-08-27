@@ -56,6 +56,10 @@ import { StripeContext } from "@modules/checkout/components/payment-wrapper/stri
 import CartTotals from "@modules/common/components/cart-totals"
 import Input from "@modules/common/components/input"
 import CountySelect from "@modules/common/components/county-select"
+import LocalitySelect, {
+  type LocalitySuggestion,
+} from "@modules/common/components/locality-select"
+import type { GeoHint } from "@lib/data/geo"
 import { matchCounty } from "@lib/util/counties"
 import {
   COURIER_NAME,
@@ -214,17 +218,31 @@ const emptyAddress = (): AddressForm => ({
   postal_code: "",
 })
 
-const fromCart = (cart: any, customer: any): AddressForm => ({
+/**
+ * Ce a completat geolocalizarea peste un coș fără adresă. Coșul are mereu
+ * prioritate: cine a scris deja o adresă n-o vede rescrisă de un IP.
+ */
+const geoFilled = (cart: any, geo?: GeoHint | null) => ({
+  city: !cart?.shipping_address?.city && !!geo?.city,
+  province: !cart?.shipping_address?.province && !!geo?.province,
+})
+
+const fromCart = (
+  cart: any,
+  customer: any,
+  geo?: GeoHint | null
+): AddressForm => ({
   email: cart?.email || customer?.email || "",
   phone: cart?.shipping_address?.phone || customer?.phone || "",
   first_name: cart?.shipping_address?.first_name || customer?.first_name || "",
   last_name: cart?.shipping_address?.last_name || customer?.last_name || "",
   address_1: cart?.shipping_address?.address_1 || "",
   company: cart?.shipping_address?.company || "",
-  city: cart?.shipping_address?.city || "",
+  city: cart?.shipping_address?.city || geo?.city || "",
   // Adresele salvate înainte de select conțin text liber („Bistrita-Nasaud",
   // „BN"); le aducem la numele canonic ca select-ul să nu pară necompletat.
-  province: matchCounty(cart?.shipping_address?.province) || "",
+  province:
+    matchCounty(cart?.shipping_address?.province) || geo?.province || "",
   postal_code: cart?.shipping_address?.postal_code || "",
 })
 
@@ -278,6 +296,8 @@ type OnePageCheckoutProps = {
   paymentMethods: { id: string }[]
   /** Produsul „Garanție extinsă", pentru propunerea din rezumat. */
   warranty?: HttpTypes.StoreProduct
+  /** Localitatea presupusă din IP, pentru precompletarea adresei. */
+  geoHint?: GeoHint | null
 }
 
 const SectionCard = ({
@@ -308,6 +328,7 @@ const OnePageCheckout = ({
   shippingMethods,
   paymentMethods,
   warranty,
+  geoHint,
 }: OnePageCheckoutProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -318,7 +339,13 @@ const OnePageCheckout = ({
     "ro"
 
   /* ---------------- Adresă ---------------- */
-  const [form, setForm] = useState<AddressForm>(() => fromCart(cart, customer))
+  const [form, setForm] = useState<AddressForm>(() =>
+    fromCart(cart, customer, geoHint)
+  )
+  // Ce a venit din geolocalizare, cât timp clientul n-a confirmat prin editare.
+  // Nu e doar cosmetic: o presupunere care arată ca o valoare introdusă de om
+  // e exact felul în care pleacă o comandă către alt oraș.
+  const [geoNotice, setGeoNotice] = useState(() => geoFilled(cart, geoHint))
   const [billing, setBilling] = useState<AddressForm>(() => emptyAddress())
   const [billingSame, setBillingSame] = useState(true)
   // Dacă județul din coș a fost adus la forma canonică la încărcare („Bistrita-
@@ -326,7 +353,11 @@ const OnePageCheckout = ({
   // corectă, dar comanda pleacă cu cea veche, pentru că nimic n-a fost atins.
   const [dirty, setDirty] = useState(() => {
     const stored = cart?.shipping_address?.province
-    return !!stored && matchCounty(stored) !== stored
+    if (!!stored && matchCounty(stored) !== stored) return true
+    // Precompletarea din IP trebuie salvată chiar dacă vizitatorul nu atinge
+    // câmpurile — altfel vede un oraș în formular, dar coșul rămâne fără el.
+    const filled = geoFilled(cart, geoHint)
+    return filled.city || filled.province
   })
   const [saving, setSaving] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -334,9 +365,52 @@ const OnePageCheckout = ({
   const setField = (name: keyof AddressForm, value: string) => {
     setForm((f) => ({ ...f, [name]: value }))
     setDirty(true)
+    if (name === "city" || name === "province") {
+      setGeoNotice((n) => ({ ...n, [name]: false }))
+    }
+    if (name === "postal_code") postalAuto.current = false
   }
   const setBillingField = (name: keyof AddressForm, value: string) => {
     setBilling((f) => ({ ...f, [name]: value }))
+    setDirty(true)
+    if (name === "postal_code") billingPostalAuto.current = false
+  }
+
+  // Codul poștal completat de noi poate fi înlocuit la următoarea alegere de
+  // localitate; cel scris de client, nu — el își știe strada, noi doar
+  // localitatea.
+  const postalAuto = useRef(false)
+  const billingPostalAuto = useRef(false)
+
+  /**
+   * Alegere din nomenclator: numele oficial al localității, județul ei și —
+   * doar unde codul poștal e unic pe localitate — și codul poștal.
+   */
+  const applyLocality = (locality: LocalitySuggestion) => {
+    const canFillPostal =
+      !!locality.postalCode && (!form.postal_code || postalAuto.current)
+    setForm((f) => ({
+      ...f,
+      city: locality.name,
+      province: locality.county,
+      postal_code: canFillPostal ? locality.postalCode : f.postal_code,
+    }))
+    if (canFillPostal) postalAuto.current = true
+    setDirty(true)
+    setGeoNotice({ city: false, province: false })
+  }
+
+  const applyBillingLocality = (locality: LocalitySuggestion) => {
+    const canFillPostal =
+      !!locality.postalCode &&
+      (!billing.postal_code || billingPostalAuto.current)
+    setBilling((f) => ({
+      ...f,
+      city: locality.name,
+      province: locality.county,
+      postal_code: canFillPostal ? locality.postalCode : f.postal_code,
+    }))
+    if (canFillPostal) billingPostalAuto.current = true
     setDirty(true)
   }
 
@@ -643,7 +717,8 @@ const OnePageCheckout = ({
         })
         await placeFinancedOrder("tbi")
       } else if (isNetopia(selectedPayment)) {
-        const sessionOk = activeSession?.provider_id === selectedPayment
+        const sessionOk =
+          activeSession?.provider_id === selectedPayment
         if (!sessionOk) {
           await initiatePaymentSession(cart, { provider_id: selectedPayment })
         }
@@ -747,12 +822,13 @@ const OnePageCheckout = ({
                 data-testid="shipping-address-input"
               />
             </div>
-            <Input
+            <LocalitySelect
               label="Oraș / localitate"
               name="city"
-              autoComplete="address-level2"
               value={form.city}
-              onChange={(e) => setField("city", e.target.value)}
+              county={form.province}
+              onChange={(city) => setField("city", city)}
+              onSelect={applyLocality}
               required
               data-testid="shipping-city-input"
             />
@@ -782,6 +858,18 @@ const OnePageCheckout = ({
               data-testid="shipping-company-input"
             />
           </div>
+
+          {(geoNotice.city || geoNotice.province) && (
+            <p className="mt-3 text-xs text-brand-dark/55">
+              Am completat{" "}
+              {geoNotice.city && geoNotice.province
+                ? "orașul și județul"
+                : geoNotice.city
+                  ? "orașul"
+                  : "județul"}{" "}
+              după locația ta aproximativă. Verifică-le înainte de a comanda.
+            </p>
+          )}
 
           <label className="mt-4 flex items-center gap-2.5 text-sm text-brand-dark/80 cursor-pointer">
             <input
@@ -825,11 +913,13 @@ const OnePageCheckout = ({
                   required
                 />
               </div>
-              <Input
+              <LocalitySelect
                 label="Oraș / localitate"
                 name="billing_city"
                 value={billing.city}
-                onChange={(e) => setBillingField("city", e.target.value)}
+                county={billing.province}
+                onChange={(city) => setBillingField("city", city)}
+                onSelect={applyBillingLocality}
                 required
               />
               <CountySelect
