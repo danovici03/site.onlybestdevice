@@ -3,6 +3,7 @@
 import { matchCounty } from "@lib/util/counties"
 import CountySelect from "@modules/common/components/county-select"
 import Input from "@modules/common/components/input"
+import LocateMeButton from "@modules/common/components/locate-me-button"
 import LocalitySelect, {
   type LocalitySuggestion,
 } from "@modules/common/components/locality-select"
@@ -45,10 +46,14 @@ const AddressLocalityFields = ({
   // cel scris de client, nu.
   const postalAuto = useRef(false)
 
-  const applyLocality = (locality: LocalitySuggestion) => {
+  /**
+   * `fromGps` inversează regula codului poștal: la detectare codul e al
+   * punctului exact, iar clientul tocmai a cerut-o — deci bate și ce scrisese.
+   */
+  const applyLocality = (locality: LocalitySuggestion, fromGps = false) => {
     setCity(locality.name)
     setProvince(locality.county)
-    if (locality.postalCode && (!postalCode || postalAuto.current)) {
+    if (locality.postalCode && (fromGps || !postalCode || postalAuto.current)) {
       setPostalCode(locality.postalCode)
       postalAuto.current = true
     }
@@ -93,6 +98,7 @@ const AddressLocalityFields = ({
         onChange={setProvince}
         data-testid="state-input"
       />
+      <LocateMeButton onResolve={(l) => applyLocality(l, true)} />
     </>
   )
 }

@@ -59,7 +59,7 @@ import CountySelect from "@modules/common/components/county-select"
 import LocalitySelect, {
   type LocalitySuggestion,
 } from "@modules/common/components/locality-select"
-import type { GeoHint } from "@lib/data/geo"
+import LocateMeButton from "@modules/common/components/locate-me-button"
 import { matchCounty } from "@lib/util/counties"
 import {
   COURIER_NAME,
@@ -81,13 +81,7 @@ import {
 } from "@phosphor-icons/react/dist/ssr"
 import { PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js"
 import { useRouter, useSearchParams } from "next/navigation"
-import {
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { useContext, useEffect, useMemo, useRef, useState } from "react"
 
 /* ------------------------------------------------------------------ */
 /* Metadatele metodelor de plată (ordinea, titluri RO, logo-uri)       */
@@ -218,37 +212,27 @@ const emptyAddress = (): AddressForm => ({
   postal_code: "",
 })
 
-/**
- * Ce a completat geolocalizarea peste un coș fără adresă. Coșul are mereu
- * prioritate: cine a scris deja o adresă n-o vede rescrisă de un IP.
- */
-const geoFilled = (cart: any, geo?: GeoHint | null) => ({
-  city: !cart?.shipping_address?.city && !!geo?.city,
-  province: !cart?.shipping_address?.province && !!geo?.province,
-})
-
-const fromCart = (
-  cart: any,
-  customer: any,
-  geo?: GeoHint | null
-): AddressForm => ({
+const fromCart = (cart: any, customer: any): AddressForm => ({
   email: cart?.email || customer?.email || "",
   phone: cart?.shipping_address?.phone || customer?.phone || "",
   first_name: cart?.shipping_address?.first_name || customer?.first_name || "",
   last_name: cart?.shipping_address?.last_name || customer?.last_name || "",
   address_1: cart?.shipping_address?.address_1 || "",
   company: cart?.shipping_address?.company || "",
-  city: cart?.shipping_address?.city || geo?.city || "",
+  city: cart?.shipping_address?.city || "",
   // Adresele salvate înainte de select conțin text liber („Bistrita-Nasaud",
   // „BN"); le aducem la numele canonic ca select-ul să nu pară necompletat.
-  province:
-    matchCounty(cart?.shipping_address?.province) || geo?.province || "",
+  province: matchCounty(cart?.shipping_address?.province) || "",
   postal_code: cart?.shipping_address?.postal_code || "",
 })
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-const missingFields = (f: AddressForm, billingSame: boolean, b: AddressForm) => {
+const missingFields = (
+  f: AddressForm,
+  billingSame: boolean,
+  b: AddressForm
+) => {
   const missing: string[] = []
   if (!EMAIL_RE.test(f.email)) missing.push("email")
   if (!f.phone.trim()) missing.push("telefon")
@@ -296,8 +280,6 @@ type OnePageCheckoutProps = {
   paymentMethods: { id: string }[]
   /** Produsul „Garanție extinsă", pentru propunerea din rezumat. */
   warranty?: HttpTypes.StoreProduct
-  /** Localitatea presupusă din IP, pentru precompletarea adresei. */
-  geoHint?: GeoHint | null
 }
 
 const SectionCard = ({
@@ -328,7 +310,6 @@ const OnePageCheckout = ({
   shippingMethods,
   paymentMethods,
   warranty,
-  geoHint,
 }: OnePageCheckoutProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -339,13 +320,7 @@ const OnePageCheckout = ({
     "ro"
 
   /* ---------------- Adresă ---------------- */
-  const [form, setForm] = useState<AddressForm>(() =>
-    fromCart(cart, customer, geoHint)
-  )
-  // Ce a venit din geolocalizare, cât timp clientul n-a confirmat prin editare.
-  // Nu e doar cosmetic: o presupunere care arată ca o valoare introdusă de om
-  // e exact felul în care pleacă o comandă către alt oraș.
-  const [geoNotice, setGeoNotice] = useState(() => geoFilled(cart, geoHint))
+  const [form, setForm] = useState<AddressForm>(() => fromCart(cart, customer))
   const [billing, setBilling] = useState<AddressForm>(() => emptyAddress())
   const [billingSame, setBillingSame] = useState(true)
   // Dacă județul din coș a fost adus la forma canonică la încărcare („Bistrita-
@@ -353,11 +328,7 @@ const OnePageCheckout = ({
   // corectă, dar comanda pleacă cu cea veche, pentru că nimic n-a fost atins.
   const [dirty, setDirty] = useState(() => {
     const stored = cart?.shipping_address?.province
-    if (!!stored && matchCounty(stored) !== stored) return true
-    // Precompletarea din IP trebuie salvată chiar dacă vizitatorul nu atinge
-    // câmpurile — altfel vede un oraș în formular, dar coșul rămâne fără el.
-    const filled = geoFilled(cart, geoHint)
-    return filled.city || filled.province
+    return !!stored && matchCounty(stored) !== stored
   })
   const [saving, setSaving] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -365,9 +336,6 @@ const OnePageCheckout = ({
   const setField = (name: keyof AddressForm, value: string) => {
     setForm((f) => ({ ...f, [name]: value }))
     setDirty(true)
-    if (name === "city" || name === "province") {
-      setGeoNotice((n) => ({ ...n, [name]: false }))
-    }
     if (name === "postal_code") postalAuto.current = false
   }
   const setBillingField = (name: keyof AddressForm, value: string) => {
@@ -385,10 +353,15 @@ const OnePageCheckout = ({
   /**
    * Alegere din nomenclator: numele oficial al localității, județul ei și —
    * doar unde codul poștal e unic pe localitate — și codul poștal.
+   *
+   * `fromGps` vine de la butonul de detectare, unde regula se inversează: acolo
+   * codul e al punctului exact, nu al localității, iar clientul tocmai a cerut
+   * explicit să fie completat — deci bate și ce scrisese înainte.
    */
-  const applyLocality = (locality: LocalitySuggestion) => {
+  const applyLocality = (locality: LocalitySuggestion, fromGps = false) => {
     const canFillPostal =
-      !!locality.postalCode && (!form.postal_code || postalAuto.current)
+      !!locality.postalCode &&
+      (fromGps || !form.postal_code || postalAuto.current)
     setForm((f) => ({
       ...f,
       city: locality.name,
@@ -397,13 +370,15 @@ const OnePageCheckout = ({
     }))
     if (canFillPostal) postalAuto.current = true
     setDirty(true)
-    setGeoNotice({ city: false, province: false })
   }
 
-  const applyBillingLocality = (locality: LocalitySuggestion) => {
+  const applyBillingLocality = (
+    locality: LocalitySuggestion,
+    fromGps = false
+  ) => {
     const canFillPostal =
       !!locality.postalCode &&
-      (!billing.postal_code || billingPostalAuto.current)
+      (fromGps || !billing.postal_code || billingPostalAuto.current)
     setBilling((f) => ({
       ...f,
       city: locality.name,
@@ -717,8 +692,7 @@ const OnePageCheckout = ({
         })
         await placeFinancedOrder("tbi")
       } else if (isNetopia(selectedPayment)) {
-        const sessionOk =
-          activeSession?.provider_id === selectedPayment
+        const sessionOk = activeSession?.provider_id === selectedPayment
         if (!sessionOk) {
           await initiatePaymentSession(cart, { provider_id: selectedPayment })
         }
@@ -734,8 +708,7 @@ const OnePageCheckout = ({
         window.location.href = fields.fallback_url
         return
       } else {
-        const sessionOk =
-          activeSession?.provider_id === selectedPayment
+        const sessionOk = activeSession?.provider_id === selectedPayment
         if (!sessionOk) {
           await initiatePaymentSession(cart, { provider_id: selectedPayment })
         }
@@ -761,7 +734,9 @@ const OnePageCheckout = ({
         setPlacing(false)
       })
     } else if (redirectStatus === "failed") {
-      setPlaceError("Plata nu a reușit. Încearcă din nou sau alege altă metodă.")
+      setPlaceError(
+        "Plata nu a reușit. Încearcă din nou sau alege altă metodă."
+      )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
@@ -859,17 +834,10 @@ const OnePageCheckout = ({
             />
           </div>
 
-          {(geoNotice.city || geoNotice.province) && (
-            <p className="mt-3 text-xs text-brand-dark/55">
-              Am completat{" "}
-              {geoNotice.city && geoNotice.province
-                ? "orașul și județul"
-                : geoNotice.city
-                  ? "orașul"
-                  : "județul"}{" "}
-              după locația ta aproximativă. Verifică-le înainte de a comanda.
-            </p>
-          )}
+          <LocateMeButton
+            onResolve={(l) => applyLocality(l, true)}
+            className="mt-3"
+          />
 
           <label className="mt-4 flex items-center gap-2.5 text-sm text-brand-dark/80 cursor-pointer">
             <input
@@ -941,6 +909,11 @@ const OnePageCheckout = ({
                 value={billing.company}
                 onChange={(e) => setBillingField("company", e.target.value)}
               />
+              <div className="small:col-span-2">
+                <LocateMeButton
+                  onResolve={(l) => applyBillingLocality(l, true)}
+                />
+              </div>
             </div>
           )}
 
@@ -983,8 +956,8 @@ const OnePageCheckout = ({
                       data-testid="marketing-opt-in-checkbox"
                     />
                     <span>
-                      Vreau să primesc pe email oferte și noutăți
-                      onlybestdevice (opțional — te poți dezabona oricând).
+                      Vreau să primesc pe email oferte și noutăți onlybestdevice
+                      (opțional — te poți dezabona oricând).
                     </span>
                   </label>
                 </div>
