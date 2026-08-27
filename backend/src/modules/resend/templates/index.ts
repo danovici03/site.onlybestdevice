@@ -1,3 +1,5 @@
+import { bankAccount } from "../../../lib/company/bank-account"
+
 // Template registry for the Resend notification provider.
 // Each template returns a subject + rendered HTML (and optional text fallback).
 // Layout is shared (logo header, brand colors, serif heading, branded footer)
@@ -19,12 +21,6 @@ const REG_COM = "J06/26/2021"
 const SUPPORT_EMAIL = "office@onlybestdevice.ro"
 const SUPPORT_HOURS = "Luni–Vineri 9:00–18:00"
 const STOREFRONT_FALLBACK = "https://onlybestdevice.ro"
-// Contul pentru plata prin ordin de plată / virament bancar.
-const BANK = {
-  name: "Banca Transilvania",
-  iban: "RO54BTRLRONPOS0584073801",
-  holder: LEGAL,
-}
 // Prefixul de limbă folosit în linkurile către storefront (middleware-ul
 // Next redirectează pe /{countryCode}). Citit la randare, nu la import, ca
 // să nu depindă de ordinea de încărcare a env-ului.
@@ -584,18 +580,29 @@ const orderStatusChanged: Renderer = ({
   }
 }
 
-/** Blocul cu datele contului, folosit de emailul de virament. */
-const bankDetails = (order: any) => `
+/**
+ * Blocul cu datele contului, folosit de emailul de virament.
+ *
+ * Fără `BANK_IBAN` configurat întoarce șir gol. În practică nu se ajunge aici
+ * — ruta de status refuză să trimită emailul — dar dacă s-ar ajunge, un bloc
+ * gol e mai onest decât un tabel cu „IBAN:" urmat de nimic.
+ */
+const bankDetails = (order: any) => {
+  const bank = bankAccount()
+  if (!bank) return ""
+
+  return `
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 20px;border:1px solid ${COLOR.border};border-radius:12px;background:${COLOR.light};">
     <tr><td style="padding:20px 24px;font-family:${FONT_BODY};font-size:14px;color:${COLOR.dark};line-height:1.7;">
       <div style="color:${COLOR.muted};font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Date pentru plată</div>
-      <div><strong>Beneficiar:</strong> ${escape(BANK.holder)}</div>
-      <div><strong>IBAN:</strong> <span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">${escape(BANK.iban)}</span></div>
-      <div><strong>Banca:</strong> ${escape(BANK.name)}</div>
+      <div><strong>Beneficiar:</strong> ${escape(bank.holder)}</div>
+      <div><strong>IBAN:</strong> <span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">${escape(bank.iban)}</span></div>
+      ${bank.name ? `<div><strong>Banca:</strong> ${escape(bank.name)}</div>` : ""}
       <div><strong>Sumă:</strong> ${money(order?.total, order?.currency_code)}</div>
       <div><strong>Detalii plată:</strong> Comanda #${escape(order?.display_id ?? order?.id ?? "")}</div>
     </td></tr>
   </table>`
+}
 
 /**
  * Comandă lăsată pe ordin de plată. Pe lângă IBAN îi dăm și butonul de plată

@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { cancelOrderWorkflow } from "@medusajs/core-flows"
 import { z } from "zod"
 
+import { hasBankAccount } from "../../../../../lib/company/bank-account"
 import { ORDER_EMAIL_FIELDS } from "../../../../../lib/orders/order-emails"
 import {
   ORDER_STATUS_CODES,
@@ -118,6 +119,20 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     return res.status(400).json({ message: parsed.error.issues[0]?.message })
   }
   const { code, note, notify } = parsed.data
+
+  /**
+   * Emailul de virament e degeaba fără IBAN, iar clientul n-are cum să-și dea
+   * seama că lipsește ceva — vede doar un email care nu-i spune unde să
+   * plătească. Mai bine oprim operatorul aici, cu un mesaj pe care îl poate
+   * acționa, decât să plece emailul.
+   */
+  if (code === "awaiting_bank_transfer" && notify && !hasBankAccount()) {
+    return res.status(400).json({
+      message:
+        "Contul bancar nu e configurat (BANK_IBAN), deci emailul de virament nu poate fi trimis. " +
+        "Setează statusul fără notificare sau completează BANK_IBAN în env.",
+    })
+  }
 
   const orderId = req.params.id
   const { data: orders } = await query.graph({
