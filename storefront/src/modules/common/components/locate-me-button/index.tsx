@@ -24,16 +24,34 @@ type LocateMeButtonProps = {
 
 const MESSAGES = {
   unsupported: "Browserul tău nu poate detecta locația. Completează manual.",
-  denied:
-    "Accesul la locație e blocat pentru acest site. Îl poți reactiva din " +
-    "setările de permisiuni ale browserului (iconița din stânga adresei), " +
-    "apoi apasă din nou.",
   unavailable:
     "Nu am putut afla locația. Încearcă din nou sau completează manual.",
   outside_ro: "Locația ta pare a fi în afara României.",
   not_found: "Nu am recunoscut localitatea. Completează manual.",
   upstream: "Serviciul de localizare nu răspunde. Încearcă mai târziu.",
 } as const
+
+/**
+ * Instrucțiunea de reactivare nu poate fi una singură.
+ *
+ * Pe telefon nu există „iconița din stânga adresei" la care să trimiți omul,
+ * iar refuzul vine adesea de la sistem, nu de la site: browserul însuși n-are
+ * voie la locație în setările telefonului, sau serviciile de localizare sunt
+ * oprite de tot. `PERMISSION_DENIED` arată la fel în toate cazurile — API-ul
+ * web nu le poate deosebi — deci pe mobil le numim pe amândouă.
+ */
+const deniedMessage = () => {
+  const mobile =
+    typeof navigator !== "undefined" &&
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+  return mobile
+    ? "Accesul la locație e blocat. Verifică permisiunile site-ului în " +
+        "meniul browserului și, în setările telefonului, dacă browserul are " +
+        "voie să folosească locația. Până atunci, completează câmpurile manual."
+    : "Accesul la locație e blocat pentru acest site. Îl poți reactiva din " +
+        "iconița din stânga adresei, apoi apasă din nou."
+}
 
 /**
  * Detectarea locației pentru formularele de adresă: coordonatele din browser,
@@ -129,7 +147,7 @@ const LocateMeButton = ({
         if (auto) return
         setError(
           err.code === err.PERMISSION_DENIED
-            ? MESSAGES.denied
+            ? deniedMessage()
             : MESSAGES.unavailable
         )
       },
