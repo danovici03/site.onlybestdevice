@@ -836,6 +836,7 @@ const OnePageCheckout = ({
 
           <LocateMeButton
             onResolve={(l) => applyLocality(l, true)}
+            invite={!form.city && !form.province}
             className="mt-3"
           />
 

@@ -98,7 +98,10 @@ const AddressLocalityFields = ({
         onChange={setProvince}
         data-testid="state-input"
       />
-      <LocateMeButton onResolve={(l) => applyLocality(l, true)} />
+      <LocateMeButton
+        onResolve={(l) => applyLocality(l, true)}
+        invite={!city && !province}
+      />
     </>
   )
 }
