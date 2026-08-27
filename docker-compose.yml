@@ -141,6 +141,17 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM: ${RESEND_FROM:-}
       RESEND_REPLY_TO: ${RESEND_REPLY_TO:-}
+      # Destinatarul notificărilor de comandă nouă / retur pentru magazin.
+      ADMIN_ORDER_NOTIFICATION_EMAIL: ${ADMIN_ORDER_NOTIFICATION_EMAIL:-}
+
+      # ── Contul bancar din emailul de virament ──
+      #    Fără BANK_IBAN, `POST /admin/orders/:id/status` refuză să trimită
+      #    emailul „În așteptarea viramentului" — operatorul vede în admin
+      #    „contul bancar nu e configurat". Atenție: a-l pune în Dokploy →
+      #    Environment NU e de ajuns, variabila trebuie enumerată și aici.
+      BANK_IBAN: ${BANK_IBAN:-}
+      BANK_NAME: ${BANK_NAME:-}
+      BANK_HOLDER: ${BANK_HOLDER:-}
     volumes:
       # Doar dacă NU folosești S3 — păstrează fișierele urcate la restart.
       - backend_static:/app/static
