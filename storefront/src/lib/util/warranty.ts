@@ -1,5 +1,8 @@
 import { HttpTypes } from "@medusajs/types"
 
+import { getPricesForVariant } from "./get-product-price"
+import { convertToLocale } from "./money"
+
 /** Produsul de serviciu din Medusa, ascuns din catalog. */
 export const WARRANTY_HANDLE = "garantie-extinsa"
 
@@ -20,10 +23,11 @@ export const WARRANTY_TAG = "garantie-extinsa"
 /**
  * Sub pragul ăsta nu arătăm cardul, oricât ar fi produsul de bifat.
  *
- * Garanția costă 99 lei (+1 an) / 169 lei (+2 ani), deci pe un produs de 50 lei
- * oferta e absurdă chiar dacă bifa e pusă corect. 400 de lei ține garanția de
- * un an la cel mult un sfert din preț. Verificarea stă aici, la afișare, nu doar
- * în migrare: prețurile se schimbă din Admin fără să retagheze nimeni nimic.
+ * Garanția pleacă de la 99 lei (+1 an) / 169 lei (+2 ani) și urcă pe produsele
+ * scumpe, deci pe un produs de 50 lei oferta e absurdă chiar dacă bifa e pusă
+ * corect. 400 de lei ține garanția implicită la cel mult un sfert din preț.
+ * Verificarea stă aici, la afișare, nu doar în migrare: prețurile se schimbă
+ * din Admin fără să retagheze nimeni nimic.
  *
  * Aliniat cu `WARRANTY_MIN_PRICE` din `backend/src/scripts/seed-warranty-tag.ts`.
  */
@@ -32,6 +36,113 @@ export const WARRANTY_MIN_PRICE = 400
 /** Cheia din metadata liniei de garanție care spune ce produs acoperă. */
 export const WARRANTY_FOR = "warranty_for"
 export const WARRANTY_FOR_TITLE = "warranty_for_title"
+
+/**
+ * Prețul garanției, setat pe fiecare produs acoperit din cardul „Preț" din
+ * Admin. Cheile trăiesc în `metadata` produsului acoperit, nu pe serviciu:
+ * o garanție pe un telefon de 6.000 lei nu costă cât una pe unul de 900.
+ *
+ * Trebuie să rămână aliniate cu `WARRANTY_META_KEYS` din
+ * `backend/src/lib/warranty-prices.ts`.
+ */
+export const WARRANTY_PRICE_META = {
+  one_year: "warranty_price_1y",
+  two_years: "warranty_price_2y",
+} as const
+
+type WarrantyTerm = keyof typeof WARRANTY_PRICE_META
+
+export type WarrantyOption = {
+  variantId: string
+  /** Eticheta variantei de serviciu: „+1 an" / „+2 ani". */
+  title: string
+  amount: number
+  /** Suma formatată, gata de afișat. */
+  price: string
+  /** Prețul vine de pe produsul acoperit, nu de pe serviciu. */
+  custom: boolean
+}
+
+/**
+ * Ce durată acoperă o variantă a produsului de serviciu.
+ *
+ * SKU-ul primul, pentru că e pus de scriptul de creare și supraviețuiește unei
+ * redenumiri de variantă; titlul e plasa de siguranță. Aceeași logică e și pe
+ * server (`backend/src/lib/warranty-prices.ts`), pentru că acolo se decide
+ * prețul real al liniei.
+ */
+function termOfVariant(variant: {
+  sku?: string | null
+  title?: string | null
+}): WarrantyTerm | null {
+  const sku = (variant.sku ?? "").toLowerCase()
+  if (sku.endsWith("-1an")) return "one_year"
+  if (sku.endsWith("-2ani")) return "two_years"
+
+  const title = (variant.title ?? "").toLowerCase()
+  if (title.includes("2 ani")) return "two_years"
+  if (title.includes("1 an")) return "one_year"
+
+  return null
+}
+
+function ownWarrantyPrice(
+  metadata: Record<string, unknown> | null | undefined,
+  term: WarrantyTerm
+): number | null {
+  const raw = metadata?.[WARRANTY_PRICE_META[term]]
+  const value =
+    typeof raw === "number"
+      ? raw
+      : typeof raw === "string" && raw.trim()
+        ? Number(raw.replace(",", "."))
+        : NaN
+
+  return Number.isFinite(value) && value > 0 ? value : null
+}
+
+/**
+ * Opțiunile de garanție pentru un produs anume: aceleași două durate, dar cu
+ * prețul produsului acoperit acolo unde e setat, altfel cel de pe serviciu.
+ *
+ * Sumele astea sunt doar pentru afișare — prețul care ajunge pe linia de coș se
+ * recalculează pe server, în `/store/carts/:id/warranty`.
+ */
+export function warrantyOptionsFor(
+  target:
+    | { metadata?: Record<string, unknown> | null }
+    | null
+    | undefined,
+  warranty?: HttpTypes.StoreProduct | null
+): WarrantyOption[] {
+  const variants = warranty?.variants ?? []
+
+  const currency =
+    variants
+      .map((v) => (v as any).calculated_price?.currency_code)
+      .find((c: unknown): c is string => typeof c === "string" && !!c) ?? "ron"
+
+  return variants.flatMap((variant) => {
+    if (!variant.id) return []
+
+    const term = termOfVariant(variant)
+    const own = term ? ownWarrantyPrice(target?.metadata, term) : null
+    const standard = getPricesForVariant(variant)?.calculated_price_number ?? null
+    const amount = own ?? standard
+
+    if (amount == null) return []
+
+    return [
+      {
+        variantId: variant.id,
+        title: variant.title ?? "",
+        amount,
+        price: convertToLocale({ amount, currency_code: currency }),
+        custom: own != null,
+      },
+    ]
+  })
+}
 
 type Line = HttpTypes.StoreCartLineItem
 

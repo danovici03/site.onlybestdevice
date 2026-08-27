@@ -25,9 +25,10 @@ export async function retrieveCart(cartId?: string, fields?: string) {
   const id = cartId || (await getCartId())
   // `*items.product.tags` nu e redundant cu `*items.product`: fără el tagurile
   // vin ca `[{ id }]`, fără `value`, iar bifa de garanție extinsă ar fi citită
-  // tăcut ca lipsă pe toate produsele din coș.
+  // tăcut ca lipsă pe toate produsele din coș. `+items.product.metadata` e cerut
+  // explicit din același motiv: acolo stă prețul propriu al garanției.
   fields ??=
-    "*items, *region, *items.product, *items.product.tags, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
+    "*items, *region, *items.product, *items.product.tags, +items.product.metadata, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
 
   if (!id) {
     return null
@@ -154,6 +155,62 @@ export async function addToCart({
       {},
       headers
     )
+    .then(async () => {
+      const cartCacheTag = await getCacheTag("carts")
+      revalidateTag(cartCacheTag)
+
+      const fulfillmentCacheTag = await getCacheTag("fulfillment")
+      revalidateTag(fulfillmentCacheTag)
+    })
+    .catch(medusaError)
+}
+
+/**
+ * Adaugă garanția extinsă pentru un produs anume.
+ *
+ * Rută proprie (`/store/carts/:id/warranty`), nu `createLineItem`, pentru că
+ * garanția are preț propriu pe fiecare produs acoperit, iar `line-items` nu
+ * poate duce un preț — și nici n-ar trebui: dacă suma ar veni de aici, oricine
+ * ar cumpăra garanția cu 1 leu. Trimitem doar ce produs se acoperă; serverul
+ * citește prețul din produsul acela și leagă linia prin `metadata`.
+ */
+export async function addWarrantyToCart({
+  variantId,
+  targetProductId,
+  quantity,
+  countryCode,
+}: {
+  /** Varianta produsului de serviciu: „+1 an" sau „+2 ani". */
+  variantId: string
+  /** Produsul acoperit; el dă prețul garanției. */
+  targetProductId: string
+  quantity: number
+  countryCode: string
+}) {
+  if (!variantId || !targetProductId) {
+    throw new Error("Missing variant or product ID when adding warranty")
+  }
+
+  const cart = await getOrSetCart(countryCode)
+
+  if (!cart) {
+    throw new Error("Error retrieving or creating cart")
+  }
+
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  await sdk.client
+    .fetch(`/store/carts/${cart.id}/warranty`, {
+      method: "POST",
+      body: {
+        variant_id: variantId,
+        target_product_id: targetProductId,
+        quantity,
+      },
+      headers,
+    })
     .then(async () => {
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag)

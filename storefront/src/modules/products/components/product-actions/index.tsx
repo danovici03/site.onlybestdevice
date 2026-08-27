@@ -1,6 +1,6 @@
 "use client"
 
-import { addToCart } from "@lib/data/cart"
+import { addToCart, addWarrantyToCart } from "@lib/data/cart"
 import { useSession } from "@lib/context/session-context"
 import { useIntersection } from "@lib/hooks/use-in-view"
 import { getProductPrice } from "@lib/util/get-product-price"
@@ -27,7 +27,7 @@ import {
   lowestOffer,
   supportsInstallments,
 } from "@lib/util/installments"
-import { WARRANTY_FOR, WARRANTY_FOR_TITLE } from "@lib/util/warranty"
+import { warrantyOptionsFor } from "@lib/util/warranty"
 import ExtendedWarranty from "@modules/products/components/extended-warranty"
 import Installments from "@modules/products/components/installments"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
@@ -265,6 +265,13 @@ export default function ProductActions({
     tbiAvailable,
   ])
 
+  // Prețul garanției e al produsului curent (`metadata`), cu cel de pe
+  // serviciu ca rezervă. Serverul recalculează oricum suma la adăugarea în coș.
+  const warrantyOptions = useMemo(
+    () => warrantyOptionsFor(product, warranty),
+    [product, warranty]
+  )
+
   const actionsRef = useRef<HTMLDivElement>(null)
   const inView = useIntersection(actionsRef, "0px")
 
@@ -286,17 +293,16 @@ export default function ProductActions({
         })
       }
       // Garanția extinsă acoperă câte o bucată, deci urmează cantitatea
-      // produsului (2 telefoane → 2 garanții). Metadata leagă linia de
-      // produsul acoperit: în coș știm cui să nu-i mai propunem garanție.
+      // produsului (2 telefoane → 2 garanții). Rută proprie, nu `addToCart`:
+      // prețul garanției e cel al produsului acoperit și se citește pe server,
+      // care leagă tot acolo linia de produs — în coș știm cui să nu-i mai
+      // propunem garanție.
       if (warrantyVariantId) {
-        await addToCart({
+        await addWarrantyToCart({
           variantId: warrantyVariantId,
+          targetProductId: product.id!,
           quantity,
           countryCode,
-          metadata: {
-            [WARRANTY_FOR]: product.id,
-            [WARRANTY_FOR_TITLE]: product.title,
-          },
         })
       }
       setUpgradeSelections([])
@@ -489,7 +495,7 @@ export default function ProductActions({
             odată cu clickul pe „Adaugă în coș”. Deci stă deasupra butonului,
             ca și accesoriile; sub buton ar fi bifată prea târziu. */}
         <ExtendedWarranty
-          warranty={warranty}
+          options={warrantyOptions}
           selectedVariantId={warrantyVariantId}
           onSelect={setWarrantyVariantId}
           disabled={!!disabled || isAdding}

@@ -1,13 +1,13 @@
 "use client"
 
-import { getProductPrice } from "@lib/util/get-product-price"
-import { HttpTypes } from "@medusajs/types"
+import { WarrantyOption } from "@lib/util/warranty"
 import { clx } from "@medusajs/ui"
 import { CaretDown, Check, ShieldPlus } from "@phosphor-icons/react/dist/ssr"
 import { useState } from "react"
 
 type ExtendedWarrantyProps = {
-  warranty?: HttpTypes.StoreProduct
+  /** Duratele cu prețul deja rezolvat pentru produsul curent. */
+  options: WarrantyOption[]
   selectedVariantId: string | null
   onSelect: (variantId: string | null) => void
   disabled?: boolean
@@ -20,20 +20,20 @@ const DETAILS_ID = "extended-warranty-details"
  * varianta aleasă intră în coș odată cu el, deci trebuie văzută înainte.
  * Ca să nu împingă butonul sub fold, antetul stă pe un rând și explicațiile
  * sunt pliate în „Detalii"; cele două opțiuni rămân mereu vizibile.
- * Sursa de adevăr e produsul de serviciu `garantie-extinsa` din Medusa
- * (variante „+1 an" / „+2 ani") — prețurile se editează din Admin.
+ * Duratele vin de pe produsul de serviciu `garantie-extinsa` din Medusa
+ * („+1 an" / „+2 ani"), dar prețul e cel al produsului curent, setat în cardul
+ * „Preț" din Admin; fără unul propriu, rămâne prețul de pe serviciu.
  * Selecția e un radio cu toggle-off: încă un click pe opțiunea activă
  * o deselectează.
  */
 const ExtendedWarranty = ({
-  warranty,
+  options,
   selectedVariantId,
   onSelect,
   disabled,
 }: ExtendedWarrantyProps) => {
   const [showDetails, setShowDetails] = useState(false)
-  const variants = warranty?.variants ?? []
-  if (!warranty || variants.length === 0) return null
+  if (options.length === 0) return null
 
   return (
     <div
@@ -92,19 +92,14 @@ const ExtendedWarranty = ({
       )}
 
       <div className="grid grid-cols-2 gap-2 p-4 pt-3">
-        {variants.map((v) => {
-          if (!v.id) return null
-          const checked = selectedVariantId === v.id
-          const { variantPrice } = getProductPrice({
-            product: warranty,
-            variantId: v.id,
-          })
+        {options.map((option) => {
+          const checked = selectedVariantId === option.variantId
 
           return (
             <button
               type="button"
-              key={v.id}
-              onClick={() => onSelect(checked ? null : v.id!)}
+              key={option.variantId}
+              onClick={() => onSelect(checked ? null : option.variantId)}
               disabled={disabled}
               aria-pressed={checked}
               className={clx(
@@ -128,13 +123,11 @@ const ExtendedWarranty = ({
               </span>
               <span className="flex-1 min-w-0">
                 <span className="block text-sm font-bold text-brand-dark leading-tight">
-                  {v.title}
+                  {option.title}
                 </span>
-                {variantPrice && (
-                  <span className="block text-xs font-bold text-emerald-700 leading-tight mt-0.5">
-                    {variantPrice.calculated_price}
-                  </span>
-                )}
+                <span className="block text-xs font-bold text-emerald-700 leading-tight mt-0.5">
+                  {option.price}
+                </span>
               </span>
             </button>
           )

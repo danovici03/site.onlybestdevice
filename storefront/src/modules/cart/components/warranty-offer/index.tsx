@@ -1,14 +1,13 @@
 "use client"
 
-import { addToCart } from "@lib/data/cart"
+import { addWarrantyToCart } from "@lib/data/cart"
 import { useSessionRefresh } from "@lib/context/session-context"
-import { getProductPrice } from "@lib/util/get-product-price"
-import { WARRANTY_FOR, WARRANTY_FOR_TITLE } from "@lib/util/warranty"
+import { warrantyOptionsFor } from "@lib/util/warranty"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
 import { ShieldPlus } from "@phosphor-icons/react/dist/ssr"
 import { useParams } from "next/navigation"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
 type WarrantyOfferProps = {
   /** Produsul de serviciu „Garanție extinsă" cu variantele lui. */
@@ -25,7 +24,8 @@ type WarrantyOfferProps = {
  * bandă subțire sub produs, nu un card care concurează cu butonul de finalizare.
  *
  * Garanția acoperă câte o bucată, deci se adaugă în cantitatea liniei, iar
- * metadata o leagă de produs — altfel n-am ști cui i s-a oferit deja.
+ * legătura cu produsul o face serverul, în `metadata` liniei — altfel n-am ști
+ * cui i s-a oferit deja. Prețul e cel al produsului acoperit, nu unul fix.
  */
 const WarrantyOffer = ({ warranty, item, compact }: WarrantyOfferProps) => {
   const countryCode = useParams().countryCode as string
@@ -33,21 +33,24 @@ const WarrantyOffer = ({ warranty, item, compact }: WarrantyOfferProps) => {
   const [addingId, setAddingId] = useState<string | null>(null)
   const [error, setError] = useState(false)
 
-  const variants = warranty?.variants ?? []
-  if (!warranty || variants.length === 0) return null
+  // `item.product` poartă `metadata`, deci prețul afișat aici e cel al
+  // produsului acoperit — vezi `+items.product.metadata` din `retrieveCart`.
+  const options = useMemo(
+    () => warrantyOptionsFor(item.product, warranty),
+    [item.product, warranty]
+  )
+
+  if (!options.length || !item.product_id) return null
 
   const add = async (variantId: string) => {
     setAddingId(variantId)
     setError(false)
     try {
-      await addToCart({
+      await addWarrantyToCart({
         variantId,
+        targetProductId: item.product_id!,
         quantity: item.quantity,
         countryCode,
-        metadata: {
-          [WARRANTY_FOR]: item.product_id,
-          [WARRANTY_FOR_TITLE]: item.product_title,
-        },
       })
       await refresh()
     } catch {
@@ -84,19 +87,14 @@ const WarrantyOffer = ({ warranty, item, compact }: WarrantyOfferProps) => {
       </span>
 
       <span className="ml-auto flex flex-wrap items-center gap-1.5">
-        {variants.map((v) => {
-          if (!v.id) return null
-          const { variantPrice } = getProductPrice({
-            product: warranty,
-            variantId: v.id,
-          })
-          const busy = addingId === v.id
+        {options.map((option) => {
+          const busy = addingId === option.variantId
 
           return (
             <button
-              key={v.id}
+              key={option.variantId}
               type="button"
-              onClick={() => add(v.id!)}
+              onClick={() => add(option.variantId)}
               disabled={addingId !== null}
               className={clx(
                 "rounded-full border border-emerald-600/30 bg-white font-bold text-emerald-800 transition-colors",
@@ -109,8 +107,7 @@ const WarrantyOffer = ({ warranty, item, compact }: WarrantyOfferProps) => {
                 <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-emerald-600/30 border-t-emerald-700 align-middle" />
               ) : (
                 <>
-                  {v.title}
-                  {variantPrice && ` · ${variantPrice.calculated_price}`}
+                  {option.title} · {option.price}
                 </>
               )}
             </button>

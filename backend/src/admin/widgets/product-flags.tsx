@@ -80,7 +80,7 @@ const FLAGS: Flag[] = [
     title: "Garanție extinsă",
     hint: "Cardul cu +1 an / +2 ani apare la produs și în coș.",
     details:
-      "Nebifat, cardul cu +1 an / +2 ani nu apare nici pe pagina produsului, nici în coș. Produsele sub pragul de preț nu-l arată oricum. Prețurile se editează în produsul „Garanție extinsă”.",
+      "Nebifat, cardul cu +1 an / +2 ani nu apare nici pe pagina produsului, nici în coș. Produsele sub pragul de preț nu-l arată oricum. Prețul celor două durate se pune în cardul „Preț” de mai jos; lăsat gol, produsul merge pe prețul standard din produsul „Garanție extinsă”.",
     onMessage: "Produsul poate primi garanție extinsă",
     offMessage: "Produsul nu mai primește garanție extinsă",
     // Fără garda asta, bifa apare și pe „Garanție extinsă", identică cu cea de
