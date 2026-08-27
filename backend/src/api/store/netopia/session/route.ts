@@ -4,13 +4,27 @@ import {
   MedusaError,
   Modules,
 } from '@medusajs/framework/utils'
+import {
+  createOrderPaymentCollectionWorkflow,
+  createPaymentSessionsWorkflow,
+} from '@medusajs/core-flows'
 import { getNetopiaClient } from '../../../../modules/netopia/client'
+import {
+  PAID_STATUSES,
+  canSendPaymentLink,
+  isCodOrder,
+  isFinancedOrder,
+} from '../../../../lib/orders/order-status'
 import {
   countryNumeric,
   getNetopiaV2Client,
   isNetopiaV2Enabled,
   type NetopiaV2Address,
 } from '../../../../modules/netopia/client-v2'
+
+/** Providerul de card. Id-ul e `pp_<modul>_<serviciu>`. */
+const NETOPIA_PROVIDER_ID =
+  process.env.NETOPIA_PAYMENT_PROVIDER_ID || 'pp_netopia_netopia'
 
 type SessionBody = {
   order_id: string
@@ -43,6 +57,11 @@ export const POST = async (
       'currency_code',
       'total',
       'metadata',
+      'status',
+      'canceled_at',
+      'payment_status',
+      'fulfillment_status',
+      'customer_id',
       'items.title',
       'items.quantity',
       'items.unit_price',
@@ -63,6 +82,9 @@ export const POST = async (
       'billing_address.province',
       'billing_address.postal_code',
       'billing_address.country_code',
+      'payment_collections.id',
+      'payment_collections.status',
+      'payment_collections.payments.provider_id',
       'payment_collections.payment_sessions.provider_id',
     ],
     filters: { id: orderId },
@@ -73,14 +95,63 @@ export const POST = async (
     throw new MedusaError(MedusaError.Types.NOT_FOUND, 'Comanda nu există')
   }
 
+  /**
+   * Ruta e publica si se cheama la fiecare deschidere a paginii
+   * `/order/:id/pay`, inclusiv din linkul trimis pe email. Deci e singurul loc
+   * care poate trimite un client spre pagina bancii — si singurul care poate
+   * produce o plata dubla daca nu verifica destul.
+   *
+   * `metadata.netopia.status === 'confirmed'` NU e suficient: IPN-ul e
+   * asincron, iar clientul se poate intoarce cu butonul „inapoi" din pagina de
+   * confirmare inainte sa fi ajuns. Pana atunci metadata inca zice „pending",
+   * dar banii sunt luati — de aceea ne uitam si la `payment_status`, care e
+   * calculat din platile reale, si la anulare.
+   */
+  const netopiaMeta = ((order.metadata ?? {}) as Record<string, any>).netopia ?? {}
+  const alreadyPaid =
+    netopiaMeta.status === 'confirmed' ||
+    PAID_STATUSES.has(((order as any).payment_status ?? '') as string)
+
+  if (alreadyPaid) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_ALLOWED,
+      'Comanda este deja platita'
+    )
+  }
+  if (order.status === 'canceled' || (order as any).canceled_at) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_ALLOWED,
+      'Comanda este anulata'
+    )
+  }
+
+  /**
+   * Comanda poate fi pe alta metoda de plata: client care a ales viramentul si
+   * s-a razgandit, sau operator care i-a trimis link de plata din admin.
+   * Conversia se face AICI, nu la trimiterea linkului, tocmai ca sa se intample
+   * doar daca clientul chiar apasa butonul — altfel o comanda pe ordin de plata
+   * ar inceta sa mai fie „in asteptarea viramentului" din secunda in care
+   * operatorul a trimis emailul.
+   *
+   * `canSendPaymentLink` refuza rambursul (curierul incaseaza, s-ar plati de
+   * doua ori) si ratele (dosarul se inchide la partener).
+   */
   const isNetopia = (order.payment_collections ?? [])
     .flatMap((pc: any) => pc?.payment_sessions ?? [])
     .some((ps: any) => ps?.provider_id?.includes('netopia'))
+
   if (!isNetopia) {
-    throw new MedusaError(
-      MedusaError.Types.NOT_ALLOWED,
-      'Comanda nu are plata cu cardul prin Netopia'
-    )
+    if (!canSendPaymentLink(order)) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_ALLOWED,
+        isCodOrder(order)
+          ? 'Comanda se plateste la livrare, catre curier'
+          : isFinancedOrder(order)
+            ? 'Comanda este in rate, prin partenerul de finantare'
+            : 'Comanda nu are plata cu cardul prin Netopia'
+      )
+    }
+    await switchToCardPayment(req, order)
   }
 
   const storefrontUrl = (
@@ -100,20 +171,56 @@ export const POST = async (
 
   const orderModule = req.scope.resolve(Modules.ORDER)
   /**
-   * `payment_url` se salvează ca să poată fi reluată plata fără să deschidem
-   * altă sesiune: pagina de handoff din storefront îl citește de aici.
+   * Fiecare apel e o incercare NOUA de plata, deci `error_code` de la
+   * incercarea precedenta se sterge — altfel cardul din admin ar arata comanda
+   * ca esuata desi clientul e chiar acum pe pagina bancii.
+   *
+   * `attempts` numara incercarile: emailul de plata esuata se trimite o data
+   * per incercare, nu o singura data pe viata comenzii.
+   *
+   * `payment_url` se salveaza doar informativ (v2). NU mai e sursa pentru
+   * „reia plata": linkul Netopia e de unica folosinta, iar pe v1 nici nu e un
+   * URL vizitabil — cere form POST cu env_key + data. Pagina de handoff cere
+   * de fiecare data o sesiune proaspata prin ruta asta.
    */
-  const markPending = (paymentUrl?: string) =>
-    orderModule.updateOrders(order.id, {
+  const markPending = async (paymentUrl?: string) => {
+    /**
+     * Recitim metadata imediat inainte de scriere. Intre verificarea de la
+     * intrarea in ruta si momentul asta a trecut un apel de retea catre
+     * Netopia; daca IPN-ul a confirmat plata in fereastra aia, un update
+     * construit pe metadata veche ar suprascrie `confirmed` cu `pending` si ar
+     * „invia" o comanda deja incasata — inclusiv stergand flagurile de email
+     * scrise intre timp.
+     */
+    const { data: fresh } = await query.graph({
+      entity: 'order',
+      fields: ['id', 'metadata'],
+      filters: { id: order.id },
+    })
+    const freshMeta = (fresh?.[0]?.metadata ?? {}) as Record<string, any>
+    const freshNetopia = freshMeta.netopia ?? {}
+
+    if (freshNetopia.status === 'confirmed') {
+      throw new MedusaError(
+        MedusaError.Types.NOT_ALLOWED,
+        'Comanda a fost platita intre timp'
+      )
+    }
+
+    await orderModule.updateOrders(order.id, {
       metadata: {
-        ...((order.metadata ?? {}) as Record<string, unknown>),
+        ...freshMeta,
         netopia: {
+          ...freshNetopia,
           status: 'pending',
+          error_code: null,
+          attempts: Number(freshNetopia.attempts ?? 0) + 1,
           requested_at: new Date().toISOString(),
           ...(paymentUrl ? { payment_url: paymentUrl } : {}),
         },
       },
     })
+  }
 
   if (isNetopiaV2Enabled()) {
     const ship: any = order.shipping_address ?? {}
@@ -189,5 +296,48 @@ export const POST = async (
     payment_url: client.paymentUrl(),
     env_key: envKey,
     data,
+  })
+}
+
+/**
+ * Muta comanda pe plata cu cardul.
+ *
+ * `createPaymentSessionsWorkflow` STERGE sesiunile existente ale colectiei si o
+ * creeaza pe cea noua — exact semantica de „schimba metoda de plata". Lucram pe
+ * colectia existenta in loc sa cream una a doua: doua colectii pentru aceeasi
+ * suma ar strica `payment_status`-ul calculat al comenzii.
+ *
+ * Colectiile deja incheiate sau anulate sunt sarite: o plata inregistrata acolo
+ * nu trebuie atinsa.
+ */
+const switchToCardPayment = async (req: MedusaRequest, order: any) => {
+  const reusable = (order.payment_collections ?? []).filter(
+    (pc: any) => pc?.status !== 'canceled' && pc?.status !== 'completed'
+  )
+
+  let collectionId: string | undefined = reusable[0]?.id
+
+  if (!collectionId) {
+    const { result } = await createOrderPaymentCollectionWorkflow(
+      req.scope
+    ).run({
+      input: { order_id: order.id, amount: Number(order.total ?? 0) },
+    })
+    collectionId = (result as any)?.[0]?.id
+  }
+
+  if (!collectionId) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_ALLOWED,
+      'Comanda nu are o colectie de plata utilizabila'
+    )
+  }
+
+  await createPaymentSessionsWorkflow(req.scope).run({
+    input: {
+      payment_collection_id: collectionId,
+      provider_id: NETOPIA_PROVIDER_ID,
+      customer_id: order.customer_id ?? undefined,
+    },
   })
 }

@@ -68,7 +68,25 @@ export const sendPaymentFailedEmail = async (
     logger.warn(`payment failed: comanda ${order?.id} nu are email de client`)
     return
   }
-  if (emailsMeta(order).payment_failed_sent) return
+  /**
+   * Idempotența e per ÎNCERCARE de plată, nu per comandă. Netopia poate
+   * retrimite același IPN de mai multe ori — ăla nu trebuie să dea două
+   * emailuri. Dar a doua plată eșuată, după ce clientul a reluat din link, e
+   * un eveniment nou: cu un flag global (`payment_failed_sent`) clientul
+   * rămânea fără niciun semn că a picat și a doua oară.
+   *
+   * `attempts` e incrementat de `/store/netopia/session` la fiecare sesiune.
+   */
+  const emails = emailsMeta(order)
+  const attempt = Number((order?.metadata as any)?.netopia?.attempts ?? 0)
+
+  // Comenzi de dinainte de contorul `attempts`: au doar flagul vechi, global.
+  // Fără verificarea asta, `undefined === 0` e fals și ar primi încă un email
+  // pentru o plată eșuată anunțată deja demult.
+  if (emails.payment_failed_sent && emails.payment_failed_attempt === undefined) {
+    return
+  }
+  if (emails.payment_failed_attempt === attempt) return
 
   const notification = container.resolve(Modules.NOTIFICATION)
   await notification.createNotifications({
@@ -79,6 +97,7 @@ export const sendPaymentFailedEmail = async (
   })
   await markEmails(container, order, {
     payment_failed_sent: new Date().toISOString(),
+    payment_failed_attempt: attempt,
   })
 }
 

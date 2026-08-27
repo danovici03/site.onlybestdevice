@@ -1,5 +1,10 @@
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
+import {
+  SHIPPED_STATUSES,
+  effectiveOrderStatus,
+} from "../orders/order-status"
+
 /**
  * Construieste payload-ul normalizat al unei comenzi pentru ERP-ul din Laravel.
  *
@@ -19,6 +24,8 @@ export type ErpOrderPayload = {
     payment: string | null
     fulfillment: string | null
   }
+  status_label: string
+  status_note: string | null
   date_created: string | null
   date_paid: string | null
   payment_method: string | null
@@ -64,6 +71,7 @@ const ORDER_FIELDS = [
   "status",
   "payment_status",
   "fulfillment_status",
+  "metadata",
   "email",
   "currency_code",
   "created_at",
@@ -93,18 +101,6 @@ const ORDER_FIELDS = [
   "payment_collections.payments.canceled_at",
   "payment_collections.payment_sessions.provider_id",
 ]
-
-/**
- * Statusurile de livrare in care marfa a plecat efectiv din magazin. In Medusa
- * `order.status` ramane "pending" pe tot parcursul (se schimba doar la anulare
- * sau la inchiderea manuala), deci nu poate fi singurul semnal de "s-a finalizat":
- * daca l-am astepta, IMEI-ul rezervat n-ar trece niciodata pe "vandut".
- *
- * Starile partiale sunt excluse intentionat: gestiunea nu are notiunea de comanda
- * pe jumatate livrata, iar "completed" pe o comanda expediata partial ar marca
- * vandute TOATE IMEI-urile ei, inclusiv cele inca in raft.
- */
-const SHIPPED_STATUSES = new Set(["fulfilled", "shipped", "delivered"])
 
 /**
  * Reduce cele trei axe de status Medusa la statusul canonic al ERP-ului.
@@ -227,6 +223,11 @@ export const toErpPayload = (order: any): ErpOrderPayload => ({
     payment: order.payment_status ?? null,
     fulfillment: order.fulfillment_status ?? null,
   },
+  // Eticheta pe care o vede operatorul in admin si clientul in contul lui.
+  // Nu inlocuieste `status` (gestiunea decide pe ala), dar da contextul pe
+  // care statusul canonic nu-l poate exprima: „asteptam stoc", „link trimis".
+  status_label: effectiveOrderStatus(order).label,
+  status_note: effectiveOrderStatus(order).note,
   date_created: order.created_at ? new Date(order.created_at).toISOString() : null,
   date_paid: resolveDatePaid(order),
   payment_method: resolvePaymentProvider(order),

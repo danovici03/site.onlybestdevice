@@ -19,6 +19,12 @@ const REG_COM = "J06/26/2021"
 const SUPPORT_EMAIL = "office@onlybestdevice.ro"
 const SUPPORT_HOURS = "Luni–Vineri 9:00–18:00"
 const STOREFRONT_FALLBACK = "https://onlybestdevice.ro"
+// Contul pentru plata prin ordin de plată / virament bancar.
+const BANK = {
+  name: "Banca Transilvania",
+  iban: "RO54BTRLRONPOS0584073801",
+  holder: LEGAL,
+}
 // Prefixul de limbă folosit în linkurile către storefront (middleware-ul
 // Next redirectează pe /{countryCode}). Citit la randare, nu la import, ca
 // să nu depindă de ordinea de încărcare a env-ului.
@@ -536,6 +542,119 @@ const orderReadyForPickup: Renderer = ({ order, note, storefront_url }) => {
   }
 }
 
+/**
+ * Schimbare de status pusă manual de operator din admin.
+ *
+ * Textul e deliberat scurt și neutru: statusurile care au un mesaj propriu
+ * (anulare, plată eșuată, virament, ridicare din magazin) au template-ul lor,
+ * cu instrucțiuni concrete. Ăsta acoperă restul — „În procesare", „În
+ * așteptare" — unde singura informație utilă e nota scrisă de operator.
+ */
+const orderStatusChanged: Renderer = ({
+  order,
+  status_label,
+  note,
+  storefront_url,
+}) => {
+  const display = order?.display_id ?? order?.id ?? ""
+  const orderUrl = `${resolveStorefrontUrl(storefront_url)}/${locale()}/account/orders/details/${order.id}`
+  const firstName = order?.shipping_address?.first_name
+  const body = `
+    ${greeting(firstName)}
+    <p style="margin:0 0 12px;">avem o actualizare pentru <strong>comanda #${escape(display)}</strong>:</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;">
+      <tr><td style="border-radius:9999px;background:${COLOR.light};border:1px solid ${COLOR.border};padding:10px 20px;font-family:${FONT_BODY};font-size:15px;font-weight:600;color:${COLOR.dark};">${escape(status_label)}</td></tr>
+    </table>
+    ${
+      note
+        ? `<p style="margin:0 0 12px;">${escape(String(note))}</p>`
+        : ""
+    }
+    ${renderOrderItems(order?.items, storefront_url)}
+    ${button(orderUrl, "Vezi detaliile comenzii")}
+    <p style="margin:16px 0 0;font-size:13px;color:${COLOR.muted};">Ai o întrebare despre comandă? Scrie-ne la <a href="mailto:${SUPPORT_EMAIL}" style="color:${COLOR.accent};">${SUPPORT_EMAIL}</a>.</p>`
+  return {
+    subject: `Comanda #${display}: ${status_label} — ${BRAND}`,
+    html: layout({
+      heading: `Comanda #${display}`,
+      preheader: `Status nou: ${status_label}.`,
+      bodyHtml: body,
+      storefrontUrl: storefront_url,
+    }),
+  }
+}
+
+/** Blocul cu datele contului, folosit de emailul de virament. */
+const bankDetails = (order: any) => `
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 20px;border:1px solid ${COLOR.border};border-radius:12px;background:${COLOR.light};">
+    <tr><td style="padding:20px 24px;font-family:${FONT_BODY};font-size:14px;color:${COLOR.dark};line-height:1.7;">
+      <div style="color:${COLOR.muted};font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Date pentru plată</div>
+      <div><strong>Beneficiar:</strong> ${escape(BANK.holder)}</div>
+      <div><strong>IBAN:</strong> <span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">${escape(BANK.iban)}</span></div>
+      <div><strong>Banca:</strong> ${escape(BANK.name)}</div>
+      <div><strong>Sumă:</strong> ${money(order?.total, order?.currency_code)}</div>
+      <div><strong>Detalii plată:</strong> Comanda #${escape(order?.display_id ?? order?.id ?? "")}</div>
+    </td></tr>
+  </table>`
+
+/**
+ * Comandă lăsată pe ordin de plată. Pe lângă IBAN îi dăm și butonul de plată
+ * cu cardul: cei mai mulți clienți aleg viramentul din inerție, iar dacă tot
+ * deschid emailul e momentul în care pot plăti pe loc.
+ */
+const orderBankTransfer: Renderer = ({ order, pay_url, note, storefront_url }) => {
+  const display = order?.display_id ?? order?.id ?? ""
+  const firstName = order?.shipping_address?.first_name
+  const body = `
+    ${greeting(firstName)}
+    <p style="margin:0 0 16px;">îți mulțumim pentru <strong>comanda #${escape(display)}</strong>. Așteptăm plata prin ordin de plată în contul de mai jos — pregătim coletul imediat ce banii intră.</p>
+    ${bankDetails(order)}
+    ${note ? `<p style="margin:0 0 12px;">${escape(String(note))}</p>` : ""}
+    ${
+      pay_url
+        ? `<p style="margin:0 0 4px;">Dacă preferi să nu aștepți transferul, poți plăti acum cu cardul:</p>${button(pay_url, "Plătește cu cardul")}`
+        : ""
+    }
+    ${renderOrderItems(order?.items, storefront_url)}
+    <p style="margin:16px 0 0;font-size:13px;color:${COLOR.muted};">Transferul între bănci diferite poate dura până la o zi lucrătoare. Întrebări: <a href="mailto:${SUPPORT_EMAIL}" style="color:${COLOR.accent};">${SUPPORT_EMAIL}</a>.</p>`
+  return {
+    subject: `Comanda #${display} — date pentru plata prin virament`,
+    html: layout({
+      heading: `Plata comenzii #${display}`,
+      preheader: `IBAN și detaliile pentru plata comenzii #${display}.`,
+      bodyHtml: body,
+      storefrontUrl: storefront_url,
+    }),
+  }
+}
+
+/**
+ * Link de plată trimis din admin pentru o comandă neîncasată — plată eșuată,
+ * client care s-a răzgândit de la virament, sau pur și simplu o comandă la care
+ * plata nu a fost dusă până la capăt.
+ */
+const orderPaymentLink: Renderer = ({ order, pay_url, note, storefront_url }) => {
+  const display = order?.display_id ?? order?.id ?? ""
+  const firstName = order?.shipping_address?.first_name
+  const body = `
+    ${greeting(firstName)}
+    <p style="margin:0 0 12px;"><strong>comanda #${escape(display)}</strong> este înregistrată, dar plata nu a fost finalizată. Poți plăti online, cu cardul, din butonul de mai jos.</p>
+    ${note ? `<p style="margin:0 0 12px;">${escape(String(note))}</p>` : ""}
+    <p style="margin:0 0 4px;">Sumă de plată: <strong>${money(order?.total, order?.currency_code)}</strong></p>
+    ${button(pay_url, "Plătește comanda")}
+    ${renderOrderItems(order?.items, storefront_url)}
+    <p style="margin:16px 0 0;font-size:13px;color:${COLOR.muted};">Produsele rămân rezervate pentru tine. Dacă întâmpini probleme la plată, scrie-ne la <a href="mailto:${SUPPORT_EMAIL}" style="color:${COLOR.accent};">${SUPPORT_EMAIL}</a>.</p>`
+  return {
+    subject: `Plătește comanda #${display} — ${BRAND}`,
+    html: layout({
+      heading: `Plătește comanda #${display}`,
+      preheader: `Link de plată pentru comanda #${display}.`,
+      bodyHtml: body,
+      storefrontUrl: storefront_url,
+    }),
+  }
+}
+
 export const TEMPLATES = {
   "order-placed-customer": orderPlacedCustomer,
   "order-ready-for-pickup": orderReadyForPickup,
@@ -546,6 +665,9 @@ export const TEMPLATES = {
   "return-requested-admin": returnRequestedAdmin,
   "return-requested-customer": returnRequestedCustomer,
   "order-canceled-customer": orderCanceledCustomer,
+  "order-status-changed": orderStatusChanged,
+  "order-bank-transfer": orderBankTransfer,
+  "order-payment-link": orderPaymentLink,
   "payment-failed-customer": paymentFailedCustomer,
   "customer-welcome": customerWelcome,
 } as const

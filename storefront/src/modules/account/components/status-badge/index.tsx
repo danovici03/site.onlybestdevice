@@ -1,5 +1,9 @@
 import { clx } from "@medusajs/ui"
 import { account as t } from "@lib/i18n/account.it"
+import {
+  readManualOrderStatus,
+  type CommercialStatusCode,
+} from "@lib/util/order-status"
 
 export type StatusTone = "success" | "info" | "warning" | "neutral" | "danger"
 
@@ -33,7 +37,16 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
   </span>
 )
 
-// Map Medusa order status → tone + Italian label.
+const COMMERCIAL_TONE: Record<CommercialStatusCode, StatusTone> = {
+  processing: "info",
+  pending: "warning",
+  payment_failed: "danger",
+  awaiting_bank_transfer: "warning",
+  canceled: "danger",
+  completed: "success",
+}
+
+// Map Medusa order status → tone + label.
 // We collapse the order-level and fulfillment-level statuses into one
 // "what's happening" view for the customer: prefer fulfillment progress
 // over the order workflow state.
@@ -56,9 +69,28 @@ const FULFILLMENT_TONE: Record<string, StatusTone> = {
   returned: "neutral",
 }
 
-export const OrderStatusBadge = ({ order }: { order: { status: string; fulfillment_status?: string } }) => {
+type BadgeOrder = {
+  status: string
+  payment_status?: string | null
+  fulfillment_status?: string | null
+  metadata?: Record<string, any> | null
+}
+
+export const OrderStatusBadge = ({ order }: { order: BadgeOrder }) => {
+  // Eticheta pusă de operator bate tot: e singura care poate spune „așteptăm
+  // stocul" sau „ți-am trimis link de plată", lucruri pe care starea tehnică a
+  // comenzii nu le conține. Expiră singură când comanda avansează.
+  const manual = readManualOrderStatus(order)
+  if (manual) {
+    return (
+      <StatusBadge tone={COMMERCIAL_TONE[manual.code]}>
+        {t.orders.commercialStatus[manual.code]}
+      </StatusBadge>
+    )
+  }
+
   // If we have a fulfillment status that's beyond "not_fulfilled", show it —
-  // that's what the customer actually cares about ("Spedito", "Consegnato").
+  // that's what the customer actually cares about ("Expediată", "Livrată").
   // Otherwise fall back to the order workflow status.
   const fs = order.fulfillment_status
   if (fs && fs !== "not_fulfilled" && FULFILLMENT_TONE[fs]) {

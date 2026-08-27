@@ -96,24 +96,6 @@ const METHOD_ORDER = [
   "pp_system_default",
 ]
 
-/** Form POST către mobilPay — browserul clientului trimite env_key + data. */
-const submitNetopiaForm = (url: string, envKey: string, data: string) => {
-  const form = document.createElement("form")
-  form.method = "POST"
-  form.action = url
-  const add = (name: string, value: string) => {
-    const input = document.createElement("input")
-    input.type = "hidden"
-    input.name = name
-    input.value = value
-    form.appendChild(input)
-  }
-  add("env_key", envKey)
-  add("data", data)
-  document.body.appendChild(form)
-  form.submit()
-}
-
 /** Ce scrie pe ecranul de așteptare, în funcție de unde pleacă clientul. */
 const placingMessage = (id?: string): string => {
   if (isNetopia(id) || isStripeLike(id)) return "Te ducem la plata securizată…"
@@ -696,16 +678,9 @@ const OnePageCheckout = ({
         if (!sessionOk) {
           await initiatePaymentSession(cart, { provider_id: selectedPayment })
         }
-        const fields = await placeNetopiaOrder()
-        if ("redirect_url" in fields) {
-          window.location.href = fields.redirect_url
-          return // browserul pleacă spre pagina de plată Netopia
-        }
-        if ("payment_url" in fields) {
-          submitNetopiaForm(fields.payment_url, fields.env_key, fields.data)
-          return // browserul pleacă spre mobilPay (API v1)
-        }
-        window.location.href = fields.fallback_url
+        // Redirectează spre /order/:id/pay, care deschide sesiunea Netopia și
+        // trimite browserul mai departe (redirect pe v2, form POST pe v1).
+        await placeNetopiaOrder()
         return
       } else {
         const sessionOk = activeSession?.provider_id === selectedPayment

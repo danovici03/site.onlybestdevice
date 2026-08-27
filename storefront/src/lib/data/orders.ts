@@ -2,6 +2,7 @@
 
 import { sdk } from "@lib/config"
 import medusaError from "@lib/util/medusa-error"
+import type { NetopiaSessionResult } from "@lib/util/netopia-form"
 import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { HttpTypes } from "@medusajs/types"
 
@@ -29,6 +30,66 @@ export const retrieveOrderForPayment = async (id: string) => {
     .catch(() => null)
 }
 
+/**
+ * Deschide o sesiune de plată NOUĂ pentru o comandă deja plasată.
+ *
+ * E o SERVER ACTION, chemată din pagina de handoff la montarea componentei —
+ * deliberat nu din randarea paginii. `/order/:id/pay` e o rută publică, iar
+ * deschiderea unei sesiuni schimbă starea comenzii (contorul de încercări,
+ * resetarea codului de eroare) și consumă o sesiune la Netopia. Ca efect
+ * secundar al unui GET, orice reîmprospătare, navigare înapoi sau re-randare
+ * RSC ar fi făcut asta din nou.
+ *
+ * Nu refolosim linkul salvat în `metadata.netopia.payment_url`: pe v2 e de
+ * unică folosință, deja consumat de încercarea care a picat, iar pe v1 nici
+ * măcar nu e un URL vizitabil — plata cere form POST cu `env_key` + `data`,
+ * generate criptat la fiecare sesiune.
+ *
+ * Ruta din backend refuză comenzile plătite, anulate sau cu plata la livrare,
+ * deci mesajul de eroare e util clientului, nu doar logului.
+ */
+export const createNetopiaPaymentSession = async (
+  orderId: string
+): Promise<NetopiaSessionResult> => {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  try {
+    const resp = await sdk.client.fetch<{
+      redirect_url?: string
+      payment_url?: string
+      env_key?: string
+      data?: string
+    }>(`/store/netopia/session`, {
+      method: "POST",
+      body: { order_id: orderId },
+      headers,
+      cache: "no-store",
+    })
+
+    if (resp?.redirect_url) {
+      return { fields: { redirect_url: resp.redirect_url } }
+    }
+    if (resp?.payment_url && resp?.env_key && resp?.data) {
+      return {
+        fields: {
+          payment_url: resp.payment_url,
+          env_key: resp.env_key,
+          data: resp.data,
+        },
+      }
+    }
+    return { error: "Pagina de plată nu a putut fi pregătită." }
+  } catch (e: any) {
+    console.error("[netopia] Nu am putut deschide sesiunea de plată:", e)
+    return {
+      error:
+        e?.message || "Pagina de plată nu a putut fi pregătită.",
+    }
+  }
+}
+
 export const retrieveOrder = async (id: string) => {
   const headers = {
     ...(await getAuthHeaders()),
@@ -43,7 +104,7 @@ export const retrieveOrder = async (id: string) => {
       method: "GET",
       query: {
         fields:
-          "*payment_collections.payments,*items,*items.metadata,*items.variant,*items.product",
+          "+metadata,*payment_collections.payments,*items,*items.metadata,*items.variant,*items.product",
       },
       headers,
       next,
@@ -73,7 +134,7 @@ export const listOrders = async (
         limit,
         offset,
         order: "-created_at",
-        fields: "*items,+items.metadata,*items.variant,*items.product",
+        fields: "+metadata,*items,+items.metadata,*items.variant,*items.product",
         ...filters,
       },
       headers,
@@ -101,7 +162,7 @@ export const listOrdersPaginated = async (
         limit,
         offset,
         order: "-created_at",
-        fields: "*items,+items.metadata,*items.variant,*items.product",
+        fields: "+metadata,*items,+items.metadata,*items.variant,*items.product",
         ...filters,
       },
       headers,

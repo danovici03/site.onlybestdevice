@@ -435,28 +435,21 @@ export async function saveCheckoutDetails(payload: {
   })
 }
 
-export type NetopiaPaymentFields =
-  | { redirect_url: string }
-  | { payment_url: string; env_key: string; data: string }
-  | { fallback_url: string }
-
 /**
  * Plasează comanda cu plata „Card prin Netopia" și trimite clientul la plată.
  *
- * Pe API v2 face `redirect()` chiar de aici, din server action. E important:
- * plasarea comenzii golește coșul, iar dacă am lăsa clientul să navigheze,
- * Next ar reîmprospăta întâi ruta curentă — /checkout fără coș înseamnă
- * `notFound()`, adică un „Page not found" care pâlpâia până se încărca pagina
- * Netopia. Cu redirect din acțiune, routerul navighează direct și pagina de
- * checkout rămâne pe ecran până răspunde Netopia.
+ * Nu deschide sesiunea de plată aici, ci doar redirectează spre
+ * `/order/:id/pay` — pagina aia o deschide. Motivul e că `/order/:id/pay` e și
+ * linkul de „reia plata" din emailul de plată eșuată, deci trebuie oricum să
+ * știe să pornească o sesiune de la zero. Când o deschideam și aici, o comandă
+ * plătită din prima consuma două sesiuni Netopia și pornea de la `attempts: 2`.
  *
- * Pe v1 nu se poate: acolo e nevoie de form POST cu env_key + data, deci
- * întoarcem câmpurile și le trimite browserul. Dacă pregătirea plății eșuează,
- * întoarcem URL-ul de confirmare — comanda e plasată, plata se reia din suport.
+ * Redirectul e spre o rută internă, nu direct spre Netopia: un redirect extern
+ * din server action lasă Next să rerandeze întâi checkout-ul rămas fără coș,
+ * adică un 404 care pâlpâia până se încărca pagina băncii. Ruta `/pay` există
+ * mereu, deci nu are ce clipi.
  */
-export async function placeNetopiaOrder(
-  cartId?: string
-): Promise<NetopiaPaymentFields> {
+export async function placeNetopiaOrder(cartId?: string): Promise<never> {
   const id = cartId || (await getCartId())
 
   if (!id) {
@@ -487,41 +480,7 @@ export async function placeNetopiaOrder(
   revalidateTag(orderCacheTag)
   removeCartId()
 
-  let redirectUrl: string | undefined
-  let formFields: NetopiaPaymentFields | undefined
-
-  try {
-    const resp = await sdk.client.fetch<{
-      redirect_url?: string
-      payment_url?: string
-      env_key?: string
-      data?: string
-    }>(`/store/netopia/session`, {
-      method: "POST",
-      body: { order_id: order.id },
-      headers,
-    })
-    if (resp?.redirect_url) {
-      redirectUrl = resp.redirect_url
-    } else if (resp?.payment_url && resp?.env_key && resp?.data) {
-      formFields = {
-        payment_url: resp.payment_url,
-        env_key: resp.env_key,
-        data: resp.data,
-      }
-    }
-  } catch (e) {
-    console.error("[netopia] Pregătirea plății Netopia a eșuat:", e)
-  }
-
-  // redirect() aruncă NEXT_REDIRECT, deci trebuie chemat în afara try-ului.
-  // Ținta e o rută internă, nu direct Netopia: un redirect extern din server
-  // action lasă Next să rerandeze întâi checkout-ul rămas fără coș, adică 404.
-  if (redirectUrl) {
-    redirect(`/${countryCode}/order/${order.id}/pay`)
-  }
-
-  return formFields ?? { fallback_url: `/${countryCode}/order/${order.id}/confirmed` }
+  redirect(`/${countryCode}/order/${order.id}/pay`)
 }
 
 /**

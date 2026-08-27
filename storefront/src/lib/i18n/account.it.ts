@@ -168,6 +168,17 @@ export const account = {
     shipping: "Livrare",
     tax: "TVA",
     discount: "Reducere",
+    // Eticheta comercială pusă de operator din admin. Oglindește
+    // ORDER_STATUS_LABELS din backend/src/lib/orders/order-status.ts, dar cu
+    // formulări pentru client („Plată eșuată", nu „Eșuată").
+    commercialStatus: {
+      processing: "În procesare",
+      pending: "În așteptare",
+      payment_failed: "Plată eșuată",
+      awaiting_bank_transfer: "În așteptarea viramentului",
+      canceled: "Anulată",
+      completed: "Finalizată",
+    },
     status: {
       pending: "În așteptare",
       completed: "Finalizată",

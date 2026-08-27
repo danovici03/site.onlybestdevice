@@ -50,6 +50,14 @@ type IpnFacts = {
   action: string
   errorCode: string | null
   processedAmount: string | null
+  /**
+   * Identificatorul tranzactiei la Netopia (`ntpID`), cand exista — doar v2 il
+   * trimite. E singurul mod de a deosebi o retrimitere a aceluiasi IPN de o a
+   * doua incercare de plata care a esuat la fel: fara el, un IPN repetat dupa
+   * ce clientul a deschis linkul de reluare ar declansa inca un email de
+   * „plata esuata" pentru acelasi esec.
+   */
+  paymentId: string | null
 }
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
@@ -113,6 +121,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       orderId,
       action: statusToAction(status),
       errorCode: ipn.payment?.code ?? null,
+      paymentId: ipn.payment?.ntpID ? String(ipn.payment.ntpID) : null,
       processedAmount:
         ipn.payment?.amount != null ? String(ipn.payment.amount) : null,
     })
@@ -170,6 +179,8 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     action: failed ? 'error' : parsed.action,
     errorCode: parsed.errorCode,
     processedAmount: parsed.processedAmount,
+    // v1 nu poarta un id de tranzactie in XML-ul de IPN.
+    paymentId: null,
   })
 
   if (!outcome.ok) {
@@ -222,6 +233,17 @@ async function applyIpn(
     return { ok: true }
   }
 
+  /**
+   * A doua plasă, pentru cazul în care verificarea de mai sus nu mai prinde:
+   * deschiderea linkului de reluare pune `status` înapoi pe `pending`, deci un
+   * IPN retrimis pentru eșecul vechi ar trece de ea și ar trimite încă un email.
+   * `ntpID` identifică tranzacția, deci un IPN deja procesat se recunoaște
+   * indiferent ce s-a întâmplat între timp.
+   */
+  if (facts.paymentId && meta.netopia?.last_payment_id === facts.paymentId) {
+    return { ok: true }
+  }
+
   if (action === 'confirmed') {
     const payment = (order.payment_collections ?? [])
       .flatMap((pc: any) => pc?.payments ?? [])
@@ -252,6 +274,7 @@ async function applyIpn(
         ...(meta.netopia ?? {}),
         status: action,
         error_code: facts.errorCode,
+        ...(facts.paymentId ? { last_payment_id: facts.paymentId } : {}),
         processed_amount:
           facts.processedAmount ?? meta.netopia?.processed_amount,
         status_received_at: new Date().toISOString(),
