@@ -152,6 +152,33 @@ services:
       BANK_IBAN: ${BANK_IBAN:-}
       BANK_NAME: ${BANK_NAME:-}
       BANK_HOLDER: ${BANK_HOLDER:-}
+
+      # ── Restul variabilelor citite de emailuri ──
+      #    Toate au valori de rezervă rezonabile în cod, deci lipsa lor nu
+      #    strică nimic azi. Sunt enumerate aici ca să funcționeze din prima
+      #    când le completezi în Dokploy — altfel s-ar lovi de aceeași capcană
+      #    ca BANK_IBAN.
+      #    Logo-ul din antetul emailurilor; gol = wordmark text.
+      EMAIL_LOGO_URL: ${EMAIL_LOGO_URL:-}
+      #    Prefixul de limbă din linkurile către storefront; gol = `ro`.
+      STOREFRONT_LOCALE: ${STOREFRONT_LOCALE:-}
+      #    Linkul către admin din emailurile interne. Se folosește doar dacă
+      #    MEDUSA_BACKEND_URL lipsește, deci în practică e o rezervă.
+      ADMIN_URL: ${ADMIN_URL:-}
+      #    Datele din emailul „comanda e gata de ridicare".
+      STORE_PICKUP_ADDRESS: ${STORE_PICKUP_ADDRESS:-}
+      STORE_PICKUP_HOURS: ${STORE_PICKUP_HOURS:-}
+      STORE_PICKUP_PHONE: ${STORE_PICKUP_PHONE:-}
+
+      # ── Alte reglaje de runtime, cu valori implicite în cod ──
+      #    Id-ul providerului de card, dacă modulul e înregistrat altfel decât
+      #    `pp_netopia_netopia`.
+      NETOPIA_PAYMENT_PROVIDER_ID: ${NETOPIA_PAYMENT_PROVIDER_ID:-}
+      #    Categoria pe care lucrează legarea automată a telefoanelor;
+      #    gol = `telefoane-mobile`.
+      PHONE_CATEGORY_HANDLE: ${PHONE_CATEGORY_HANDLE:-}
+      #    Moneda impusă la trimiterea comenzilor spre ERP; gol = cea a comenzii.
+      ERP_CURRENCY: ${ERP_CURRENCY:-}
     volumes:
       # Doar dacă NU folosești S3 — păstrează fișierele urcate la restart.
       - backend_static:/app/static
