@@ -44,7 +44,7 @@ export default function BottomNavClient({ cartIndicator }: Props) {
   if (stripped.startsWith("/products/")) return null
 
   const items: Item[] = [
-    { href: "/", label: "Home", icon: House },
+    { href: "/", label: "Acasă", icon: House },
     {
       href: "/store",
       label: "Catalog",
@@ -61,7 +61,7 @@ export default function BottomNavClient({ cartIndicator }: Props) {
     },
     {
       href: "/account",
-      label: "Account",
+      label: "Cont",
       icon: User,
       matchPrefixes: ["/account"],
     },
@@ -78,7 +78,7 @@ export default function BottomNavClient({ cartIndicator }: Props) {
 
   return (
     <nav
-      aria-label="Navigazione principale mobile"
+      aria-label="Navigare principală mobil"
       aria-hidden={!visible}
       className={clx(
         "lg:hidden fixed inset-x-0 bottom-0 z-[60] bg-brand-dark text-white rounded-t-[2rem] shadow-[0_-12px_32px_-8px_rgba(0,0,0,0.35)] transition-transform duration-300 ease-out",

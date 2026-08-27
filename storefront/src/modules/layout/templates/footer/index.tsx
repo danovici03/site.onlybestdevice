@@ -42,7 +42,9 @@ const ANPC_LINKS = [
 
 export default function Footer() {
   return (
-    <footer className="bg-brand-dark text-white pt-24 pb-8 rounded-t-[3rem] mt-24">
+    // `pb` de pe mobil ține locul barei de navigare fixe: 2rem cât are oricum
+    // footerul, plus înălțimea barei și zona sigură de sub ea.
+    <footer className="bg-brand-dark text-white pt-24 pb-[calc(2rem+4.5rem+max(0.75rem,env(safe-area-inset-bottom)))] lg:pb-8 rounded-t-[3rem] mt-24">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-12 mb-20">
           <div className="lg:col-span-4">
