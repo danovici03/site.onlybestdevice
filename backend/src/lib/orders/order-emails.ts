@@ -28,6 +28,8 @@ export const ORDER_EMAIL_FIELDS = [
   "items.thumbnail",
   "items.total",
   "shipping_address.*",
+  // Denumirea firmei stă pe adresa de facturare; CUI-ul, în `metadata`.
+  "billing_address.*",
   "payment_collections.payment_sessions.provider_id",
 ]
 

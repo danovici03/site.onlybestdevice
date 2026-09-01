@@ -1,4 +1,8 @@
 import { bankAccount } from "../../../lib/company/bank-account"
+import {
+  formatCui as formatBuyerCui,
+  readBuyerFiscal,
+} from "../../../lib/company/buyer-fiscal"
 
 // Template registry for the Resend notification provider.
 // Each template returns a subject + rendered HTML (and optional text fallback).
@@ -190,6 +194,32 @@ const renderOrderItems = (
 const isPickupOrder = (order: Record<string, any>) =>
   (order.shipping_methods ?? []).some((m: any) => /ridicare/i.test(m?.name ?? ""))
 
+/** Linia „Facturare firmă" din emailul intern — cu ea se emite factura. */
+const buyerFiscalLine = (order: Record<string, any>): string => {
+  const fiscal = readBuyerFiscal(order.metadata)
+  if (!fiscal) return ""
+
+  const name = fiscal.name || order.billing_address?.company || ""
+  const parts = [
+    name && escape(name),
+    escape(formatBuyerCui(fiscal.cui, fiscal.vatPayer)),
+    fiscal.regCom ? `Reg. Com. ${escape(fiscal.regCom)}` : "",
+    fiscal.vatPayer ? "plătitoare de TVA" : "neplătitoare de TVA",
+  ].filter(Boolean)
+
+  return `<li><strong>Factură pe firmă:</strong> ${parts.join(" · ")}</li>`
+}
+
+/** Aceleași date, confirmate clientului cât mai poate cere o corectură. */
+const buyerFiscalNote = (order: Record<string, any>): string => {
+  const fiscal = readBuyerFiscal(order.metadata)
+  if (!fiscal) return ""
+
+  const name = fiscal.name || order.billing_address?.company || ""
+
+  return `<p style="margin:16px 0 0;font-size:13px;color:${COLOR.muted};">Factura se emite pe <strong>${escape(name)}</strong>, ${escape(formatBuyerCui(fiscal.cui, fiscal.vatPayer))}${fiscal.regCom ? `, Reg. Com. ${escape(fiscal.regCom)}` : ""}. Dacă datele nu sunt corecte, răspunde la acest email.</p>`
+}
+
 const orderPlacedCustomer: Renderer = ({ order, storefront_url }) => {
   const display = order.display_id ?? order.id
   const orderUrl = `${resolveStorefrontUrl(storefront_url)}/${locale()}/order/${order.id}/confirmed`
@@ -205,6 +235,7 @@ const orderPlacedCustomer: Renderer = ({ order, storefront_url }) => {
     <p style="margin:16px 0;font-size:16px;"><strong>Total: ${money(order.total, order.currency_code)}</strong></p>
     ${courierNote}
     ${button(orderUrl, "Vezi comanda")}
+    ${buyerFiscalNote(order)}
     <p style="margin:16px 0 0;color:${COLOR.muted};">Îți scriem din nou imediat ce comanda pleacă spre tine.</p>`
   return {
     subject: `Confirmare comandă #${display} — ${BRAND}`,
@@ -227,6 +258,7 @@ const orderPlacedAdmin: Renderer = ({ order, admin_url, storefront_url }) => {
       <li>Total: <strong>${money(order.total, order.currency_code)}</strong></li>
       <li>Produse: ${order.items?.length ?? 0}</li>
       ${order.shipping_address ? `<li>Livrare: ${escape(order.shipping_address.first_name)} ${escape(order.shipping_address.last_name)} — ${escape(order.shipping_address.city)}, ${escape(order.shipping_address.country_code)}</li>` : ""}
+      ${buyerFiscalLine(order)}
     </ul>
     ${renderOrderItems(order.items, storefront_url)}
     ${adminLink ? button(adminLink, "Deschide comanda în admin") : ""}`

@@ -1,4 +1,5 @@
 import { HttpTypes } from "@medusajs/types"
+import { formatCui, readCompanyFiscal } from "@lib/util/cui"
 import { clx } from "@medusajs/ui"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -31,14 +32,23 @@ const isReturnable = (order: HttpTypes.StoreOrder) => {
   return days <= RETURN_WINDOW_DAYS
 }
 
-const formatAddress = (a?: HttpTypes.StoreOrder["shipping_address"]) => {
+const formatAddress = (
+  a?: HttpTypes.StoreOrder["shipping_address"],
+  fiscal?: ReturnType<typeof readCompanyFiscal>
+) => {
   if (!a) return null
   return (
     <address className="not-italic text-sm text-brand-dark/80 leading-relaxed">
       <div className="text-brand-dark font-medium">
         {a.first_name} {a.last_name}
       </div>
-      {a.company && <div>{a.company}</div>}
+      {(fiscal?.name || a.company) && <div>{fiscal?.name || a.company}</div>}
+      {fiscal && (
+        <div className="text-xs text-brand-dark/50">
+          {formatCui(fiscal.cui, fiscal.vatPayer)}
+          {fiscal.regCom ? ` · Reg. Com. ${fiscal.regCom}` : ""}
+        </div>
+      )}
       <div>
         {a.address_1}
         {a.address_2 ? `, ${a.address_2}` : ""}
@@ -201,7 +211,10 @@ const OrderDetail = ({ order }: { order: HttpTypes.StoreOrder }) => {
           )}
         </AccountCard>
         <AccountCard title={t.orders.billingAddress}>
-          {formatAddress(order.billing_address) || (
+          {formatAddress(
+            order.billing_address,
+            readCompanyFiscal(order.metadata as Record<string, unknown> | null)
+          ) || (
             <p className="text-sm text-brand-dark/50">—</p>
           )}
         </AccountCard>

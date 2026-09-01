@@ -8,6 +8,7 @@ import {
   formatTariff,
 } from "@lib/util/shipping-tariff"
 import { HttpTypes } from "@medusajs/types"
+import { formatCui, readCompanyFiscal } from "@lib/util/cui"
 import AccountCard from "@modules/account/components/account-card"
 import CartTotals from "@modules/common/components/cart-totals"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -76,6 +77,9 @@ export default async function OrderCompletedTemplate({
   const placedOn = new Date(order.created_at).toLocaleDateString(
     "ro-RO",
     DATE_FMT
+  )
+  const fiscal = readCompanyFiscal(
+    order.metadata as Record<string, unknown> | null
   )
 
   const money = (amount?: number | null) =>
@@ -311,6 +315,24 @@ export default async function OrderCompletedTemplate({
             </div>
           </AccountCard>
         </div>
+
+        {fiscal && (
+          <AccountCard title="Factură pe firmă">
+            <div className="text-sm text-brand-dark/80">
+              <p className="text-brand-dark font-medium">
+                {fiscal.name || order.billing_address?.company}
+              </p>
+              <p className="text-brand-dark/60 mt-1">
+                {formatCui(fiscal.cui, fiscal.vatPayer)}
+                {fiscal.regCom ? ` · Reg. Com. ${fiscal.regCom}` : ""}
+              </p>
+              <p className="text-xs text-brand-dark/50 mt-1">
+                Emitem factura pe aceste date. Dacă ceva nu e în regulă,
+                scrie-ne cât mai repede.
+              </p>
+            </div>
+          </AccountCard>
+        )}
 
         <AccountCard
           title={t.orderConfirmed.nextStepsTitle}

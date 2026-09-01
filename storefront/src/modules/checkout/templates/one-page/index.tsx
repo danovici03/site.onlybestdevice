@@ -61,6 +61,15 @@ import LocalitySelect, {
 } from "@modules/common/components/locality-select"
 import LocateMeButton from "@modules/common/components/locate-me-button"
 import { matchCounty } from "@lib/util/counties"
+import type { CompanyDetails } from "@lib/anaf"
+import type { CompanyFiscal } from "@lib/util/cui"
+import {
+  COMPANY_META_KEYS,
+  formatCui,
+  isValidCui,
+  normalizeCui,
+  readCompanyFiscal,
+} from "@lib/util/cui"
 import {
   COURIER_NAME,
   COURIER_PAID_EXPLAINER,
@@ -213,7 +222,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const missingFields = (
   f: AddressForm,
   billingSame: boolean,
-  b: AddressForm
+  b: AddressForm,
+  companyInvoice: boolean,
+  cui: string
 ) => {
   const missing: string[] = []
   if (!EMAIL_RE.test(f.email)) missing.push("email")
@@ -234,6 +245,13 @@ const missingFields = (
     ) {
       missing.push("adresă de facturare")
     }
+  }
+  // Nu cerem și o interogare ANAF reușită: dacă registrul e picat, clientul
+  // trebuie să poată comanda cu CUI-ul scris de mână.
+  if (companyInvoice) {
+    const digits = normalizeCui(cui)
+    if (!digits || !isValidCui(digits)) missing.push("CUI-ul firmei")
+    if (!b.company.trim()) missing.push("denumirea firmei")
   }
   return missing
 }
@@ -315,6 +333,34 @@ const OnePageCheckout = ({
   const [saving, setSaving] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  /* ---------------- Factură pe firmă ---------------- */
+  // Datele fiscale trăiesc în `cart.metadata`, nu pe adresă: Medusa nu are
+  // câmpuri pentru CUI și nr. de înregistrare, iar `company` de pe adresă e
+  // doar denumirea. La finalizare, metadata coșului trece pe comandă.
+  const storedFiscal = readCompanyFiscal(
+    cart?.metadata as Record<string, unknown> | null
+  )
+  const [companyInvoice, setCompanyInvoice] = useState(() => !!storedFiscal)
+  const [cui, setCui] = useState(() => storedFiscal?.cui ?? "")
+  const [company, setCompany] = useState<CompanyDetails | null>(null)
+  /**
+   * Firma confirmată pentru CUI-ul din câmp. După o reîncărcare de pagină nu
+   * mai avem răspunsul ANAF, dar avem ce s-a salvat pe coș — și îl folosim, ca
+   * să nu rescriem tăcut adresa cu una nouă din registru (clientul poate să o
+   * fi corectat) și să nu pierdem statutul de TVA la următoarea salvare.
+   */
+  const confirmedCompany: (CompanyFiscal & Partial<CompanyDetails>) | null =
+    company ??
+    (storedFiscal && storedFiscal.cui === normalizeCui(cui)
+      ? storedFiscal
+      : null)
+  const [lookingUp, setLookingUp] = useState(false)
+  const [lookupError, setLookupError] = useState<string | null>(null)
+  /** CUI-ul deja interogat, ca efectul de auto-completare să nu se repete. */
+  const lookedUpCui = useRef<string | null>(storedFiscal?.cui ?? null)
+  /** Ce era bifat la „aceeași adresă", ca să revenim dacă se răzgândește. */
+  const billingSameBefore = useRef(true)
+
   const setField = (name: keyof AddressForm, value: string) => {
     setForm((f) => ({ ...f, [name]: value }))
     setDirty(true)
@@ -371,6 +417,33 @@ const OnePageCheckout = ({
     setDirty(true)
   }
 
+  /**
+   * Datele fiscale pentru `cart.metadata`. Când factura nu mai merge pe firmă,
+   * cheile se trimit cu șir gol: așa le șterge Medusa, care face merge pe
+   * metadata, nu înlocuire — altfel un CUI bifat din greșeală ar rămâne lipit
+   * de comandă.
+   */
+  const companyMetadata = (): Record<string, unknown> => {
+    const digits = companyInvoice ? normalizeCui(cui) : null
+    if (!digits) {
+      return {
+        [COMPANY_META_KEYS.cui]: "",
+        [COMPANY_META_KEYS.name]: "",
+        [COMPANY_META_KEYS.regCom]: "",
+        [COMPANY_META_KEYS.vatPayer]: "",
+      }
+    }
+    const confirmed = confirmedCompany?.cui === digits ? confirmedCompany : null
+    return {
+      [COMPANY_META_KEYS.cui]: digits,
+      [COMPANY_META_KEYS.name]: confirmed?.name || billing.company || "",
+      [COMPANY_META_KEYS.regCom]: confirmed?.regCom || "",
+      // Prefixul „RO" de pe factură depinde de asta, deci îl scriem doar când
+      // vine din registru, nu presupus dintr-un CUI tastat manual.
+      [COMPANY_META_KEYS.vatPayer]: confirmed ? confirmed.vatPayer : "",
+    }
+  }
+
   const persistAddress = async (current?: {
     form: AddressForm
     billing: AddressForm
@@ -386,6 +459,7 @@ const OnePageCheckout = ({
         email: f.email,
         shipping_address: toPayload(f, countryCode),
         billing_address: same ? undefined : toPayload(b, countryCode),
+        metadata: companyMetadata(),
       })
       setDirty(false)
     } catch {
@@ -407,7 +481,104 @@ const OnePageCheckout = ({
       if (saveTimer.current) clearTimeout(saveTimer.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, billing, billingSame])
+    // `confirmedCompany` e recalculat la fiecare randare, deci ar reporni
+    // temporizatorul degeaba; ce se schimbă efectiv e răspunsul ANAF.
+  }, [form, billing, billingSame, companyInvoice, cui, company])
+
+  /**
+   * Aduce datele firmei din registrul ANAF și completează blocul de facturare.
+   * Adresa din registru e sediul social — de asta umple doar facturarea,
+   * niciodată adresa de livrare, care e a persoanei care primește coletul.
+   */
+  const fetchCompany = async (raw: string) => {
+    const digits = normalizeCui(raw)
+    if (!digits || !isValidCui(digits)) {
+      setLookupError("CUI-ul nu pare valid — verifică cifrele.")
+      return
+    }
+
+    lookedUpCui.current = digits
+    setLookingUp(true)
+    setLookupError(null)
+    try {
+      const res = await fetch(`/api/anaf?cui=${digits}`)
+      const body = await res.json().catch(() => ({}))
+      const found = body?.company as CompanyDetails | null | undefined
+
+      if (!res.ok || !found) {
+        setCompany(null)
+        setLookupError(
+          body?.error ||
+            "Nu am găsit firma în registrul ANAF. Poți completa datele manual."
+        )
+        return
+      }
+
+      setCompany(found)
+      setCui(found.cui)
+      setBilling((b) => ({
+        ...b,
+        company: found.name,
+        // Ce vine din registru bate ce era completat: clientul tocmai a cerut
+        // explicit datele firmei, nu ale lui.
+        address_1: found.address.address_1 || b.address_1,
+        city: found.address.city || b.city,
+        province: found.address.province || b.province,
+        postal_code: found.address.postal_code || b.postal_code,
+        first_name: b.first_name || form.first_name,
+        last_name: b.last_name || form.last_name,
+        phone: b.phone || form.phone,
+      }))
+      billingPostalAuto.current = true
+      setDirty(true)
+    } catch {
+      setCompany(null)
+      setLookupError(
+        "Verificarea CUI-ului nu a mers. Poți completa datele manual."
+      )
+    } finally {
+      setLookingUp(false)
+    }
+  }
+
+  // Auto-completare la 700 ms după ultima tastă: cine lipește CUI-ul din
+  // contract nu mai apasă niciun buton. Butonul rămâne doar pentru reîncercare.
+  useEffect(() => {
+    if (!companyInvoice) return
+    const digits = normalizeCui(cui)
+    if (!digits || !isValidCui(digits)) return
+    if (lookedUpCui.current === digits) return
+
+    const timer = setTimeout(() => {
+      void fetchCompany(digits)
+    }, 700)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cui, companyInvoice])
+
+  const toggleCompanyInvoice = (enabled: boolean) => {
+    setCompanyInvoice(enabled)
+    setLookupError(null)
+    if (enabled) {
+      // Sediul firmei nu e adresa de livrare, deci facturarea se desparte
+      // automat de livrare în momentul bifei.
+      billingSameBefore.current = billingSame
+      setBillingSame(false)
+      // Cine se răzgândește de două ori are CUI-ul încă scris în câmp, dar
+      // confirmarea din registru s-a pierdut la debifare: o cerem din nou.
+      lookedUpCui.current = null
+      setBilling((b) => ({
+        ...b,
+        first_name: b.first_name || form.first_name,
+        last_name: b.last_name || form.last_name,
+        phone: b.phone || form.phone,
+      }))
+    } else {
+      setBillingSame(billingSameBefore.current)
+      setCompany(null)
+    }
+    setDirty(true)
+  }
 
   /* ---------------- Livrare ---------------- */
   const [shippingMethodId, setShippingMethodId] = useState<string | null>(
@@ -605,7 +776,7 @@ const OnePageCheckout = ({
   // ref umplut de <StripeConfirmBridge/>, montat condiționat mai jos.
   const stripeConfirmRef = useRef<StripeConfirmFn | null>(null)
 
-  const missing = missingFields(form, billingSame, billing)
+  const missing = missingFields(form, billingSame, billing, companyInvoice, cui)
   const canPlace =
     missing.length === 0 &&
     !!shippingMethodId &&
@@ -815,24 +986,133 @@ const OnePageCheckout = ({
             className="mt-3"
           />
 
-          <label className="mt-4 flex items-center gap-2.5 text-sm text-brand-dark/80 cursor-pointer">
+          {!companyInvoice && (
+            <label className="mt-4 flex items-center gap-2.5 text-sm text-brand-dark/80 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={billingSame}
+                onChange={(e) => {
+                  setBillingSame(e.target.checked)
+                  setDirty(true)
+                }}
+                className="h-4 w-4 accent-brand-dark"
+                data-testid="billing-address-checkbox"
+              />
+              Adresa de facturare este aceeași cu cea de livrare
+            </label>
+          )}
+
+          <label className="mt-3 flex items-center gap-2.5 text-sm text-brand-dark/80 cursor-pointer">
             <input
               type="checkbox"
-              checked={billingSame}
-              onChange={(e) => {
-                setBillingSame(e.target.checked)
-                setDirty(true)
-              }}
+              checked={companyInvoice}
+              onChange={(e) => toggleCompanyInvoice(e.target.checked)}
               className="h-4 w-4 accent-brand-dark"
-              data-testid="billing-address-checkbox"
+              data-testid="company-invoice-checkbox"
             />
-            Adresa de facturare este aceeași cu cea de livrare
+            <span>
+              <span className="font-semibold text-brand-dark">
+                Vreau factură pe firmă
+              </span>{" "}
+              — completăm datele automat după CUI
+            </span>
           </label>
+
+          {companyInvoice && (
+            <div className="mt-3 rounded-2xl border border-brand-dark/10 bg-brand-light/40 p-4">
+              <div className="flex flex-col small:flex-row gap-3 small:items-start">
+                <div className="flex-1">
+                  <Input
+                    label="CUI / CIF (ex. RO14399840)"
+                    name="company_cui"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={cui}
+                    onChange={(e) => {
+                      setCui(e.target.value)
+                      setLookupError(null)
+                      setDirty(true)
+                    }}
+                    onBlur={() => {
+                      const digits = normalizeCui(cui)
+                      if (digits && lookedUpCui.current !== digits) {
+                        void fetchCompany(digits)
+                      }
+                    }}
+                    required
+                    data-testid="company-cui-input"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void fetchCompany(cui)}
+                  disabled={lookingUp}
+                  className="h-11 shrink-0 rounded-full border border-brand-dark/20 px-5 text-sm font-semibold text-brand-dark hover:bg-brand-dark hover:text-white transition-colors disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-brand-dark"
+                  data-testid="company-cui-lookup"
+                >
+                  {lookingUp ? "Căutăm…" : "Verifică"}
+                </button>
+              </div>
+
+              {lookingUp && (
+                <p className="mt-2 text-xs text-brand-dark/60">
+                  Căutăm firma în registrul ANAF…
+                </p>
+              )}
+
+              {lookupError && !lookingUp && (
+                <p
+                  className="mt-2 text-xs text-rose-600"
+                  data-testid="company-cui-error"
+                >
+                  {lookupError}
+                </p>
+              )}
+
+              {confirmedCompany && !lookingUp && (
+                <div
+                  className="mt-3 rounded-xl bg-white/70 p-3 text-sm"
+                  data-testid="company-details"
+                >
+                  <p className="font-semibold text-brand-dark">
+                    {confirmedCompany.name}
+                  </p>
+                  <p className="mt-0.5 text-xs text-brand-dark/60">
+                    {formatCui(confirmedCompany.cui, confirmedCompany.vatPayer)}
+                    {confirmedCompany.regCom
+                      ? ` · Reg. Com. ${confirmedCompany.regCom}`
+                      : ""}
+                  </p>
+                  <p className="mt-1.5 text-xs text-brand-dark/60">
+                    {confirmedCompany.vatPayer
+                      ? "Plătitoare de TVA"
+                      : "Neplătitoare de TVA"}
+                    {confirmedCompany.vatOnCollection
+                      ? " · TVA la încasare"
+                      : ""}
+                  </p>
+                  {confirmedCompany.inactive && (
+                    <p className="mt-1.5 text-xs font-semibold text-amber-700">
+                      Atenție: firma apare ca inactivă sau radiată în registrul
+                      ANAF. Verifică CUI-ul înainte de a comanda.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <p className="mt-2 text-xs text-brand-dark/50">
+                Datele vin din registrul public ANAF. Adresa completată mai jos
+                este sediul social — livrarea rămâne la adresa de mai sus.
+              </p>
+            </div>
+          )}
 
           {!billingSame && (
             <div className="mt-4 grid grid-cols-1 small:grid-cols-2 gap-3">
               <div className="small:col-span-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-dark/50">
-                Adresa de facturare
+                {companyInvoice
+                  ? "Date de facturare (firmă)"
+                  : "Adresa de facturare"}
               </div>
               <Input
                 label="Prenume"
@@ -880,10 +1160,13 @@ const OnePageCheckout = ({
                 required
               />
               <Input
-                label="Companie (opțional)"
+                label={
+                  companyInvoice ? "Denumirea firmei" : "Companie (opțional)"
+                }
                 name="billing_company"
                 value={billing.company}
                 onChange={(e) => setBillingField("company", e.target.value)}
+                required={companyInvoice}
               />
               <div className="small:col-span-2">
                 <LocateMeButton

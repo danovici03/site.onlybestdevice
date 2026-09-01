@@ -484,11 +484,18 @@ export async function saveCheckoutDetails(payload: {
   email: string
   shipping_address: CheckoutAddressPayload
   billing_address?: CheckoutAddressPayload
+  /**
+   * Datele fiscale ale cumpărătorului-firmă (CUI, nr. reg. com.). Medusa face
+   * merge pe metadata, deci cheile trimise cu șir gol se șterg — așa se
+   * curăță CUI-ul când clientul renunță la factura pe firmă.
+   */
+  metadata?: Record<string, unknown>
 }) {
   await updateCart({
     email: payload.email,
     shipping_address: payload.shipping_address,
     billing_address: payload.billing_address ?? payload.shipping_address,
+    ...(payload.metadata ? { metadata: payload.metadata } : {}),
   })
 }
 
