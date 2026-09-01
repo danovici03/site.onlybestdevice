@@ -12,6 +12,15 @@ const S3_PATHNAME = process.env.S3_PATHNAME
 const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
+
+  // Fonturile facturii PDF sunt citite de pe disc la randare (vezi
+  // src/lib/pdf/invoice.tsx). Nu apar în niciun `import`, deci trasarea
+  // automată a fișierelor nu le vede și ruta ar crăpa în producție cu ENOENT.
+  outputFileTracingIncludes: {
+    "/[countryCode]/api/invoice/[orderId]": ["./src/lib/pdf/fonts/*.ttf"],
+    "**/api/invoice/**": ["./src/lib/pdf/fonts/*.ttf"],
+  },
+
   logging: {
     fetches: {
       fullUrl: true,

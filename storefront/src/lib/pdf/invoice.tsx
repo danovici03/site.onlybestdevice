@@ -1,12 +1,15 @@
+import path from "path"
 import React from "react"
 import {
   Document,
+  Font,
   Page,
   Text,
   View,
   StyleSheet,
 } from "@react-pdf/renderer"
 import { HttpTypes } from "@medusajs/types"
+import { formatCui, readCompanyFiscal } from "@lib/util/cui"
 void React
 
 // Brand tokens mirrored from tailwind config so the PDF stays visually
@@ -19,6 +22,39 @@ const COLORS = {
   surface: "#F4F3F0",
   white: "#FFFFFF",
 }
+
+/**
+ * Inter, aceeași față ca pe site — și, mai important, singura care are
+ * diacriticele românești.
+ *
+ * Fonturile PDF implicite (Helvetica & co.) sunt codificate WinAnsi, care nu
+ * conține ș, ț, Ș, Ț: pe factură apărea „Bistria" în loc de „Bistrița", iar
+ * numele clienților ieșeau ciuntite. Sunt fișiere locale, nu URL-uri: la
+ * randare nu vrem o cerere de rețea care poate pica.
+ *
+ * `outputFileTracingIncludes` din next.config.js ține fișierele astea în
+ * bundle-ul rutei de factură; fără el, `readFileSync` crapă în producție.
+ */
+const FONT_DIR = path.join(process.cwd(), "src/lib/pdf/fonts")
+
+Font.register({
+  family: "Inter",
+  fonts: [
+    { src: path.join(FONT_DIR, "Inter-Regular.ttf"), fontWeight: 400 },
+    { src: path.join(FONT_DIR, "Inter-Bold.ttf"), fontWeight: 700 },
+    // Doar pentru nota din subsolul facturii — react-pdf nu înclină singur un
+    // font, aruncă „Could not resolve font ... fontStyle italic".
+    {
+      src: path.join(FONT_DIR, "Inter-Italic.ttf"),
+      fontWeight: 400,
+      fontStyle: "italic",
+    },
+  ],
+})
+
+// Fără asta, react-pdf rupe cuvintele cu cratimă la capăt de rând, inclusiv
+// numele proprii („Cluj-Napo-ca").
+Font.registerHyphenationCallback((word) => [word])
 
 const COMPANY = {
   brand: "onlybestdevice",
@@ -35,7 +71,7 @@ const styles = StyleSheet.create({
   page: {
     padding: 48,
     fontSize: 10,
-    fontFamily: "Helvetica",
+    fontFamily: "Inter",
     color: COLORS.dark,
     lineHeight: 1.4,
   },
@@ -49,7 +85,8 @@ const styles = StyleSheet.create({
   },
   brandLockup: {
     fontSize: 24,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Inter",
+    fontWeight: 700,
     letterSpacing: 2,
     color: COLORS.dark,
   },
@@ -69,11 +106,12 @@ const styles = StyleSheet.create({
   },
   docTitle: {
     fontSize: 18,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Inter",
+    fontWeight: 700,
     color: COLORS.dark,
   },
   docMeta: { fontSize: 9, color: COLORS.muted, textAlign: "right" },
-  docMetaValue: { color: COLORS.dark, fontFamily: "Helvetica-Bold" },
+  docMetaValue: { color: COLORS.dark, fontFamily: "Inter", fontWeight: 700 },
   blocksRow: { flexDirection: "row", gap: 24, marginBottom: 28 },
   block: { flex: 1 },
   blockLabel: {
@@ -91,7 +129,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 8,
     borderBottom: `1px solid ${COLORS.dark}`,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Inter",
+    fontWeight: 700,
     fontSize: 9,
   },
   tr: {
@@ -123,7 +162,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginTop: 6,
     borderTop: `2px solid ${COLORS.dark}`,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Inter",
+    fontWeight: 700,
     fontSize: 12,
   },
   footer: {
@@ -166,9 +206,12 @@ const formatDate = (iso: string | Date) =>
 const AddressBlock = ({
   label,
   address,
+  fiscal,
 }: {
   label: string
   address?: HttpTypes.StoreOrder["billing_address"] | null
+  /** Datele firmei, când comanda a fost facturată pe o societate. */
+  fiscal?: ReturnType<typeof readCompanyFiscal>
 }) => (
   <View style={styles.block}>
     <Text style={styles.blockLabel}>{label}</Text>
@@ -177,8 +220,16 @@ const AddressBlock = ({
         <Text style={styles.blockLine}>
           {address.first_name} {address.last_name}
         </Text>
-        {address.company ? (
-          <Text style={styles.blockLine}>{address.company}</Text>
+        {fiscal?.name || address.company ? (
+          <Text style={styles.blockLine}>
+            {fiscal?.name || address.company}
+          </Text>
+        ) : null}
+        {fiscal ? (
+          <Text style={styles.blockLine}>
+            {formatCui(fiscal.cui, fiscal.vatPayer)}
+            {fiscal.regCom ? ` · Reg. Com. ${fiscal.regCom}` : ""}
+          </Text>
         ) : null}
         <Text style={styles.blockLine}>
           {address.address_1}
@@ -201,13 +252,12 @@ const AddressBlock = ({
   </View>
 )
 
-export const InvoiceDocument = ({
-  order,
-}: {
-  order: HttpTypes.StoreOrder
-}) => {
+export const InvoiceDocument = ({ order }: { order: HttpTypes.StoreOrder }) => {
   const currency = order.currency_code
   const money = (n: number | null | undefined) => formatMoney(n, currency)
+  const fiscal = readCompanyFiscal(
+    order.metadata as Record<string, unknown> | null
+  )
 
   return (
     <Document title={`Rezumat comandă #${order.display_id}`}>
@@ -245,8 +295,7 @@ export const InvoiceDocument = ({
             </Text>
             {order.email ? (
               <Text>
-                Client:{" "}
-                <Text style={styles.docMetaValue}>{order.email}</Text>
+                Client: <Text style={styles.docMetaValue}>{order.email}</Text>
               </Text>
             ) : null}
           </View>
@@ -257,6 +306,7 @@ export const InvoiceDocument = ({
           <AddressBlock
             label="Adresă de facturare"
             address={order.billing_address}
+            fiscal={fiscal}
           />
           <AddressBlock
             label="Adresă de livrare"

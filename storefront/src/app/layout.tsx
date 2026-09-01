@@ -5,7 +5,10 @@ import "styles/globals.css"
 
 // Single unified sans across the whole site (body, headings, nav, logo).
 const inter = Inter({
-  subsets: ["latin"],
+  // ș și ț sunt în latin-ext, nu în latin. Fișierul era oricum self-hostat,
+  // dar fără subsetul cerut aici nu e preîncărcat: diacriticele soseau la a
+  // doua rundă, deci pâlpâiau pe fontul de rezervă la prima randare.
+  subsets: ["latin", "latin-ext"],
   weight: ["300", "400", "500", "600", "700", "800"],
   variable: "--font-inter",
   display: "swap",
