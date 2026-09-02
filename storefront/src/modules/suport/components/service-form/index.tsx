@@ -216,7 +216,7 @@ export default function ServiceForm() {
         />
         <p className="text-xs text-brand-dark/50 mt-1.5">
           Completează doar dacă nu poți reseta aparatul sau dezactiva „find my
-          phone/iPhone". Fără acces, service-ul nu poate testa aparatul.
+          phone/iPhone”. Fără acces, service-ul nu poate testa aparatul.
         </p>
         <FieldError errors={fe?.codAcces} />
       </div>
@@ -234,7 +234,7 @@ export default function ServiceForm() {
           className="text-sm text-brand-dark/80 leading-relaxed"
         >
           Aparatul este resetat, fără conturi active, modele sau coduri de
-          deblocare (inclusiv „find my phone/iPhone"), ori am completat mai sus
+          deblocare (inclusiv „find my phone/iPhone”), ori am completat mai sus
           codul de acces. Trimit produsul cu toate accesoriile originale și o
           copie a facturii. <span className="text-red-500">*</span>
         </label>

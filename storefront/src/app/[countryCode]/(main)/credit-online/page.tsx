@@ -79,7 +79,7 @@ export default function CreditOnlinePage() {
         </li>
         <li>
           ai venituri înregistrate în baza de date a Agenției Naționale de
-          Administrare Fiscală („ANAF") și ești de acord cu interogarea bazei
+          Administrare Fiscală („ANAF”) și ești de acord cu interogarea bazei
           de date a ANAF;
         </li>
         <li>

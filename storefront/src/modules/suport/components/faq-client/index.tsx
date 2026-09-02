@@ -6,6 +6,7 @@ import { useMemo, useState, useEffect } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import type { FaqCategoryDTO } from "@lib/data/faq"
 
 type Props = {
@@ -123,9 +124,12 @@ export default function FaqClient({ categories }: Props) {
             <p className="text-lg mb-2">Nicio întrebare nu corespunde cu „{query}”.</p>
             <p className="text-sm">
               Încearcă alt termen sau{" "}
-              <a href="/contact" className="text-brand-accent hover:underline">
+              <LocalizedClientLink
+                href="/contact"
+                className="text-brand-accent hover:underline"
+              >
                 contactează-ne direct
-              </a>
+              </LocalizedClientLink>
               .
             </p>
           </div>

@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { COMPANY, indirizzoLegale, indirizzoOperativo } from "@lib/util/company-info"
 
 export const metadata: Metadata = {
@@ -102,13 +103,13 @@ export default function InformatiiLegalePage() {
       <h2>Documente conexe</h2>
       <ul>
         <li>
-          <a href="/termeni">Termeni și condiții</a>
+          <LocalizedClientLink href="/termeni">Termeni și condiții</LocalizedClientLink>
         </li>
         <li>
-          <a href="/confidentialitate">Politica de confidențialitate</a>
+          <LocalizedClientLink href="/confidentialitate">Politica de confidențialitate</LocalizedClientLink>
         </li>
         <li>
-          <a href="/cookie">Politica de cookie-uri</a>
+          <LocalizedClientLink href="/cookie">Politica de cookie-uri</LocalizedClientLink>
         </li>
       </ul>
 

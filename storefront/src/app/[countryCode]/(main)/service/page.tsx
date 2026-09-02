@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import { ArrowUpRight, MapPin, Truck } from "@phosphor-icons/react/dist/ssr"
 
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Callout from "@modules/suport/components/callout"
 import ServiceForm from "@modules/suport/components/service-form"
 import { COMPANY } from "@lib/util/company-info"
@@ -69,9 +70,12 @@ export default function ServicePage() {
             cheamă un curier <ArrowUpRight size={14} weight="bold" />
           </a>
           . Condițiile complete de trimitere în service le găsești pe pagina{" "}
-          <a href="/garantie" className="text-brand-accent hover:underline">
+          <LocalizedClientLink
+            href="/garantie"
+            className="text-brand-accent hover:underline"
+          >
             Garanție și service
-          </a>
+          </LocalizedClientLink>
           .
         </p>
       </Callout>

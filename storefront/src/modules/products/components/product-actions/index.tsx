@@ -199,7 +199,9 @@ export default function ProductActions({
     router.replace(pathname + (qs ? "?" + qs : "") + window.location.hash, {
       scroll: false,
     })
-  }, [selectedVariant, isValidVariant])
+    // `router` e stabil, iar `pathname` nu se schimbă de aici: `replace` umblă
+    // doar la query, nu la cale — deci lista completă nu aduce rulări în plus.
+  }, [selectedVariant, isValidVariant, pathname, router])
 
   const inStock = useMemo(() => {
     if (selectedVariant && !selectedVariant.manage_inventory) return true

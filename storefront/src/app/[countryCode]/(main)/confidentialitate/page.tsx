@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { COMPANY, indirizzoLegale } from "@lib/util/company-info"
 
 export const metadata: Metadata = {
@@ -46,7 +47,7 @@ export default function ConfidentialitatePage() {
         <li>
           <strong>Date de navigare:</strong> jurnale, adresă IP, dispozitiv,
           pagini vizitate (prin cookie-uri tehnice și, cu acordul tău,
-          analitice — vezi <a href="/cookie">Politica de cookie-uri</a>).
+          analitice — vezi <LocalizedClientLink href="/cookie">Politica de cookie-uri</LocalizedClientLink>).
         </li>
         <li>
           <strong>Conținutul mesajelor</strong> pe care ni le trimiți prin

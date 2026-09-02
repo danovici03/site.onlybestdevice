@@ -106,7 +106,7 @@ export default async function ReturnsPage() {
                 </p>
                 {request.note && (
                   <p className="text-xs text-brand-dark/60 mt-2 italic line-clamp-2">
-                    "{request.note}"
+                    „{request.note}”
                   </p>
                 )}
               </LocalizedClientLink>

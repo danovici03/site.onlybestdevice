@@ -46,7 +46,7 @@ const ProductUpgrades = ({
       <div className="flex items-center gap-2 px-4 pt-4 pb-3">
         <Sparkle size={16} weight="fill" className="text-brand-accent" />
         <span className="font-bold text-sm text-brand-dark">
-          Completa l'ambiente
+          Adaugă la comandă
         </span>
       </div>
       <ul className="flex flex-col">

@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { COMPANY, indirizzoLegale } from "@lib/util/company-info"
 
 export const metadata: Metadata = {
@@ -21,7 +22,7 @@ export default function TermeniPage() {
       <h2>1. Informații despre vânzător</h2>
       <p>
         Acest site este administrat de <strong>{COMPANY.ragioneSociale}</strong>{" "}
-        (în continuare „Vânzătorul" sau „noi"), cu sediul în {indirizzoLegale()},
+        (în continuare „Vânzătorul” sau „noi”), cu sediul în {indirizzoLegale()},
         CUI {COMPANY.piva}, înregistrată la Registrul Comerțului sub nr.{" "}
         {COMPANY.rea}, email{" "}
         <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>, telefon{" "}
@@ -30,9 +31,9 @@ export default function TermeniPage() {
 
       <h2>2. Domeniu de aplicare</h2>
       <p>
-        Prezentele condiții generale de vânzare („Condiții") reglementează
+        Prezentele condiții generale de vânzare („Condiții”) reglementează
         oferirea și vânzarea produselor publicate pe site-ul {COMPANY.baseUrl}{" "}
-        („Site-ul"). Condițiile se aplică achizițiilor efectuate de consumatori
+        („Site-ul”). Condițiile se aplică achizițiilor efectuate de consumatori
         — persoane fizice care acționează în scopuri din afara activității lor
         comerciale sau profesionale, conform OUG 34/2014 și OG 21/1992 — precum
         și, în lipsa unor derogări exprese, achizițiilor efectuate de
@@ -72,7 +73,7 @@ export default function TermeniPage() {
       <h2>5. Livrare</h2>
       <p>
         Modalitățile, termenele și costurile de livrare sunt descrise pe pagina{" "}
-        <a href="/livrare">Livrarea comenzilor</a> și sunt comunicate înainte de
+        <LocalizedClientLink href="/livrare">Livrarea comenzilor</LocalizedClientLink> și sunt comunicate înainte de
         încheierea contractului. Taxa de transport se achită curierului la
         primirea coletului, iar documentul fiscal pentru serviciul de transport
         este emis de firma de curierat. Eventualele întârzieri cauzate de forță
@@ -88,7 +89,7 @@ export default function TermeniPage() {
         motiv, conform OUG 34/2014. Procedura, termenele de rambursare,
         excepțiile (în special produsele personalizate sau sigilate desigilate
         din motive de igienă) și formularul de retragere sunt descrise pe pagina{" "}
-        <a href="/retur">Retur produse</a>, parte integrantă a prezentelor
+        <LocalizedClientLink href="/retur">Retur produse</LocalizedClientLink>, parte integrantă a prezentelor
         Condiții.
       </p>
 
@@ -98,7 +99,7 @@ export default function TermeniPage() {
         conformitate de <strong>24 de luni</strong> de la livrare, conform Legii
         449/2003 și OUG 140/2021 (care transpune Directiva (UE) 2019/771).
         Modalitățile de activare și remediile disponibile sunt descrise pe
-        pagina <a href="/garantie">Garanție și service</a>.
+        pagina <LocalizedClientLink href="/garantie">Garanție și service</LocalizedClientLink>.
       </p>
 
       <h2>8. Răspundere</h2>

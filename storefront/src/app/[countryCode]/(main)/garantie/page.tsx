@@ -96,7 +96,7 @@ export default function GarantiePage() {
       <p>
         Te rugăm să te asiguri că aparatul este resetat, fără conturi active,
         modele sau coduri de deblocare, cum ar fi funcția „find my
-        phone/iPhone" etc. Dacă resetarea sau dezactivarea acestor servicii nu
+        phone/iPhone” etc. Dacă resetarea sau dezactivarea acestor servicii nu
         este posibilă, te rugăm să ne transmiți datele sau codul de acces.
       </p>
 
@@ -162,7 +162,7 @@ export default function GarantiePage() {
 
       <p>
         Dacă în schimb vrei să returnezi produsul, nu să îl repari, folosește{" "}
-        <a href="/retur">formularul de retur</a>.
+        <LocalizedClientLink href="/retur">formularul de retur</LocalizedClientLink>.
       </p>
 
       <h2>Garanția legală de conformitate</h2>
@@ -198,7 +198,7 @@ export default function GarantiePage() {
         profesioniști (persoane fizice autorizate, liber-profesioniști etc.).
       </p>
 
-      <h2>Ce înseamnă „lipsă de conformitate"</h2>
+      <h2>Ce înseamnă „lipsă de conformitate”</h2>
       <p>Un produs este conform contractului atunci când, în special:</p>
       <ul>
         <li>
@@ -247,7 +247,7 @@ export default function GarantiePage() {
         garanția de conformitate, de a rambursa prețul plătit ori de a înlocui,
         a repara sau a întreține bunurile în orice mod, în cazul în care acestea
         nu corespund specificațiilor sau oricărei alte cerințe care nu este
-        legată de conformitate".
+        legată de conformitate”.
       </p>
       <p>
         Se adresează consumatorilor și poate fi diferită pentru diverse loturi

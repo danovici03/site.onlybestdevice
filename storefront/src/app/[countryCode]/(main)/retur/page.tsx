@@ -268,7 +268,7 @@ export default function ReturPage() {
         Produsele care prezintă defecte în perioada de garanție vor fi
         prezentate într-un centru de service al producătorului, dacă a fost emis
         pentru ele un Certificat de Garanție din partea producătorului. Detalii
-        pe pagina <a href="/garantie">Garanție și service</a>.
+        pe pagina <LocalizedClientLink href="/garantie">Garanție și service</LocalizedClientLink>.
       </p>
 
       <h2>Mențiuni legale</h2>
