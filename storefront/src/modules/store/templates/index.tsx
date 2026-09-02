@@ -29,9 +29,11 @@ const StoreTemplate = async ({
   const sort = sortBy || "created_at"
   const term = q?.trim()
 
-  const eyebrow = term ? "Căutare" : sale ? "Oferte" : "Catalog"
+  const eyebrow = term ? "Rezultate pentru" : sale ? "Oferte" : "Catalog"
+  // Pe căutare titlul e doar termenul: „Rezultate pentru …" ca titlu era o
+  // frază lungă care se rupea pe două rânduri și împingea bara de sortare.
   const heading = term ? (
-    <>Rezultate pentru „{term}”</>
+    <>„{term}”</>
   ) : sale ? (
     "Ofertele săptămânii"
   ) : (
@@ -50,11 +52,11 @@ const StoreTemplate = async ({
     >
       <div className="flex flex-col gap-4 lg:gap-6 lg:flex-row lg:items-end lg:justify-between mb-5 lg:mb-10">
         <header className="flex flex-col gap-2 sm:gap-4 max-w-2xl">
-          <span className="hidden lg:inline text-xs uppercase tracking-[0.2em] font-bold text-brand-dark/50">
+          <span className="text-[11px] lg:text-xs uppercase tracking-[0.2em] font-bold text-brand-dark/50">
             {eyebrow}
           </span>
           <h1
-            className="font-serif text-3xl sm:text-5xl lg:text-6xl text-brand-dark leading-[1.05]"
+            className="font-serif text-2xl sm:text-3xl lg:text-4xl text-brand-dark leading-tight break-words"
             data-testid="store-page-title"
           >
             {heading}

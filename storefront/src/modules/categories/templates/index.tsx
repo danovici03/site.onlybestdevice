@@ -42,9 +42,6 @@ export default function CategoryTemplate({
       .join("/")}`,
   }))
 
-  const directParent = ancestors[ancestors.length - 1]
-  const eyebrow = directParent ? directParent.name : "Catalog"
-
   const collectDescendantIds = (
     cat: HttpTypes.StoreProductCategory
   ): string[] => {
@@ -90,11 +87,8 @@ export default function CategoryTemplate({
 
       <div className="flex flex-col gap-4 lg:gap-6 lg:flex-row lg:items-end lg:justify-between mb-5 lg:mb-10">
         <header className="flex flex-col gap-2 sm:gap-4 max-w-2xl">
-          <span className="hidden lg:inline text-xs uppercase tracking-[0.2em] font-bold text-brand-dark/50">
-            {eyebrow}
-          </span>
           <h1
-            className="font-serif text-3xl sm:text-5xl lg:text-6xl text-brand-dark leading-[1.05]"
+            className="font-serif text-2xl sm:text-3xl lg:text-4xl text-brand-dark leading-tight"
             data-testid="category-page-title"
           >
             {category.name}
