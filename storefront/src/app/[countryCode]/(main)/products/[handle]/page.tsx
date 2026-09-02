@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
+import { getProductCategoryPath } from "@lib/data/categories"
 import { listProducts } from "@lib/data/products"
 import { getRegion, listRegions } from "@lib/data/regions"
 import { listProductReviews } from "@lib/data/reviews"
@@ -9,6 +10,7 @@ import {
   descriptionSnippet,
   descriptionText,
 } from "@lib/util/description-text"
+import { buildProductCrumbs } from "@modules/products/components/product-breadcrumbs"
 import ProductTemplate from "@modules/products/templates"
 import { HttpTypes } from "@medusajs/types"
 import { failStaticParams } from "@lib/util/static-params"
@@ -140,6 +142,16 @@ export default async function ProductPage(props: Props) {
       : Promise.resolve(undefined),
   ])
 
+  // Breadcrumb: categorie → marcă, din ierarhia completă de categorii (produsul
+  // e legat de mai multe noduri, ne trebuie lanțul cel mai adânc).
+  const productMeta = (pricedProduct.metadata ?? {}) as Record<string, unknown>
+  const brand =
+    typeof productMeta.filter_brand === "string" && productMeta.filter_brand
+      ? productMeta.filter_brand
+      : null
+  const categoryPath = await getProductCategoryPath(pricedProduct.categories)
+  const crumbs = buildProductCrumbs({ path: categoryPath, brand })
+
   // Date structurate Product (schema.org) pentru rezultate îmbogățite în Google.
   const variantPrices = (pricedProduct.variants ?? [])
     .map((v) => (v as any).calculated_price?.calculated_amount)
@@ -164,7 +176,7 @@ export default async function ProductPage(props: Props) {
       .slice(0, 6),
     description: descriptionText(pricedProduct.description) || pricedProduct.title,
     sku: pricedProduct.variants?.[0]?.sku || undefined,
-    brand: { "@type": "Brand", name: "onlybestdevice" },
+    brand: { "@type": "Brand", name: brand ?? "onlybestdevice" },
     ...(lowPrice
       ? {
           offers: {
@@ -187,12 +199,43 @@ export default async function ProductPage(props: Props) {
       : {}),
   }
 
+  // Același lanț și pentru Google — breadcrumb-ul din rezultatele căutării.
+  // Fără verigile filtrate (marca): sunt listări necanonice, iar un singur
+  // element necanonic face Google să arunce tot BreadcrumbList-ul.
+  const ldCrumbs = crumbs.filter((c) => !c.filtered)
+  const breadcrumbLd = ldCrumbs.length
+    ? {
+        "@context": "https://schema.org/",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          ...ldCrumbs.map((c, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            name: c.name,
+            item: `${baseUrl}/${params.countryCode}${c.href}`,
+          })),
+          {
+            "@type": "ListItem",
+            position: ldCrumbs.length + 1,
+            name: pricedProduct.title,
+            item: productUrl,
+          },
+        ],
+      }
+    : null
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      {breadcrumbLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+        />
+      )}
       <ProductTemplate
         product={pricedProduct}
         region={region}
@@ -200,6 +243,7 @@ export default async function ProductPage(props: Props) {
         upgrades={upgrades}
         warranty={warranty}
         reviewStats={reviewStats}
+        crumbs={crumbs}
       />
     </>
   )

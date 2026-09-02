@@ -210,3 +210,37 @@ export const getCategoryByHandle = async (categoryHandle: string[]) => {
     )
     .then(({ product_categories }) => product_categories[0])
 }
+
+/**
+ * Rădăcini care nu spun nimic despre produs: „Oferte" e o etichetă comercială,
+ * iar „Fără categorie" e groapa de gunoi a importului. Aceleași excluse ca
+ * fațeta de categorie din backend (`CATEGORY_FACET_BLOCKLIST`).
+ */
+const BREADCRUMB_ROOT_BLOCKLIST = new Set(["oferte", "fara-categorie"])
+
+/**
+ * Calea celei mai adânci categorii a unui produs — baza breadcrumb-ului de pe
+ * pagina produsului. Un produs e legat și de părinți („Telefoane mobile") și de
+ * frunză („Samsung"); pentru breadcrumb ne interesează lanțul cel mai lung.
+ */
+export const getProductCategoryPath = async (
+  categories?: { id?: string }[] | null
+): Promise<CategoryCrumb[]> => {
+  const ids = (categories ?? [])
+    .map((c) => c?.id)
+    .filter((id): id is string => !!id)
+
+  if (!ids.length) {
+    return []
+  }
+
+  const paths = await Promise.all(ids.map((id) => getCategoryPath(id)))
+  const usable = paths.filter(
+    (p) => p.length && !BREADCRUMB_ROOT_BLOCKLIST.has(p[0].slug)
+  )
+
+  return (usable.length ? usable : paths).reduce<CategoryCrumb[]>(
+    (best, p) => (p.length > best.length ? p : best),
+    []
+  )
+}

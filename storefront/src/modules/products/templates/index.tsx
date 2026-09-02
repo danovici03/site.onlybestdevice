@@ -13,6 +13,7 @@ import SkeletonRelatedProducts from "@modules/skeletons/templates/skeleton-relat
 import { notFound } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
 import type { ReviewStatsDTO } from "@lib/data/reviews"
+import type { ProductCrumb } from "@modules/products/components/product-breadcrumbs"
 
 import ProductActionsWrapper from "./product-actions-wrapper"
 
@@ -23,6 +24,7 @@ type ProductTemplateProps = {
   upgrades?: HttpTypes.StoreProduct[]
   warranty?: HttpTypes.StoreProduct
   reviewStats?: ReviewStatsDTO
+  crumbs?: ProductCrumb[]
 }
 
 const ProductTemplate: React.FC<ProductTemplateProps> = ({
@@ -32,6 +34,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
   upgrades = [],
   warranty,
   reviewStats,
+  crumbs,
 }) => {
   if (!product || !product.id) {
     return notFound()
@@ -51,7 +54,11 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
 
           <div className="lg:col-span-5">
             <div className="lg:sticky lg:top-28 flex flex-col gap-y-8">
-              <ProductInfo product={product} reviewStats={reviewStats} />
+              <ProductInfo
+                product={product}
+                reviewStats={reviewStats}
+                crumbs={crumbs}
+              />
               <PhoneVariantSelect product={product} />
               <Suspense
                 fallback={
