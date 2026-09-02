@@ -30,6 +30,9 @@ export const ORDER_EMAIL_FIELDS = [
   "shipping_address.*",
   // Denumirea firmei stă pe adresa de facturare; CUI-ul, în `metadata`.
   "billing_address.*",
+  // Fără ele, `isPickupOrder` vede mereu o listă goală și emailul promite
+  // taxă de curier și la comenzile cu ridicare din magazin.
+  "shipping_methods.*",
   "payment_collections.payment_sessions.provider_id",
 ]
 

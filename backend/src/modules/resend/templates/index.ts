@@ -194,6 +194,90 @@ const renderOrderItems = (
 const isPickupOrder = (order: Record<string, any>) =>
   (order.shipping_methods ?? []).some((m: any) => /ridicare/i.test(m?.name ?? ""))
 
+/** Metoda (sau metodele) de livrare alese, cu preț doar când chiar costă. */
+const shippingMethodLine = (order: Record<string, any>): string => {
+  const methods = (order.shipping_methods ?? []).filter(Boolean)
+  if (!methods.length) return ""
+  const text = methods
+    .map((m: any) => {
+      const amount = Number(m?.amount ?? 0)
+      const price = amount > 0 ? ` — ${money(amount, order.currency_code)}` : ""
+      return `${escape(m?.name ?? "")}${price}`
+    })
+    .join(", ")
+  return `<li><strong>Metodă de livrare:</strong> ${text}</li>`
+}
+
+// Livrăm doar în România, dar codul de țară singur („RO") nu spune nimic pe
+// un email pe care operatorul îl citește în grabă.
+const COUNTRY_NAMES: Record<string, string> = { ro: "România" }
+
+const countryName = (code?: string | null) =>
+  code ? (COUNTRY_NAMES[code.toLowerCase()] ?? code.toUpperCase()) : ""
+
+/**
+ * Adresa pe linii, în ordinea în care se completează un AWB, ca să se poată
+ * da copy-paste direct în aplicația de curierat. Județul apare doar când
+ * adaugă ceva peste oraș — la București ar fi de două ori același cuvânt.
+ */
+const addressLines = (addr: any, email?: string | null): string[] => {
+  if (!addr) return []
+  const cityLine = [addr.postal_code, addr.city].filter(Boolean).join(" ")
+  const county =
+    addr.province && addr.province !== addr.city ? `jud. ${addr.province}` : ""
+  return [
+    [addr.first_name, addr.last_name].filter(Boolean).join(" "),
+    addr.company,
+    addr.address_1,
+    addr.address_2,
+    [cityLine, county].filter(Boolean).join(", "),
+    countryName(addr.country_code),
+    addr.phone,
+    email,
+  ]
+    .map((line) => String(line ?? "").trim())
+    .filter(Boolean)
+}
+
+/** La ridicarea din magazin adresa n-are rost — contactul, da. */
+const contactLines = (order: Record<string, any>): string[] => {
+  const addr = order?.shipping_address
+  return [
+    [addr?.first_name, addr?.last_name].filter(Boolean).join(" "),
+    addr?.phone,
+    order?.email,
+  ]
+    .map((line) => String(line ?? "").trim())
+    .filter(Boolean)
+}
+
+/** `noteHtml` e HTML gata escapat — restul liniilor le escapăm aici. */
+const addressPanel = (
+  title: string,
+  lines: string[],
+  noteHtml = ""
+): string => {
+  if (!lines.length) return ""
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 8px;">
+      <tr><td style="background:${COLOR.light};border:1px solid ${COLOR.border};border-radius:16px;padding:18px 20px;">
+        <p style="margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:${COLOR.muted};font-weight:600;">${escape(title)}</p>
+        <p style="margin:0;font-size:14px;line-height:1.7;color:${COLOR.dark};">${lines.map(escape).join("<br>")}</p>
+        ${noteHtml ? `<p style="margin:10px 0 0;font-size:12px;color:${COLOR.muted};line-height:1.6;">${noteHtml}</p>` : ""}
+      </td></tr>
+    </table>`
+}
+
+/** Panoul de livrare, în forma potrivită comenzii — curier sau ridicare. */
+const deliveryPanel = (order: Record<string, any>, noteHtml = ""): string =>
+  isPickupOrder(order)
+    ? addressPanel("Ridicare din magazin", contactLines(order), noteHtml)
+    : addressPanel(
+        "Adresă de livrare",
+        addressLines(order?.shipping_address, order?.email),
+        noteHtml
+      )
+
 /** Linia „Facturare firmă" din emailul intern — cu ea se emite factura. */
 const buyerFiscalLine = (order: Record<string, any>): string => {
   const fiscal = readBuyerFiscal(order.metadata)
@@ -224,8 +308,9 @@ const orderPlacedCustomer: Renderer = ({ order, storefront_url }) => {
   const display = order.display_id ?? order.id
   const orderUrl = `${resolveStorefrontUrl(storefront_url)}/${locale()}/order/${order.id}/confirmed`
   const firstName = order.shipping_address?.first_name
+  const pickup = isPickupOrder(order)
   // Totalul comenzii nu conține transportul — clientul îl dă curierului.
-  const courierNote = isPickupOrder(order)
+  const courierNote = pickup
     ? ""
     : `<p style="margin:0 0 16px;font-size:13px;color:${COLOR.muted};">Taxa de transport nu este inclusă în acest total: o achiți direct curierului, la primirea coletului.</p>`
   const body = `
@@ -234,9 +319,15 @@ const orderPlacedCustomer: Renderer = ({ order, storefront_url }) => {
     ${renderOrderItems(order.items, storefront_url)}
     <p style="margin:16px 0;font-size:16px;"><strong>Total: ${money(order.total, order.currency_code)}</strong></p>
     ${courierNote}
+    ${deliveryPanel(
+      order,
+      pickup
+        ? ""
+        : "Dacă adresa nu e corectă, răspunde la acest email cât mai repede — o corectăm înainte să predăm coletul curierului."
+    )}
     ${button(orderUrl, "Vezi comanda")}
     ${buyerFiscalNote(order)}
-    <p style="margin:16px 0 0;color:${COLOR.muted};">Îți scriem din nou imediat ce comanda pleacă spre tine.</p>`
+    <p style="margin:16px 0 0;color:${COLOR.muted};">${pickup ? "Îți scriem din nou imediat ce comanda te așteaptă în magazin." : "Îți scriem din nou imediat ce comanda pleacă spre tine."}</p>`
   return {
     subject: `Confirmare comandă #${display} — ${BRAND}`,
     html: layout({
@@ -257,9 +348,10 @@ const orderPlacedAdmin: Renderer = ({ order, admin_url, storefront_url }) => {
       <li>Client: ${escape(order.email)}</li>
       <li>Total: <strong>${money(order.total, order.currency_code)}</strong></li>
       <li>Produse: ${order.items?.length ?? 0}</li>
-      ${order.shipping_address ? `<li>Livrare: ${escape(order.shipping_address.first_name)} ${escape(order.shipping_address.last_name)} — ${escape(order.shipping_address.city)}, ${escape(order.shipping_address.country_code)}</li>` : ""}
+      ${shippingMethodLine(order)}
       ${buyerFiscalLine(order)}
     </ul>
+    ${deliveryPanel(order)}
     ${renderOrderItems(order.items, storefront_url)}
     ${adminLink ? button(adminLink, "Deschide comanda în admin") : ""}`
   return {
