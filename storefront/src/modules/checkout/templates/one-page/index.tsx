@@ -203,19 +203,57 @@ const emptyAddress = (): AddressForm => ({
   postal_code: "",
 })
 
+const fromAddress = (addr: any): AddressForm => ({
+  ...emptyAddress(),
+  phone: addr?.phone || "",
+  first_name: addr?.first_name || "",
+  last_name: addr?.last_name || "",
+  address_1: addr?.address_1 || "",
+  company: addr?.company || "",
+  city: addr?.city || "",
+  // Adresele salvate înainte de select conțin text liber („Bistrita-Nasaud",
+  // „BN"); le aducem la numele canonic ca select-ul să nu pară necompletat.
+  province: matchCounty(addr?.province) || "",
+  postal_code: addr?.postal_code || "",
+})
+
 const fromCart = (cart: any, customer: any): AddressForm => ({
+  ...fromAddress(cart?.shipping_address),
   email: cart?.email || customer?.email || "",
   phone: cart?.shipping_address?.phone || customer?.phone || "",
   first_name: cart?.shipping_address?.first_name || customer?.first_name || "",
   last_name: cart?.shipping_address?.last_name || customer?.last_name || "",
-  address_1: cart?.shipping_address?.address_1 || "",
-  company: cart?.shipping_address?.company || "",
-  city: cart?.shipping_address?.city || "",
-  // Adresele salvate înainte de select conțin text liber („Bistrita-Nasaud",
-  // „BN"); le aducem la numele canonic ca select-ul să nu pară necompletat.
-  province: matchCounty(cart?.shipping_address?.province) || "",
-  postal_code: cart?.shipping_address?.postal_code || "",
 })
+
+/**
+ * `saveCheckoutDetails` trimite mereu o adresă de facturare — copia celei de
+ * livrare când nu diferă. Deci o socotim „separată" abia când chiar arată
+ * altfel, altfel un refresh ar deschide blocul de facturare degeaba.
+ */
+const sameAsShipping = (cart: any): boolean => {
+  const b = cart?.billing_address
+  if (!b) return true
+  const s = cart?.shipping_address
+  return (
+    [
+      "first_name",
+      "last_name",
+      "address_1",
+      "postal_code",
+      "city",
+      "province",
+      "company",
+      // `phone` nu intră în comparație: la facturarea persoanei fizice nu-l
+      // cerem deloc, deci ar ieși mereu diferit și ar deschide blocul degeaba.
+    ] as const
+  ).every(
+    (key) => (b?.[key] ?? "") === (s?.[key] ?? "")
+  )
+}
+
+/** Factura pe firmă salvată deja pe coș, citită înainte de starea locală. */
+const hasStoredFiscal = (cart: any): boolean =>
+  !!readCompanyFiscal(cart?.metadata as Record<string, unknown> | null)
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
@@ -321,8 +359,15 @@ const OnePageCheckout = ({
 
   /* ---------------- Adresă ---------------- */
   const [form, setForm] = useState<AddressForm>(() => fromCart(cart, customer))
-  const [billing, setBilling] = useState<AddressForm>(() => emptyAddress())
-  const [billingSame, setBillingSame] = useState(true)
+  // Hidratate din coș, nu goale: după un refresh, blocul de facturare rămânea
+  // alb, iar la factura pe firmă dispărea cu totul (`billingSame` pornea
+  // adevărat peste un `companyInvoice` deja bifat din metadata).
+  const [billing, setBilling] = useState<AddressForm>(() =>
+    fromAddress(cart?.billing_address)
+  )
+  const [billingSame, setBillingSame] = useState(
+    () => !hasStoredFiscal(cart) && sameAsShipping(cart)
+  )
   // Dacă județul din coș a fost adus la forma canonică la încărcare („Bistrita-
   // Nasaud" → „Bistrița-Năsăud"), pornim murdar: altfel clientul vede forma
   // corectă, dar comanda pleacă cu cea veche, pentru că nimic n-a fost atins.
@@ -348,18 +393,28 @@ const OnePageCheckout = ({
    * mai avem răspunsul ANAF, dar avem ce s-a salvat pe coș — și îl folosim, ca
    * să nu rescriem tăcut adresa cu una nouă din registru (clientul poate să o
    * fi corectat) și să nu pierdem statutul de TVA la următoarea salvare.
+   *
+   * O confirmare cere ȘI o denumire, ȘI CUI-ul din câmp:
+   * - fără nume: auto-completarea ANAF pleacă la 700 ms, salvarea coșului la
+   *   1200 ms, deci un registru lent lasă pe coș un `company_cui` cu nume gol.
+   *   Luat drept confirmare, ar ascunde tocmai câmpul în care clientul scrie
+   *   denumirea de mână și ar bloca finalizarea comenzii.
+   * - fără potrivirea CUI-ului: cine strică o cifră după o căutare reușită
+   *   rămânea cu firma veche afișată sub CUI-ul nou.
    */
+  const cuiDigits = normalizeCui(cui)
+  const forCurrentCui = <T extends CompanyFiscal>(candidate: T | null) =>
+    candidate?.name && candidate.cui === cuiDigits ? candidate : null
   const confirmedCompany: (CompanyFiscal & Partial<CompanyDetails>) | null =
-    company ??
-    (storedFiscal && storedFiscal.cui === normalizeCui(cui)
-      ? storedFiscal
-      : null)
+    forCurrentCui(company) ?? forCurrentCui(storedFiscal)
   const [lookingUp, setLookingUp] = useState(false)
   const [lookupError, setLookupError] = useState<string | null>(null)
   /** CUI-ul deja interogat, ca efectul de auto-completare să nu se repete. */
   const lookedUpCui = useRef<string | null>(storedFiscal?.cui ?? null)
   /** Ce era bifat la „aceeași adresă", ca să revenim dacă se răzgândește. */
   const billingSameBefore = useRef(true)
+  /** Adresa de facturare dinaintea completării din ANAF, pentru același drum. */
+  const billingBefore = useRef<AddressForm | null>(null)
 
   const setField = (name: keyof AddressForm, value: string) => {
     setForm((f) => ({ ...f, [name]: value }))
@@ -444,6 +499,21 @@ const OnePageCheckout = ({
     }
   }
 
+  /**
+   * Adresa de facturare gata de trimis. La factura pe firmă, persoana de
+   * contact e cea de la livrare: n-o mai cerem a doua oară în formular, doar o
+   * copiem aici, unde Medusa are nevoie de un nume pe adresa de facturare.
+   */
+  const billingPayload = (b: AddressForm, f: AddressForm): AddressForm =>
+    companyInvoice
+      ? {
+          ...b,
+          first_name: f.first_name,
+          last_name: f.last_name,
+          phone: f.phone,
+        }
+      : b
+
   const persistAddress = async (current?: {
     form: AddressForm
     billing: AddressForm
@@ -458,7 +528,9 @@ const OnePageCheckout = ({
       await saveCheckoutDetails({
         email: f.email,
         shipping_address: toPayload(f, countryCode),
-        billing_address: same ? undefined : toPayload(b, countryCode),
+        billing_address: same
+          ? undefined
+          : toPayload(billingPayload(b, f), countryCode),
         metadata: companyMetadata(),
       })
       setDirty(false)
@@ -480,9 +552,9 @@ const OnePageCheckout = ({
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     // `confirmedCompany` e recalculat la fiecare randare, deci ar reporni
     // temporizatorul degeaba; ce se schimbă efectiv e răspunsul ANAF.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, billing, billingSame, companyInvoice, cui, company])
 
   /**
@@ -525,9 +597,6 @@ const OnePageCheckout = ({
         city: found.address.city || b.city,
         province: found.address.province || b.province,
         postal_code: found.address.postal_code || b.postal_code,
-        first_name: b.first_name || form.first_name,
-        last_name: b.last_name || form.last_name,
-        phone: b.phone || form.phone,
       }))
       billingPostalAuto.current = true
       setDirty(true)
@@ -540,6 +609,22 @@ const OnePageCheckout = ({
       setLookingUp(false)
     }
   }
+
+  /**
+   * CUI editat după o căutare reușită: firma găsită nu mai e a lui. Denumirea
+   * ei n-are ce căuta sub alt CUI — nici în cardul de confirmare, nici salvată
+   * pe coș drept „denumire scrisă de client" (`companyMetadata` o ia din
+   * `billing.company` când ANAF n-a confirmat nimic, iar câmpul e ascuns cât
+   * timp există o confirmare, deci clientul n-ar avea cum s-o corecteze).
+   *
+   * Adresa rămâne pe loc: e vizibilă, editabilă și o rescrie oricum următoarea
+   * căutare reușită.
+   */
+  useEffect(() => {
+    if (!company || company.cui === cuiDigits) return
+    setCompany(null)
+    setBilling((b) => (b.company === company.name ? { ...b, company: "" } : b))
+  }, [cuiDigits, company])
 
   // Auto-completare la 700 ms după ultima tastă: cine lipește CUI-ul din
   // contract nu mai apasă niciun buton. Butonul rămâne doar pentru reîncercare.
@@ -563,19 +648,18 @@ const OnePageCheckout = ({
       // Sediul firmei nu e adresa de livrare, deci facturarea se desparte
       // automat de livrare în momentul bifei.
       billingSameBefore.current = billingSame
+      billingBefore.current = billing
       setBillingSame(false)
       // Cine se răzgândește de două ori are CUI-ul încă scris în câmp, dar
       // confirmarea din registru s-a pierdut la debifare: o cerem din nou.
       lookedUpCui.current = null
-      setBilling((b) => ({
-        ...b,
-        first_name: b.first_name || form.first_name,
-        last_name: b.last_name || form.last_name,
-        phone: b.phone || form.phone,
-      }))
     } else {
       setBillingSame(billingSameBefore.current)
       setCompany(null)
+      // Tot ce a completat ANAF-ul (denumire ȘI sediu social) se dă înapoi:
+      // altfel rămâneau lipite de adresa de facturare a unei persoane fizice,
+      // iar denumirea — care nu mai are câmp vizibil — ajungea pe factură.
+      setBilling(billingBefore.current ?? emptyAddress())
     }
     setDirty(true)
   }
@@ -776,7 +860,13 @@ const OnePageCheckout = ({
   // ref umplut de <StripeConfirmBridge/>, montat condiționat mai jos.
   const stripeConfirmRef = useRef<StripeConfirmFn | null>(null)
 
-  const missing = missingFields(form, billingSame, billing, companyInvoice, cui)
+  const missing = missingFields(
+    form,
+    billingSame,
+    billingPayload(billing, form),
+    companyInvoice,
+    cui
+  )
   const canPlace =
     missing.length === 0 &&
     !!shippingMethodId &&
@@ -943,41 +1033,37 @@ const OnePageCheckout = ({
                 data-testid="shipping-address-input"
               />
             </div>
-            <LocalitySelect
-              label="Oraș / localitate"
-              name="city"
-              value={form.city}
-              county={form.province}
-              onChange={(city) => setField("city", city)}
-              onSelect={applyLocality}
-              required
-              data-testid="shipping-city-input"
-            />
-            <CountySelect
-              label="Județ"
-              name="province"
-              value={form.province}
-              onChange={(county) => setField("province", county)}
-              required
-              data-testid="shipping-province-input"
-            />
-            <Input
-              label="Cod poștal"
-              name="postal_code"
-              autoComplete="postal-code"
-              value={form.postal_code}
-              onChange={(e) => setField("postal_code", e.target.value)}
-              required
-              data-testid="shipping-postal-code-input"
-            />
-            <Input
-              label="Companie (opțional)"
-              name="company"
-              autoComplete="organization"
-              value={form.company}
-              onChange={(e) => setField("company", e.target.value)}
-              data-testid="shipping-company-input"
-            />
+            {/* Localitatea, județul și codul poștal se citesc ca o adresă, pe
+                un singur rând — nu ca trei câmpuri fără legătură. */}
+            <div className="small:col-span-2 grid grid-cols-1 small:grid-cols-3 gap-3">
+              <LocalitySelect
+                label="Oraș / localitate"
+                name="city"
+                value={form.city}
+                county={form.province}
+                onChange={(city) => setField("city", city)}
+                onSelect={applyLocality}
+                required
+                data-testid="shipping-city-input"
+              />
+              <CountySelect
+                label="Județ"
+                name="province"
+                value={form.province}
+                onChange={(county) => setField("province", county)}
+                required
+                data-testid="shipping-province-input"
+              />
+              <Input
+                label="Cod poștal"
+                name="postal_code"
+                autoComplete="postal-code"
+                value={form.postal_code}
+                onChange={(e) => setField("postal_code", e.target.value)}
+                required
+                data-testid="shipping-postal-code-input"
+              />
+            </div>
           </div>
 
           <LocateMeButton
@@ -1111,23 +1197,33 @@ const OnePageCheckout = ({
             <div className="mt-4 grid grid-cols-1 small:grid-cols-2 gap-3">
               <div className="small:col-span-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-dark/50">
                 {companyInvoice
-                  ? "Date de facturare (firmă)"
+                  ? "Adresa de pe factură (sediul firmei)"
                   : "Adresa de facturare"}
               </div>
-              <Input
-                label="Prenume"
-                name="billing_first_name"
-                value={billing.first_name}
-                onChange={(e) => setBillingField("first_name", e.target.value)}
-                required
-              />
-              <Input
-                label="Nume"
-                name="billing_last_name"
-                value={billing.last_name}
-                onChange={(e) => setBillingField("last_name", e.target.value)}
-                required
-              />
+              {/* La factura pe firmă, persoana de contact e cea completată
+                  sus — o copiem la trimitere, n-o mai cerem încă o dată. */}
+              {!companyInvoice && (
+                <>
+                  <Input
+                    label="Prenume"
+                    name="billing_first_name"
+                    value={billing.first_name}
+                    onChange={(e) =>
+                      setBillingField("first_name", e.target.value)
+                    }
+                    required
+                  />
+                  <Input
+                    label="Nume"
+                    name="billing_last_name"
+                    value={billing.last_name}
+                    onChange={(e) =>
+                      setBillingField("last_name", e.target.value)
+                    }
+                    required
+                  />
+                </>
+              )}
               <div className="small:col-span-2">
                 <Input
                   label="Adresă"
@@ -1137,42 +1233,53 @@ const OnePageCheckout = ({
                   required
                 />
               </div>
-              <LocalitySelect
-                label="Oraș / localitate"
-                name="billing_city"
-                value={billing.city}
-                county={billing.province}
-                onChange={(city) => setBillingField("city", city)}
-                onSelect={applyBillingLocality}
-                required
-              />
-              <CountySelect
-                label="Județ"
-                name="billing_province"
-                value={billing.province}
-                onChange={(county) => setBillingField("province", county)}
-              />
-              <Input
-                label="Cod poștal"
-                name="billing_postal_code"
-                value={billing.postal_code}
-                onChange={(e) => setBillingField("postal_code", e.target.value)}
-                required
-              />
-              <Input
-                label={
-                  companyInvoice ? "Denumirea firmei" : "Companie (opțional)"
-                }
-                name="billing_company"
-                value={billing.company}
-                onChange={(e) => setBillingField("company", e.target.value)}
-                required={companyInvoice}
-              />
-              <div className="small:col-span-2">
-                <LocateMeButton
-                  onResolve={(l) => applyBillingLocality(l, true)}
+              <div className="small:col-span-2 grid grid-cols-1 small:grid-cols-3 gap-3">
+                <LocalitySelect
+                  label="Oraș / localitate"
+                  name="billing_city"
+                  value={billing.city}
+                  county={billing.province}
+                  onChange={(city) => setBillingField("city", city)}
+                  onSelect={applyBillingLocality}
+                  required
+                />
+                <CountySelect
+                  label="Județ"
+                  name="billing_province"
+                  value={billing.province}
+                  onChange={(county) => setBillingField("province", county)}
+                />
+                <Input
+                  label="Cod poștal"
+                  name="billing_postal_code"
+                  value={billing.postal_code}
+                  onChange={(e) =>
+                    setBillingField("postal_code", e.target.value)
+                  }
+                  required
                 />
               </div>
+              {/* Denumirea o scrie clientul doar cât timp registrul n-a
+                  confirmat-o; după confirmare o arată cardul ANAF de mai sus,
+                  iar un al doilea câmp cu același text ar fi doar zgomot. */}
+              {companyInvoice && !confirmedCompany && (
+                <div className="small:col-span-2">
+                  <Input
+                    label="Denumirea firmei"
+                    name="billing_company"
+                    value={billing.company}
+                    onChange={(e) => setBillingField("company", e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+              {!companyInvoice && (
+                <div className="small:col-span-2">
+                  <LocateMeButton
+                    onResolve={(l) => applyBillingLocality(l, true)}
+                  />
+                </div>
+              )}
             </div>
           )}
 
