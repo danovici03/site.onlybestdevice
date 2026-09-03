@@ -17,6 +17,7 @@
  * un al doilea dialect de HTML în baza de date.
  */
 import { sanitizeWooHtml, hasVisibleContent, stripEmptyBlocks } from "../woo-description"
+import type { AiExtraction } from "./ai"
 import { absolutizeUrls, parseHtml } from "./html"
 import { specKey, type SpecPair } from "./specs"
 import { emag } from "./sources/emag"
@@ -173,6 +174,59 @@ export function extractProduct(html: string, pageUrl: string): ExtractedProduct 
     ),
     specs: mergeSpecs([site.specs ?? [], jsonLd?.specs ?? [], fallback.specs ?? []]),
     notes,
+  }
+}
+
+/**
+ * Contopește peste extragerea euristică ce a scos modelul.
+ *
+ * Direcția e mereu aceeași: **ce s-a citit din structura paginii bate ce a
+ * propus modelul**. Prima e verificabilă — un `<td>` lângă altul e un fapt —, a
+ * doua e verificată doar prin faptul că apare undeva în pagină. Modelul umple
+ * goluri; nu rescrie ce știm deja.
+ */
+export function mergeAiExtraction(
+  base: ExtractedProduct,
+  ai: AiExtraction
+): ExtractedProduct {
+  const sanitized = base.descriptionHtml
+    ? null
+    : sanitizeWooHtml(ai.descriptionHtml ?? "", { allowLinks: false })
+
+  const aiDescription =
+    sanitized && hasVisibleContent(sanitized.html) ? stripEmptyBlocks(sanitized.html) : ""
+
+  return {
+    ...base,
+    sourceLabel: `${base.sourceLabel} + AI`,
+    title: firstOf(base.title, ai.title),
+    brand: firstOf(base.brand, ai.brand),
+    ean: firstOf(base.ean, ai.ean),
+    mpn: firstOf(base.mpn, ai.mpn),
+    descriptionHtml: base.descriptionHtml || aiDescription,
+    descriptionImages: base.descriptionHtml
+      ? base.descriptionImages
+      : sanitized?.images ?? base.descriptionImages,
+    // Sub două poze galeria practic nu există, deci lăsăm modelul să o
+    // completeze. Peste, adaptorul a găsit-o și adăugarea ar aduce doar
+    // duplicate în alte dimensiuni.
+    images:
+      base.images.length >= 2 ? base.images : dedupeUrls([...base.images, ...ai.images]),
+    // NU prin `mergeSpecs`: acolo lista cea mai lungă dă ordinea și ar putea
+    // fi a modelului. Aici fișa citită din pagină rămâne prima, iar modelul
+    // adaugă doar etichetele care lipsesc.
+    specs: (() => {
+      const seen = new Set(base.specs.map((s) => specKey(s.label)))
+      const out = [...base.specs]
+      for (const spec of ai.specs) {
+        const key = specKey(spec.label)
+        if (!key || seen.has(key)) continue
+        seen.add(key)
+        out.push(spec)
+      }
+      return out
+    })(),
+    notes: [...base.notes, ...ai.notes],
   }
 }
 

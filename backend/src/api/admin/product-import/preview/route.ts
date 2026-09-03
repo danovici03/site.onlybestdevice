@@ -1,7 +1,8 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
-import { extractProduct } from "../../../../lib/product-import"
+import { extractProduct, mergeAiExtraction } from "../../../../lib/product-import"
+import { aiExtract, aiExtractionEnabled, isThinExtraction } from "../../../../lib/product-import/ai"
 import { fetchPage, PageFetchError } from "../../../../lib/product-import/fetch-page"
 import { loadVocabulary, mapSpecs } from "../../../../lib/product-import/vocabulary"
 import { htmlToText } from "../../../../lib/woo-description"
@@ -17,9 +18,14 @@ import { htmlToText } from "../../../../lib/woo-description"
  * suprascrie.
  *
  * `html` în locul lui `url`: unele magazine refuză cererile venite din
- * datacenter (403), caz în care operatorul deschide pagina în browserul lui,
- * salvează sursa și o lipește. `url` rămâne obligatoriu și atunci — din el se
+ * datacenter (eMAG întoarce 511 pentru IP-ul serverului), caz în care
+ * operatorul deschide pagina în browserul lui, copiază sursa cu bookmarkletul
+ * din widget și o lipește. `url` rămâne obligatoriu și atunci — din el se
  * rezolvă adresele relative ale pozelor.
+ *
+ * Când euristica scoate prea puțin, intră `../../../../lib/product-import/ai.ts`
+ * — dar doar dacă `ANTHROPIC_API_KEY` e setat. Fără cheie, ruta se comportă
+ * exact ca înainte.
  */
 
 type Body = {
@@ -73,6 +79,29 @@ export const POST = async (req: MedusaRequest<Body>, res: MedusaResponse) => {
   } catch (err) {
     logger.warn(`[product-import] extragere eșuată pentru ${finalUrl}: ${(err as Error).message}`)
     return res.status(422).json({ error: "N-am putut citi pagina — structura ei nu seamănă cu o pagină de produs." })
+  }
+
+  // Plasa de siguranță: când euristica n-a scos mai nimic (site fără JSON-LD,
+  // fără tabele, fără OpenGraph), întrebăm modelul. Pe eMAG nu se ajunge aici
+  // — adaptorul dă fișa și galeria întregi, deci nu costă nimic.
+  let ai: { model: string; input_tokens: number; output_tokens: number } | null = null
+  if (aiExtractionEnabled() && isThinExtraction(extracted)) {
+    try {
+      const result = await aiExtract(html, finalUrl)
+      if (result) {
+        extracted = mergeAiExtraction(extracted, result)
+        ai = {
+          model: result.model,
+          input_tokens: result.usage.input,
+          output_tokens: result.usage.output,
+        }
+      }
+    } catch (err) {
+      // Un model căzut nu strică importul: rămâne ce-a scos euristica, iar
+      // operatorul află de ce e puțin.
+      logger.warn(`[product-import] extragerea cu AI a eșuat pentru ${finalUrl}: ${(err as Error).message}`)
+      extracted.notes.push("Extragerea cu AI n-a putut fi făcută — vezi logurile serverului.")
+    }
   }
 
   const vocabulary = await loadVocabulary(req.scope)
@@ -134,6 +163,7 @@ export const POST = async (req: MedusaRequest<Body>, res: MedusaResponse) => {
       .slice(0, 400)
       .map((entry) => entry.label),
     current,
+    ai,
     notes: extracted.notes,
   })
 }

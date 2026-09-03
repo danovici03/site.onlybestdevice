@@ -19,6 +19,10 @@ import {
 import { useCallback, useMemo, useState } from "react"
 
 import {
+  PAGE_SOURCE_BOOKMARKLET,
+  PAGE_SOURCE_BOOKMARKLET_TITLE,
+} from "../lib/page-source-bookmarklet"
+import {
   applyImport,
   fetchPreview,
   PreviewError,
@@ -215,14 +219,19 @@ const ProductImportPanel = ({ product }: { product: AdminProduct }) => {
           </Button>
         </div>
 
+        {!showPaste && (
+          <button
+            type="button"
+            className="text-ui-fg-muted hover:text-ui-fg-subtle self-start text-xs underline"
+            onClick={() => setShowPaste(true)}
+          >
+            Magazinul refuză cererile din server? Ia pagina din browserul tău
+          </button>
+        )}
+
         {showPaste && (
-          <div className="flex flex-col gap-2">
-            <Alert variant="warning">
-              Magazinul a refuzat cererea venită din server. Deschide linkul în
-              browser, apasă Cmd+U (sau Ctrl+U) pentru sursa paginii, copiaz-o
-              și lipește-o aici. Linkul de mai sus rămâne necesar — din el se
-              rezolvă adresele pozelor.
-            </Alert>
+          <div className="flex flex-col gap-3">
+            <BookmarkletHelp />
             <Textarea
               rows={4}
               placeholder="<!doctype html>…"
@@ -306,10 +315,77 @@ const ProductImportPanel = ({ product }: { product: AdminProduct }) => {
   )
 }
 
+/**
+ * Cum ajunge pagina la noi când magazinul refuză serverul.
+ *
+ * eMAG răspunde 511 cererilor din datacenter, oricâte antete de browser am
+ * trimite — blocajul e pe IP, nu pe formă. Bookmarkletul mută citirea în
+ * browserul operatorului, care are un IP acceptat, și copiază DOM-ul viu (deci
+ * și galeria montată de JavaScript, pe care Cmd+U n-o arată).
+ */
+const BookmarkletHelp = () => (
+  <Alert variant="info">
+    <div className="flex flex-col gap-3">
+      <Text size="small">
+        Pune butonul ăsta o dată în bara de favorite: trage-l acolo cu mouse-ul.
+        Apoi, pe orice pagină de produs, un click pe el copiază pagina, iar tu o
+        lipești mai jos. Linkul de mai sus rămâne necesar — din el se rezolvă
+        adresele pozelor.
+      </Text>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <a
+          // `href` prin `ref`, nu prin JSX: React avertizează pentru
+          // `javascript:` în atribut, dar bookmarkletul exact asta trebuie
+          // să fie ca să poată fi tras în bara de favorite.
+          ref={(el) => el?.setAttribute("href", PAGE_SOURCE_BOOKMARKLET)}
+          draggable
+          onClick={(e) => {
+            // Aici ar copia pagina de Admin. Butonul se folosește pe site-ul
+            // magazinului, după ce a fost tras în bara de favorite.
+            e.preventDefault()
+            toast.info("Trage butonul în bara de favorite, apoi apasă-l pe pagina magazinului.")
+          }}
+          className={clx(
+            "bg-ui-bg-base border-ui-border-strong shadow-elevation-card-rest",
+            "cursor-grab rounded-md border px-3 py-1.5 text-sm font-medium",
+            "active:cursor-grabbing"
+          )}
+        >
+          {PAGE_SOURCE_BOOKMARKLET_TITLE}
+        </a>
+
+        <Button
+          size="small"
+          variant="transparent"
+          onClick={() => {
+            void navigator.clipboard
+              .writeText(PAGE_SOURCE_BOOKMARKLET)
+              .then(() => toast.success("Codul bookmarkletului a fost copiat."))
+              .catch(() => toast.error("Copierea a eșuat — trage butonul în bara de favorite."))
+          }}
+        >
+          Copiază codul
+        </Button>
+      </div>
+
+      <Text size="xsmall" className="text-ui-fg-muted">
+        Nu ai bara de favorite? Cmd+Shift+B o arată. Varianta manuală merge în
+        continuare: Cmd+U pe pagină, apoi copiază tot.
+      </Text>
+    </div>
+  </Alert>
+)
+
 const SourceSummary = ({ preview }: { preview: ImportPreview }) => (
   <div className="flex flex-col gap-2">
     <div className="flex flex-wrap items-center gap-2">
       <Badge size="small">{preview.source_label}</Badge>
+      {preview.ai && (
+        <Badge size="small" color="purple">
+          AI: {preview.ai.model}
+        </Badge>
+      )}
       {preview.brand && <Badge size="small">{preview.brand}</Badge>}
       {preview.ean && <Badge size="small">EAN {preview.ean}</Badge>}
       {!preview.ean && preview.mpn && <Badge size="small">Cod {preview.mpn}</Badge>}

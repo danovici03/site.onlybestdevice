@@ -33,6 +33,7 @@ din Admin; un scraper în Laravel ar fi trebuit să le rescrie pe toate.
 | `sources/emag.ts`   | galeria, descrierea și fișa de pe eMAG                               |
 | `sources/generic.ts`| OpenGraph + euristici, pentru site-urile fără adaptor                 |
 | `fetch-page.ts`     | aducerea paginii, cu apărare împotriva adreselor interne             |
+| `ai.ts`             | extragerea cu model, pentru paginile pe care euristica le ratează    |
 | `rehost.ts`         | descărcarea pozelor și urcarea lor în stocarea noastră               |
 | `index.ts`          | contopește cele trei surse și sanitizează descrierea                 |
 
@@ -64,10 +65,73 @@ importului.
 
 ## Când magazinul refuză cererea
 
-Unele site-uri întorc 403 pentru cererile venite din datacenter. Modalul oferă
-atunci un câmp în care se lipește sursa paginii, salvată din browser (Cmd+U).
+Unele site-uri refuză cererile venite din datacenter, iar blocajul e pe IP, nu
+pe formă: eMAG întoarce **511 Network Authentication Required** plus o pagină de
+captcha pentru IP-ul serverului de producție, în timp ce exact aceeași cerere,
+cu aceleași antete, întoarce 200 de pe un laptop. Nu există antet care să
+rezolve asta.
+
+Singurul browser cu un IP acceptat e al operatorului, deci de acolo luăm pagina.
+Widgetul oferă un **bookmarklet** (`src/admin/lib/page-source-bookmarklet.ts`):
+se trage o dată în bara de favorite, apoi un click pe pagina magazinului copiază
+sursa în clipboard, de unde se lipește în modal. Copiază DOM-ul viu, nu sursa
+brută — deci și galeria montată de JavaScript, pe care Cmd+U n-o conține.
 Linkul rămâne obligatoriu și în cazul ăsta — din el se rezolvă adresele
 relative ale pozelor.
+
+## Stratul de AI
+
+`ai.ts` intră **doar** când euristica a scos prea puțin: fișă goală, **sau** sub
+două poze, **sau** descriere sub 200 de caractere (`isThinExtraction`). Condiția
+e SAU, nu ȘI — o pagină eMAG cu fișă completă dar fără descriere tot ajunge la
+model. Pe o pagină eMAG obișnuită nu se ajunge (adaptorul dă 23 de specificații,
+10 poze și 4 KB de descriere pe gratis), deci în practică stratul costă bani
+exact pe site-urile pentru care altfel ar fi trebuit scris un adaptor nou.
+
+Se activează punând `ANTHROPIC_API_KEY` în env. Fără cheie, ruta se comportă
+identic cu varianta de dinainte. Model implicit `claude-opus-5`, schimbabil cu
+`PRODUCT_IMPORT_AI_MODEL`; `PRODUCT_IMPORT_AI=off` îl oprește fără să scoți
+cheia.
+
+### Ce ține feature-ul onest
+
+Un model care citește HTML poate inventa un URL de poză plauzibil sau o valoare
+care sună corect pentru produsul ăla dar nu scrie nicăieri în pagină. De aceea
+nimic din ce întoarce nu ajunge la operator neverificat:
+
+| Ce întoarce  | Cum se verifică                                                        |
+| ------------ | ---------------------------------------------------------------------- |
+| poze         | URL-ul trebuie să apară literal în HTML-ul sursă (`collectPageUrls`)    |
+| specificații | valoarea trebuie să se regăsească în textul paginii, fără diacritice    |
+| descriere    | propozițiile lungi trebuie să fie în pagină; sub 60% ⇒ se aruncă toată  |
+
+Comparația pozelor se face pe forma canonică, nu pe șirul brut: `json_encode`
+scrie `https:\/\/…` în JSON-urile din pagină, iar atributele conțin des căi
+relative — ambele trebuie aduse la același URL absolut, altfel am arunca ca
+„inventate" exact pozele reale.
+
+Ce cade la verificare se numără în `notes` și apare în modal. Un model care
+halucinează devine astfel un model care întoarce **mai puțin**, nu unul care
+umple catalogul cu date inventate.
+
+Ce se aruncă în loc să treacă tăcut: un refuz, un răspuns tăiat de plafonul de
+tokeni, un JSON stricat sau o pagină prea mare. Apelul e deja plătit, deci
+operatorul primește un motiv, nu o previzualizare inexplicabil de săracă.
+
+Contopirea (`mergeAiExtraction` din `index.ts`) merge într-o singură direcție:
+ce s-a citit din structura paginii bate ce a propus modelul. Un `<td>` lângă
+altul e un fapt; propunerea modelului e doar plauzibilă.
+
+### Cum se probează
+
+```bash
+URL=https://exemplu.ro/produs yarn medusa exec ./src/scripts/check-product-import-ai.ts
+```
+
+Arată ce scoate euristica singură, dacă pragurile cheamă modelul, ce a adăugat
+el, câți tokeni a costat și ce i s-a aruncat la verificare. `HTML=./pagina.html`
+pentru site-urile care refuză serverul, `FORCE=1` ca să vezi modelul lucrând
+chiar și pe o pagină pe care euristica o acoperă.
 
 ## Adăugarea unui magazin nou
 

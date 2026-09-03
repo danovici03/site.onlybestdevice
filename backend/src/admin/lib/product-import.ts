@@ -36,6 +36,8 @@ export type ImportPreview = {
     specs: Record<string, string>
     image_count: number
   } | null
+  /** Prezent doar dacă modelul a fost chemat (euristica scosese prea puțin). */
+  ai: { model: string; input_tokens: number; output_tokens: number } | null
   notes: string[]
 }
 
