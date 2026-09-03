@@ -57,6 +57,17 @@ export default defineMiddlewares({
       bodyParser: { preserveRawBody: true },
     },
     {
+      // Sursa unei pagini lipită de operator (vezi bookmarkletul din widgetul
+      // de import). Limita implicită a lui `body-parser` e 100 KB, iar o pagină
+      // de produs reală are 270 KB după ce i se scot scripturile — deci fără
+      // rândul ăsta calea de rezervă pentru site-urile care refuză serverul
+      // răspundea 500 „request entity too large" la fiecare încercare.
+      // 8 MB acoperă plafonul de 6 MB verificat în rută, plus JSON-ul din jur.
+      matcher: '/admin/product-import/preview',
+      methods: ['POST'],
+      bodyParser: { sizeLimit: '8mb' },
+    },
+    {
       // Intenționat FĂRĂ `methods`: asta îl pune în bucketul `global` al
       // sorterului, singurul care rulează înaintea bucketului `static`. Cu
       // `methods: ['GET']` ar ajunge în `static`, lângă `validateAndTransformQuery`

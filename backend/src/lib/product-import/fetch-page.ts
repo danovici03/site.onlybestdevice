@@ -6,9 +6,10 @@
  * autentificat, pentru un produs pe care îl vinde; e doar diferența dintre a
  * primi pagina și a primi un zid, la aceeași cerere publică.
  *
- * Când tot iese 403 (CDN-urile refuză des IP-urile de datacenter — vezi nota
- * din `import-woo-descriptions.ts`, unde `www.sony.ro` a refuzat 162 de poze
- * cerute din containerul de pe Hetzner), aruncăm o eroare care spune explicit
+ * Când tot iese 403/511 (CDN-urile refuză des IP-urile de datacenter — vezi
+ * nota din `import-woo-descriptions.ts`, unde `www.sony.ro` a refuzat 162 de
+ * poze cerute din containerul de pe Hetzner; eMAG întoarce 511 plus o pagină de
+ * captcha pentru IP-ul serverului nostru), aruncăm o eroare care spune explicit
  * ce are de făcut operatorul: să lipească sursa paginii din browserul lui.
  */
 
@@ -88,8 +89,8 @@ export async function fetchPage(raw: string): Promise<FetchedPage> {
 
   if (!res.ok) {
     const hint =
-      res.status === 403 || res.status === 429
-        ? " Magazinul refuză cererile din server. Deschide pagina în browser, salvează sursa (Cmd+U) și lipește-o în câmpul de mai jos."
+      res.status === 403 || res.status === 429 || res.status === 511
+        ? " Magazinul refuză cererile din server. Deschide pagina în browserul tău, apasă bookmarkletul „Copiază pagina” și lipește sursa în câmpul de mai jos."
         : ""
     throw new PageFetchError(`Pagina a răspuns ${res.status}.${hint}`, res.status)
   }

@@ -85,7 +85,15 @@ export const POST = async (req: MedusaRequest<Body>, res: MedusaResponse) => {
   // fără tabele, fără OpenGraph), întrebăm modelul. Pe eMAG nu se ajunge aici
   // — adaptorul dă fișa și galeria întregi, deci nu costă nimic.
   let ai: { model: string; input_tokens: number; output_tokens: number } | null = null
-  if (aiExtractionEnabled() && isThinExtraction(extracted)) {
+  const thin = isThinExtraction(extracted)
+  if (thin && !aiExtractionEnabled()) {
+    // Altfel operatorul primește o previzualizare goală fără nicio explicație și
+    // nu are de unde ști că există un al doilea strat, neconfigurat.
+    extracted.notes.push(
+      "Din pagina asta s-a putut citi puțin. Extragerea cu AI ar putea scoate mai mult, dar nu e configurată (ANTHROPIC_API_KEY)."
+    )
+  }
+  if (aiExtractionEnabled() && thin) {
     try {
       const result = await aiExtract(html, finalUrl)
       if (result) {
