@@ -2,7 +2,9 @@ import { listProducts } from "@lib/data/products"
 import { getRegion } from "@lib/data/regions"
 import { WARRANTY_TAG } from "@lib/util/warranty"
 import { HttpTypes } from "@medusajs/types"
-import Product from "../product-preview"
+import { ArrowRight } from "@phosphor-icons/react/dist/ssr"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import ProductCard from "../product-card"
 
 type RelatedProductsProps = {
   product: HttpTypes.StoreProduct
@@ -57,28 +59,45 @@ export default async function RelatedProducts({
   }
 
   return (
-    <section className="bg-white rounded-[2.5rem] sm:rounded-[3rem] p-8 sm:p-12 shadow-sm">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-12">
-        <div className="max-w-xl">
-          <span className="text-xs uppercase tracking-[0.2em] font-bold text-brand-dark/50 block mb-3">
-            Completează cu
-          </span>
-          <h2 className="font-serif text-3xl sm:text-4xl text-brand-dark">
+    <div className="flex flex-col gap-5 sm:gap-8">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div className="flex flex-col gap-1.5">
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl text-brand-dark">
             S-ar putea să-ți placă și
           </h2>
+          <p className="text-sm text-brand-dark/55 max-w-xl">
+            Produse din aceeași familie, alese după categorie și etichete.
+          </p>
         </div>
+        <LocalizedClientLink
+          href="/store"
+          className="hidden sm:inline-flex items-center gap-2 text-sm font-bold text-brand-dark hover:text-brand-accent transition-colors shrink-0"
+        >
+          Vezi tot catalogul
+          <ArrowRight size={16} weight="bold" />
+        </LocalizedClientLink>
       </div>
 
+      {/* Aceeași grilă ca în catalog și aceleași carduri: raftul de sub produs
+          nu trebuie să arate ca alt magazin. */}
       <ul
-        className="grid grid-cols-2 small:grid-cols-3 medium:grid-cols-4 gap-x-6 gap-y-12"
+        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 w-full"
         data-testid="related-products-list"
       >
         {products.slice(0, 4).map((p) => (
-          <li key={p.id}>
-            <Product region={region} product={p} />
+          <li key={p.id} className="h-full">
+            <ProductCard product={p} />
           </li>
         ))}
       </ul>
-    </section>
+
+      <LocalizedClientLink
+        href="/store"
+        className="sm:hidden inline-flex items-center justify-center gap-2 bg-white text-brand-dark px-6 py-3.5 rounded-full font-bold text-sm border border-brand-dark/[0.07]"
+      >
+        Vezi tot catalogul
+        <ArrowRight size={16} weight="bold" />
+      </LocalizedClientLink>
+    </div>
   )
 }

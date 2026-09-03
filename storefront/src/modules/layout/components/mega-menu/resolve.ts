@@ -89,7 +89,25 @@ export async function resolveMegaMenu(
         })
       )
 
-      return { ...root, items }
+      // Poza bannerului din dreapta: un produs real din lista de oferte deja
+      // adusă mai sus. Fără o cerere în plus și fără poză de stoc — bannerul
+      // arată exact un produs pe care clientul îl găsește după click.
+      //
+      // Centrul afișează primele 3 din cele `PRODUCTS_PER_CATEGORY` aduse, deci
+      // pornim de la al patrulea: altfel, cu „Oferte" selectat în stânga,
+      // bannerul ar repeta cardul de lângă el.
+      const saleProducts = items.find((i) => i.sale)?.products ?? []
+      const withImage = (p: MegaMenuProduct) => !!p.thumbnail
+      const featureProduct =
+        saleProducts.slice(3).find(withImage) ??
+        saleProducts.find(withImage) ??
+        null
+
+      return {
+        ...root,
+        items,
+        feature: { ...root.feature, product: featureProduct },
+      }
     })
   )
 }

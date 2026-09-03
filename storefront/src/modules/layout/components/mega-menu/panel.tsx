@@ -271,15 +271,19 @@ function EmptyState({ item }: { item: ResolvedMegaItem }) {
       href={item.href}
       className="group/empty relative flex-1 min-h-[240px] rounded-2xl overflow-hidden img-zoom-wrapper bg-brand-dark"
     >
-      <Image
-        loader={unsplashLoader}
-        src={item.image}
-        alt={item.label}
-        fill
-        sizes="(min-width: 1280px) 40vw, 50vw"
-        className="object-cover opacity-90"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/85 via-brand-dark/30 to-transparent" />
+      {item.image && (
+        <>
+          <Image
+            loader={unsplashLoader}
+            src={item.image}
+            alt={item.label}
+            fill
+            sizes="(min-width: 1280px) 40vw, 50vw"
+            className="object-cover opacity-90"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/85 via-brand-dark/30 to-transparent" />
+        </>
+      )}
       <div className="absolute inset-0 p-6 flex flex-col justify-end text-white">
         <h4 className="font-serif text-2xl leading-tight">{item.label}</h4>
         <p className="text-white/70 text-sm mt-1 max-w-[36ch] leading-relaxed">
@@ -299,31 +303,55 @@ function EmptyState({ item }: { item: ResolvedMegaItem }) {
 }
 
 function PromoCard({ root }: { root: ResolvedMegaRoot }) {
+  const product = root.feature.product
+
   return (
     <LocalizedClientLink
       href={root.feature.href ?? root.href}
-      className="group/promo relative block w-full min-h-[300px] rounded-2xl overflow-hidden img-zoom-wrapper bg-brand-dark"
+      className="group/promo flex w-full min-h-[300px] flex-col rounded-2xl overflow-hidden bg-brand-dark p-5"
     >
-      <Image
-        loader={unsplashLoader}
-        src={root.feature.image}
-        alt={root.feature.title}
-        fill
-        sizes="(min-width: 1280px) 22vw, 28vw"
-        className="object-cover"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/90 via-brand-dark/40 to-transparent" />
-      <div className="absolute inset-0 p-6 flex flex-col justify-end text-white">
-        <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/70 mb-2">
+      {product?.thumbnail && (
+        // Pozele de catalog sunt decupaje pe fundal alb, deci stau pe o plăcuță
+        // deschisă și `object-contain`, ca în cardurile din centru. Peste un
+        // fundal închis, `object-cover` ar tăia produsul și l-ar lăsa într-un
+        // dreptunghi alb care nu seamănă cu restul meniului.
+        <div className="relative flex-1 min-h-[132px] rounded-xl bg-brand-light overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={product.thumbnail}
+            alt={product.title}
+            loading="lazy"
+            className="w-full h-full object-contain p-4 transition-transform duration-500 group-hover/promo:scale-105"
+          />
+        </div>
+      )}
+
+      <div className="mt-4 text-white">
+        <span className="block text-[10px] uppercase tracking-[0.2em] font-bold text-white/70">
           {root.feature.eyebrow ?? "Recomandarea noastră"}
         </span>
-        <h4 className="font-serif text-2xl leading-[1.1] max-w-[18ch]">
+        <h4 className="font-serif text-2xl leading-[1.1] max-w-[18ch] mt-2">
           {root.feature.title}
         </h4>
-        <p className="text-white/70 text-sm mt-2 leading-relaxed max-w-[32ch]">
-          {root.feature.body}
-        </p>
-        <span className="inline-flex items-center gap-2 mt-4 text-xs font-bold uppercase tracking-wider self-start">
+        {product ? (
+          <div className="mt-2">
+            {/* Titlurile de catalog trec ușor de două rânduri, iar prețul e
+                partea care convinge: pe rândul lui, nu îl mai taie clamp-ul. */}
+            <p className="text-white/70 text-sm leading-relaxed line-clamp-2">
+              {product.title}
+            </p>
+            {product.price && (
+              <span className="block mt-1 text-sm font-bold text-white">
+                {product.price}
+              </span>
+            )}
+          </div>
+        ) : (
+          <p className="text-white/70 text-sm mt-2 leading-relaxed max-w-[32ch]">
+            {root.feature.body}
+          </p>
+        )}
+        <span className="inline-flex items-center gap-2 mt-4 text-xs font-bold uppercase tracking-wider">
           Descoperă
           <ArrowRight
             size={12}

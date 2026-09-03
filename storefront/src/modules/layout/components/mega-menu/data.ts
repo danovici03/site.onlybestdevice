@@ -3,7 +3,12 @@ export type MegaMenuItem = {
   href: string
   description: string
   count?: number
-  image: string
+  /**
+   * Poza de rezervă a categoriei, arătată doar când categoria n-are încă
+   * produse. „Oferte" n-are una: acolo lista nu e goală decât dacă magazinul
+   * chiar n-are nicio ofertă, iar atunci o poză de stoc ar minți.
+   */
+  image?: string
   // Featured items get a large photo card in the center of the mega-menu;
   // the rest appear only in the left text list.
   featured?: boolean
@@ -30,7 +35,6 @@ export type MegaMenuRoot = {
   feature: {
     title: string
     body: string
-    image: string
     href?: string
     /** Supratitlul bannerului; implicit „Recomandarea noastră". */
     eyebrow?: string
@@ -59,8 +63,16 @@ export type ResolvedMegaItem = MegaMenuItem & {
   products: MegaMenuProduct[]
 }
 
-export type ResolvedMegaRoot = Omit<MegaMenuRoot, "items"> & {
+export type ResolvedMegaRoot = Omit<MegaMenuRoot, "items" | "feature"> & {
   items: ResolvedMegaItem[]
+  feature: MegaMenuRoot["feature"] & {
+    /**
+     * Produsul real arătat în bannerul din dreapta. `null` cât timp magazinul
+     * n-are nicio ofertă activă (sau backendul nu răspunde) — bannerul rămâne
+     * atunci doar text, fără poză.
+     */
+    product: MegaMenuProduct | null
+  }
 }
 
 // Structură preluată de pe onlybestdevice.ro: un dropdown „Produse" cu toate
@@ -74,21 +86,22 @@ export const MEGA_MENU: MegaMenuRoot[] = [
     // Bannerul din dreapta duce la Oferte, nu la tot catalogul: „Oferte" a
     // ieșit din bara de sus și ăsta e locul unde rămâne vizibil de la prima
     // deschidere a meniului.
+    //
+    // Nu are `image`: poza e a unui produs aflat chiar atunci la ofertă, adusă
+    // de `resolveMegaMenu` odată cu lista de oferte. O poză de stoc ar arăta
+    // altceva decât găsește clientul după click și ar rămâne aceeași și după ce
+    // se schimbă ofertele.
     feature: {
       eyebrow: "Prețuri reduse",
       title: "Ofertele săptămânii",
       body: "Reduceri la telefoane, laptopuri și accesorii — stoc limitat.",
       href: "/oferte",
-      image:
-        "https://images.unsplash.com/photo-1607082349566-187342175e2f?auto=format&fit=crop&q=80",
     },
     items: [
       {
         label: "Oferte",
         href: "/oferte",
         description: "Reducerile active, actualizate săptămânal.",
-        image:
-          "https://images.unsplash.com/photo-1607082349566-187342175e2f?auto=format&fit=crop&q=80",
         highlight: true,
         sale: true,
       },
