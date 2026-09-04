@@ -1,8 +1,11 @@
 /**
  * Badge-uri vizuale pentru metodele de plată din checkout (lista în stilul
  * magazinelor RO: rând cu radio + titlu + logo-uri în dreapta). Wordmark-uri
- * simple desenate inline — fără asset-uri externe.
+ * simple desenate inline — fără asset-uri externe. Excepția e UniCredit, unde
+ * avem marca lor oficială vectorizată (`icons/unicredit-logo`).
  */
+
+import UniCreditLogo from "@modules/common/icons/unicredit-logo"
 
 const badgeBase =
   "inline-flex h-6 items-center justify-center rounded-md px-1.5 select-none"
@@ -36,15 +39,15 @@ export const MastercardBadge = () => (
   </span>
 )
 
+// Singurul badge cu logo adevărat: UniCredit ne-a dat marca lor, iar un
+// wordmark desenat de noi ar fi fost o imitație. Fără `badgeBase`: logo-ul are
+// deja aer în jur în fișierul original, o pastilă în plus l-ar înghesui.
 export const UniCreditBadge = () => (
   <span
-    className={`${badgeBase} bg-[#E2001A]`}
-    aria-label="UniCredit"
+    className="inline-flex shrink-0 items-center select-none"
     title="UniCredit Consumer Financing"
   >
-    <span className="text-[10px] font-bold tracking-tight text-white">
-      UniCredit
-    </span>
+    <UniCreditLogo className="h-[22px] w-auto" />
   </span>
 )
 
