@@ -27,8 +27,12 @@ export async function retrieveCart(cartId?: string, fields?: string) {
   // vin ca `[{ id }]`, fără `value`, iar bifa de garanție extinsă ar fi citită
   // tăcut ca lipsă pe toate produsele din coș. `+items.product.metadata` e cerut
   // explicit din același motiv: acolo stă prețul propriu al garanției.
+  // `*items.product.images` e rezerva pentru poza din coș: `items.thumbnail` e
+  // copiat în linie la adăugare din `product.thumbnail`, iar produsele la care
+  // nu s-a bifat miniatura în Admin îl au gol — în listing se vede poza (acolo
+  // se cade pe `images[0]`), în coș rămânea pătratul de placeholder.
   fields ??=
-    "*items, *region, *items.product, *items.product.tags, +items.product.metadata, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
+    "*items, *region, *items.product, *items.product.tags, *items.product.images, +items.product.metadata, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
 
   if (!id) {
     return null

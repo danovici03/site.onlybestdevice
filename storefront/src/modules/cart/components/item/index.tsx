@@ -12,6 +12,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import Spinner from "@modules/common/icons/spinner"
 import Thumbnail from "@modules/products/components/thumbnail"
 import WarrantyOffer from "@modules/cart/components/warranty-offer"
+import { lineItemThumbnail } from "@lib/util/line-item-thumbnail"
 import { warrantyTargetTitle } from "@lib/util/warranty"
 import { Minus, Plus, Trash } from "@phosphor-icons/react/dist/ssr"
 import { useState } from "react"
@@ -73,11 +74,7 @@ const Item = ({
             href={`/products/${item.product_handle}`}
             className="flex w-16"
           >
-            <Thumbnail
-              thumbnail={item.thumbnail}
-              images={item.variant?.product?.images}
-              size="square"
-            />
+            <Thumbnail thumbnail={lineItemThumbnail(item)} size="square" />
           </LocalizedClientLink>
         </Table.Cell>
 
@@ -144,11 +141,7 @@ const Item = ({
         href={`/products/${item.product_handle}`}
         className="block w-full overflow-hidden rounded-2xl bg-brand-light/60"
       >
-        <Thumbnail
-          thumbnail={item.thumbnail}
-          images={item.variant?.product?.images}
-          size="square"
-        />
+        <Thumbnail thumbnail={lineItemThumbnail(item)} size="square" />
       </LocalizedClientLink>
 
       <div className="flex flex-col gap-1 min-w-0">

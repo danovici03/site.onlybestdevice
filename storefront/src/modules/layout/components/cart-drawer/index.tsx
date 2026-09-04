@@ -10,6 +10,7 @@ import {
 import { deleteLineItem, updateLineItem } from "@lib/data/cart"
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { useSession } from "@lib/context/session-context"
+import { lineItemThumbnail } from "@lib/util/line-item-thumbnail"
 import { convertToLocale } from "@lib/util/money"
 import { warrantyTargetTitle } from "@lib/util/warranty"
 import { COURIER_TARIFF_FROM } from "@lib/util/shipping-tariff"
@@ -282,11 +283,7 @@ const DrawerItem = ({ item, currencyCode, onNavigate }: DrawerItemProps) => {
         onClick={onNavigate}
         className="block overflow-hidden rounded-xl bg-brand-light/60"
       >
-        <Thumbnail
-          thumbnail={item.thumbnail}
-          images={item.variant?.product?.images}
-          size="square"
-        />
+        <Thumbnail thumbnail={lineItemThumbnail(item)} size="square" />
       </LocalizedClientLink>
 
       <div className="flex min-w-0 flex-col gap-1">
