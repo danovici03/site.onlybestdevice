@@ -3,6 +3,7 @@
  *  - opțiunile de curier rămân în checkout, dar cu preț 0 în Medusa — banii de
  *    transport nu trec prin site, clientul îi dă curierului la primirea coletului;
  *  - le redenumește pe Fan Curier și le pune descrierea corectă;
+ *  - aliniază și „Ridicare personală" la denumirea/descrierea curente;
  *  - dezactivează promoția „transport gratuit peste 1000 lei" (nu mai are ce să
  *    facă gratuit, iar afișată ar fi o promisiune falsă).
  *
@@ -29,6 +30,12 @@ const PRIORITY_LABEL = "Prioritară"
 const PRIORITY_DESCRIPTION =
   "Comanda ta e procesată și expediată cu prioritate, înaintea celorlalte. " +
   "Taxa de transport se achită direct curierului, la primirea coletului."
+
+const PICKUP_NAME = "Ridicare personală de la locația magazinului"
+const PICKUP_LABEL = "Ridicare din magazin"
+const PICKUP_DESCRIPTION =
+  "Termen de procesare 1–2 zile lucrătoare. Te anunțăm pe email când comanda " +
+  "este disponibilă în magazin."
 
 const FREE_SHIPPING_CODE = "TRANSPORT-GRATUIT"
 
@@ -58,9 +65,11 @@ export default async function shippingFanCurier({ container }: ExecArgs) {
 
   const standard = byCode("standard")
   const priority = byCode("priority", "express")
+  const pickup = byCode("pickup")
 
   if (!standard) throw new Error("Nu găsesc opțiunea de livrare standard.")
   if (!priority) throw new Error("Nu găsesc opțiunea de livrare prioritară.")
+  if (!pickup) throw new Error("Nu găsesc opțiunea de ridicare personală.")
 
   // Rescriem toate prețurile existente pe 0, păstrând structura (preț pe monedă
   // + preț pe regiune), ca să nu pierdem regula de regiune.
@@ -78,6 +87,7 @@ export default async function shippingFanCurier({ container }: ExecArgs) {
     input: [
       { id: standard.id, name: STANDARD_NAME, prices: zeroPrices(standard) },
       { id: priority.id, name: PRIORITY_NAME, prices: zeroPrices(priority) },
+      { id: pickup.id, name: PICKUP_NAME },
     ] as any,
   })
 
@@ -97,8 +107,17 @@ export default async function shippingFanCurier({ container }: ExecArgs) {
     })
   }
 
+  if (pickup.type?.id) {
+    await fulfillment.updateShippingOptionTypes(pickup.type.id, {
+      label: PICKUP_LABEL,
+      description: PICKUP_DESCRIPTION,
+      code: "pickup",
+    })
+  }
+
   logger.info(`✓ „${STANDARD_NAME}" — 0 lei în coș, taxa se achită curierului.`)
   logger.info(`✓ „${PRIORITY_NAME}" — 0 lei în coș, taxa se achită curierului.`)
+  logger.info(`✓ „${PICKUP_NAME}" — gratuită.`)
 
   // Transportul nu mai e încasat de noi → promoția de transport gratuit iese.
   const { data: promos } = await query.graph({
