@@ -3,6 +3,7 @@ import { Text } from "@medusajs/ui"
 
 type HeroSlidePreviewProps = {
   imageUrl?: string
+  videoUrl?: string | null
   titleLine1?: string
   titleLine2?: string | null
   ctaText?: string | null
@@ -14,6 +15,7 @@ type HeroSlidePreviewProps = {
 // de site — e o previzualizare orientativă, nu pixel-perfect.
 const HeroSlidePreview = ({
   imageUrl,
+  videoUrl,
   titleLine1,
   titleLine2,
   ctaText,
@@ -24,7 +26,19 @@ const HeroSlidePreview = ({
         Previzualizare
       </Text>
       <div className="relative w-full overflow-hidden rounded-lg bg-ui-bg-subtle aspect-[16/8] isolate">
-        {imageUrl ? (
+        {videoUrl ? (
+          // Ca pe site: buclă, fără sunet, cu imaginea drept poster.
+          <video
+            key={videoUrl}
+            src={videoUrl}
+            poster={imageUrl || undefined}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={imageUrl}
