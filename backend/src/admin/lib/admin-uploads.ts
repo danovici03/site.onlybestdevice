@@ -14,6 +14,16 @@ import { isUsableUrl } from "../../lib/woo-description"
 /** Peste atât, poza e oricum prea mare pentru o descriere de produs. */
 const MAX_BYTES = 8 * 1024 * 1024
 
+/**
+ * Videoclipurile de hero au voie să fie mai mari decât o poză, dar nu oricât:
+ * peste ~20 MB timpul de încărcare pe mobil strică exact ce trebuia să câștige
+ * bannerul. Comprimă înainte (H.264, ~1080p, fără sunet).
+ */
+const MAX_VIDEO_BYTES = 20 * 1024 * 1024
+
+/** Formatele pe care le redă orice browser modern din `<video>`. */
+const VIDEO_TYPES = ["video/mp4", "video/webm"]
+
 export const isSanitizerSafeUrl = isUsableUrl
 
 const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`
@@ -27,15 +37,34 @@ const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`
  * editor și ar dispărea tăcut la prima salvare.
  */
 export async function uploadImages(files: File[]): Promise<string[]> {
-  if (!files.length) return []
-
   for (const file of files) {
     if (!file.type.startsWith("image/")) {
       throw new Error(`„${file.name}" nu e o imagine`)
     }
-    if (file.size > MAX_BYTES) {
+  }
+  return uploadFiles(files, MAX_BYTES)
+}
+
+/**
+ * Aceeași poveste, pentru videoclipurile din slider-ul de hero: mp4 sau webm,
+ * cu o limită de mărime mai generoasă decât la poze.
+ */
+export async function uploadVideos(files: File[]): Promise<string[]> {
+  for (const file of files) {
+    if (!VIDEO_TYPES.includes(file.type)) {
+      throw new Error(`„${file.name}" nu e un video mp4 sau webm`)
+    }
+  }
+  return uploadFiles(files, MAX_VIDEO_BYTES)
+}
+
+async function uploadFiles(files: File[], maxBytes: number): Promise<string[]> {
+  if (!files.length) return []
+
+  for (const file of files) {
+    if (file.size > maxBytes) {
       throw new Error(
-        `„${file.name}" are ${mb(file.size)}, peste limita de ${mb(MAX_BYTES)}`
+        `„${file.name}" are ${mb(file.size)}, peste limita de ${mb(maxBytes)}`
       )
     }
   }

@@ -13,6 +13,8 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const data = slides.map((slide: any) => ({
     id: slide.id,
     image_url: slide.image_url,
+    video_url: slide.video_url ?? null,
+    video_url_mobile: slide.video_url_mobile ?? null,
     alt: slide.alt,
     title_line_1: slide.title_line_1,
     title_line_2: slide.title_line_2,

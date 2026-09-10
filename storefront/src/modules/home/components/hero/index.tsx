@@ -67,6 +67,8 @@ const Hero = async () => {
   const slides: Slide[] = dbSlides.length
     ? dbSlides.map((s) => ({
         image: s.image_url,
+        video: s.video_url ?? undefined,
+        videoMobile: s.video_url_mobile ?? undefined,
         alt: s.alt,
         titleLine1: sentenceCase(s.title_line_1),
         titleLine2: continuationCase(s.title_line_2 ?? ""),

@@ -22,11 +22,13 @@ import {
 } from "@medusajs/ui"
 import { useCallback, useEffect, useRef, useState } from "react"
 import HeroSlidePreview from "../../components/hero-slide-preview"
-import { uploadImages } from "../../lib/admin-uploads"
+import { uploadImages, uploadVideos } from "../../lib/admin-uploads"
 
 type HeroSlide = {
   id: string
   image_url: string
+  video_url: string | null
+  video_url_mobile: string | null
   alt: string
   title_line_1: string
   title_line_2: string | null
@@ -36,8 +38,12 @@ type HeroSlide = {
   is_published: boolean
 }
 
+type VideoField = "video_url" | "video_url_mobile"
+
 const emptySlide = {
   image_url: "",
+  video_url: null as string | null,
+  video_url_mobile: null as string | null,
   alt: "",
   title_line_1: "",
   title_line_2: "",
@@ -69,11 +75,16 @@ const HeroPage = () => {
   const [loading, setLoading] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
+  // Reține *care* dintre cele două câmpuri video se încarcă, ca butonul de
+  // spinner să fie cel apăsat, nu amândouă.
+  const [uploadingVideo, setUploadingVideo] = useState<VideoField | null>(null)
   const [saving, setSaving] = useState(false)
   const [editing, setEditing] = useState<
     Partial<HeroSlide> & { id?: string }
   >(emptySlide)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
+  const videoMobileInputRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -119,6 +130,24 @@ const HeroPage = () => {
     }
   }
 
+  const onPickVideo =
+    (field: VideoField, inputRef: React.RefObject<HTMLInputElement>) =>
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      setUploadingVideo(field)
+      try {
+        const [url] = await uploadVideos([file])
+        setEditing((prev) => ({ ...prev, [field]: url }))
+        toast.success("Video încărcat")
+      } catch (err: any) {
+        toast.error(err.message)
+      } finally {
+        setUploadingVideo(null)
+        if (inputRef.current) inputRef.current.value = ""
+      }
+    }
+
   const save = async () => {
     if (!editing.image_url) {
       toast.error("Adaugă o imagine pentru slide")
@@ -132,6 +161,8 @@ const HeroPage = () => {
     try {
       const payload = {
         image_url: editing.image_url,
+        video_url: editing.video_url || null,
+        video_url_mobile: editing.video_url_mobile || null,
         alt: editing.alt?.trim() || editing.title_line_1 || "",
         title_line_1: editing.title_line_1,
         title_line_2: editing.title_line_2?.trim() || null,
@@ -236,12 +267,19 @@ const HeroPage = () => {
             {slides.map((slide, index) => (
               <Table.Row key={slide.id}>
                 <Table.Cell>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={slide.image_url}
-                    alt={slide.alt}
-                    className="h-12 w-20 rounded object-cover bg-ui-bg-subtle"
-                  />
+                  <div className="relative h-12 w-20">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={slide.image_url}
+                      alt={slide.alt}
+                      className="h-full w-full rounded object-cover bg-ui-bg-subtle"
+                    />
+                    {(slide.video_url || slide.video_url_mobile) && (
+                      <span className="absolute bottom-0.5 right-0.5 rounded bg-black/70 px-1 text-[10px] font-medium text-white">
+                        video
+                      </span>
+                    )}
+                  </div>
                 </Table.Cell>
                 <Table.Cell>
                   <Text size="small" weight="plus">
@@ -327,6 +365,7 @@ const HeroPage = () => {
           <Drawer.Body className="flex flex-col gap-4 overflow-auto">
             <HeroSlidePreview
               imageUrl={editing.image_url}
+              videoUrl={editing.video_url || editing.video_url_mobile}
               titleLine1={editing.title_line_1}
               titleLine2={editing.title_line_2}
               ctaText={editing.cta_text}
@@ -350,6 +389,82 @@ const HeroPage = () => {
               </Button>
               <Text size="xsmall" className="text-ui-fg-subtle">
                 Recomandat: imagine orizontală, minim 1920×1080px (peisaj).
+                Dacă adaugi și un video, imaginea rămâne poster-ul lui.
+              </Text>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Video (opțional)</Label>
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/mp4,video/webm"
+                className="hidden"
+                onChange={onPickVideo("video_url", videoInputRef)}
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="small"
+                  isLoading={uploadingVideo === "video_url"}
+                  onClick={() => videoInputRef.current?.click()}
+                >
+                  {editing.video_url ? "Schimbă videoul" : "Încarcă video"}
+                </Button>
+                {editing.video_url && (
+                  <Button
+                    variant="danger"
+                    size="small"
+                    onClick={() => setEditing({ ...editing, video_url: null })}
+                  >
+                    Elimină
+                  </Button>
+                )}
+              </div>
+              <Text size="xsmall" className="text-ui-fg-subtle">
+                mp4 sau webm, maxim 20 MB, orizontal. Rulează în buclă, fără
+                sunet și fără controale — comprimă-l la ~1080p și scoate-i pista
+                audio.
+              </Text>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Video pentru ecrane verticale (opțional)</Label>
+              <input
+                ref={videoMobileInputRef}
+                type="file"
+                accept="video/mp4,video/webm"
+                className="hidden"
+                onChange={onPickVideo("video_url_mobile", videoMobileInputRef)}
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="small"
+                  isLoading={uploadingVideo === "video_url_mobile"}
+                  onClick={() => videoMobileInputRef.current?.click()}
+                >
+                  {editing.video_url_mobile
+                    ? "Schimbă videoul vertical"
+                    : "Încarcă video vertical"}
+                </Button>
+                {editing.video_url_mobile && (
+                  <Button
+                    variant="danger"
+                    size="small"
+                    onClick={() =>
+                      setEditing({ ...editing, video_url_mobile: null })
+                    }
+                  >
+                    Elimină
+                  </Button>
+                )}
+              </div>
+              <Text size="xsmall" className="text-ui-fg-subtle">
+                Se folosește pe telefon și pe tabletă ținute în picioare.
+                Încarcă o variantă verticală sau pătrată — altfel, dintr-un
+                banner lat se vede pe mobil doar fâșia din mijloc, mărită.
+                Dacă o lași goală, pe vertical rulează tot videoul orizontal.
               </Text>
             </div>
 
@@ -437,7 +552,11 @@ const HeroPage = () => {
             <Drawer.Close asChild>
               <Button variant="secondary">Anulează</Button>
             </Drawer.Close>
-            <Button onClick={save} isLoading={saving} disabled={uploading}>
+            <Button
+              onClick={save}
+              isLoading={saving}
+              disabled={uploading || uploadingVideo !== null}
+            >
               Salvează
             </Button>
           </Drawer.Footer>

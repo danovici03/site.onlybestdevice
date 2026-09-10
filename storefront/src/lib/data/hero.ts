@@ -6,6 +6,8 @@ import { getCacheOptions } from "./cookies"
 export type HeroSlideDTO = {
   id: string
   image_url: string
+  video_url: string | null
+  video_url_mobile: string | null
   alt: string
   title_line_1: string
   title_line_2: string | null

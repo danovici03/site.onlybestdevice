@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight } from "@phosphor-icons/react/dist/ssr"
 import Autoplay from "embla-carousel-autoplay"
 import useEmblaCarousel from "embla-carousel-react"
 import Image from "@modules/common/components/image"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { unsplashLoader } from "@lib/util/unsplash-loader"
 import {
@@ -15,6 +15,10 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 
 export type Slide = {
   image: string
+  /** Video opțional (mp4/webm). `image` rămâne poster și fallback. */
+  video?: string
+  /** Varianta verticală, pentru ecranele ținute în picioare. */
+  videoMobile?: string
   alt: string
   titleLine1: string
   titleLine2: string
@@ -34,6 +38,71 @@ const INTRO_MS = 2300
 // și folosesc optimizatorul implicit Next.
 const isUnsplash = (src: string) => src.includes("images.unsplash.com")
 
+/**
+ * Videoul unui slide, cu imaginea drept poster.
+ *
+ * Rulează doar cât timp slide-ul e cel activ: în rest îl punem pe pauză și îl
+ * derulăm la început, ca următoarea trecere să nu prindă filmulețul la
+ * jumătate și ca telefoanele să nu decodeze trei clipuri în paralel.
+ */
+const SlideVideo = ({
+  slide,
+  src,
+  isActive,
+  isFirst,
+}: {
+  slide: Slide
+  src: string
+  isActive: boolean
+  isFirst: boolean
+}) => {
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    if (isActive) {
+      video.currentTime = 0
+      // `play()` întoarce o promisiune care e respinsă dacă browserul refuză
+      // autoplay-ul (sau dacă slide-ul se schimbă între timp) — atunci rămâne
+      // vizibil poster-ul, adică exact imaginea slide-ului.
+      video.play().catch(() => {})
+    } else {
+      video.pause()
+      video.currentTime = 0
+    }
+    // `src` e în dependențe fiindcă rotirea telefonului schimbă fișierul: fără
+    // el, varianta nou montată ar rămâne pe pauză până la următorul slide.
+  }, [isActive, src])
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      poster={slide.image}
+      muted
+      loop
+      playsInline
+      autoPlay={isFirst}
+      preload={isFirst ? "auto" : "metadata"}
+      aria-label={slide.alt}
+      className="absolute inset-0 h-full w-full object-cover"
+    />
+  )
+}
+
+/**
+ * Fișierul potrivit orientării ecranului, cu retragere pe cel orizontal când
+ * slide-ul n-are variantă verticală.
+ *
+ * Atenție: alegerea se face aici, în JS, nu cu `<source media="…">` — atributul
+ * `media` merge doar în `<picture>`, iar browserele îl ignoră tăcut pe
+ * `<source>`-urile dintr-un `<video>`, deci ar fi redat mereu prima sursă.
+ */
+const videoSrc = (slide: Slide, portrait: boolean): string | undefined =>
+  (portrait && slide.videoMobile) || slide.video
+
 const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { loop: true, align: "center" },
@@ -42,12 +111,29 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
   const { selectedIndex } = useDotButton(emblaApi)
   const { onPrevButtonClick, onNextButtonClick } = usePrevNextButtons(emblaApi)
   const [intro, setIntro] = useState(true)
+  // Cu „reduced motion" pornit nu redăm videoul deloc: slide-ul rămâne pe
+  // imagine, care oricum e poster-ul lui. Pornim de la `true` ca randarea de
+  // pe server (unde nu știm preferința) să nu insereze un `<video>` pe care
+  // hidratarea l-ar scoate imediat.
+  const [reducedMotion, setReducedMotion] = useState(true)
+  // Alegem varianta verticală după *orientarea* ecranului, nu după lățime: un
+  // desktop e mereu lat, iar o tabletă ținută în picioare are exact problema de
+  // decupare pe care varianta verticală o rezolvă.
+  const [portrait, setPortrait] = useState(false)
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setIntro(false)
       return
     }
+
+    setReducedMotion(false)
+
+    const portraitQuery = window.matchMedia("(orientation: portrait)")
+    setPortrait(portraitQuery.matches)
+    const onOrientationChange = (e: MediaQueryListEvent) =>
+      setPortrait(e.matches)
+    portraitQuery.addEventListener("change", onOrientationChange)
 
     const timeout = setTimeout(() => {
       setIntro(false)
@@ -56,7 +142,10 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
       emblaApi?.plugins()?.autoplay?.reset()
     }, INTRO_MS)
 
-    return () => clearTimeout(timeout)
+    return () => {
+      clearTimeout(timeout)
+      portraitQuery.removeEventListener("change", onOrientationChange)
+    }
   }, [emblaApi])
 
   if (slides.length === 0) {
@@ -76,6 +165,9 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
                   slide-ul să se termine fix la marginea de jos a ecranului.
                   svh (nu vh) ca să nu sară la apariția barelor de browser mobil. */}
               <div className="relative h-[calc(100svh-var(--topbar-h))] min-h-[30rem] w-full isolate">
+                {/* Imaginea rămâne mereu randată: e LCP-ul paginii și fundalul
+                    de sub video cât timp acesta se încarcă (sau dacă browserul
+                    refuză autoplay-ul). */}
                 <Image
                   loader={isUnsplash(slide.image) ? unsplashLoader : undefined}
                   src={slide.image}
@@ -91,6 +183,14 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
                       : ""
                   }`}
                 />
+                {videoSrc(slide, portrait) && !reducedMotion && (
+                  <SlideVideo
+                    slide={slide}
+                    src={videoSrc(slide, portrait)!}
+                    isActive={index === selectedIndex}
+                    isFirst={index === 0}
+                  />
+                )}
                 {/* Întunecare generală pentru lizibilitate */}
                 <div className="absolute inset-0 bg-black/20" />
                 {/* Gradient închis SUS — sub el se integrează meniul alb */}

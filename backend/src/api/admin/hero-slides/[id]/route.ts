@@ -6,6 +6,8 @@ import type HeroModuleService from "../../../../modules/hero/service"
 
 const UpdateSlideSchema = z.object({
   image_url: z.string().min(1).optional(),
+  video_url: z.string().nullable().optional(),
+  video_url_mobile: z.string().nullable().optional(),
   alt: z.string().min(1).optional(),
   title_line_1: z.string().min(1).optional(),
   title_line_2: z.string().nullable().optional(),
