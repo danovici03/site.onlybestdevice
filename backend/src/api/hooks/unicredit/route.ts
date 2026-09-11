@@ -9,24 +9,37 @@ import {
 } from '@medusajs/framework/utils'
 
 /**
- * Callback-ul de statusuri de la UniCredit ePOS — structura propusă de noi și
- * comunicată UCFin (acest docstring e specificația de referință):
+ * Callback-ul de statusuri de la UniCredit ePOS:
  *
  *   POST /hooks/unicredit?token=<UNICREDIT_CALLBACK_TOKEN>
  *   {
  *     "external_id": "order_01...",      // id-ul trimis de noi la /offers
- *     "status": "Disbursed",             // Disbursed | Rejected | Cancelled
+ *     "status": "Started",               // statusul curent al cererii
  *     "application_id": "...",           // opțional, referința UCFin
  *     "amount": 4999.99,                 // opțional, suma finanțată
  *     "timestamp": "2026-07-23T10:00:00Z"
  *   }
  *
- *   - Disbursed  → coșul a fost finanțat → capturăm plata, se livrează
- *   - Rejected   → credit respins → anulăm comanda
- *   - Cancelled  → cerere anulată → anulăm comanda
+ * ePOS trimite TOT ciclul de viață al cererii, nu doar stările finale — panoul
+ * UCFin arată „Started" cât timp clientul n-a terminat creditarea. De aceea
+ * acceptăm orice status: îl consemnăm în `order.metadata.unicredit` și
+ * răspundem 200, ca UCFin să nu marcheze notificarea drept eșuată și să
+ * renunțe la retry-uri (inclusiv la cel cu statusul final, care ne aduce
+ * banii). Acționăm doar pe stările terminale:
  *
- * Răspuns: 200 {"received": true}. Orice alt cod → UCFin poate retrimite.
+ *   - Disbursed                        → capturăm plata, se livrează
+ *   - Rejected / Cancelled / Expired   → anulăm comanda
+ *   - orice altceva                    → doar se consemnează
+ *
+ * Corpul brut se loghează la fiecare apel: lista completă de statusuri ePOS nu
+ * e publică, așa că logurile sunt sursa noastră pentru ce trimite UCFin.
  */
+
+/** Statusuri care închid dosarul cu bani încasați. */
+const CAPTURE_STATUSES = new Set(['disbursed'])
+
+/** Statusuri care închid dosarul fără finanțare. */
+const CANCEL_STATUSES = new Set(['rejected', 'cancelled', 'canceled', 'expired'])
 
 type CallbackBody = {
   external_id?: string
@@ -53,17 +66,20 @@ export const POST = async (
   }
 
   const body = (req.body ?? {}) as CallbackBody
+
+  // Corpul brut, ca să vedem exact ce câmpuri și ce statusuri trimite UCFin.
+  logger.info(`[unicredit] Callback brut: ${JSON.stringify(body)}`)
+
   const orderId = body.external_id
-  const status = (body.status ?? '').toLowerCase()
+  const status = (body.status ?? '').trim().toLowerCase()
 
-  logger.info(
-    `[unicredit] Callback: order=${orderId} status=${body.status} application=${body.application_id ?? '-'}`
-  )
-
-  if (!orderId || !['disbursed', 'rejected', 'cancelled'].includes(status)) {
+  if (!orderId) {
     return res
       .status(400)
-      .json({ received: false, error: 'external_id sau status invalid' })
+      .json({ received: false, error: 'external_id lipsește' })
+  }
+  if (!status) {
+    return res.status(400).json({ received: false, error: 'status lipsește' })
   }
 
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
@@ -74,6 +90,7 @@ export const POST = async (
       'status',
       'metadata',
       'payment_collections.payments.id',
+      'payment_collections.payments.provider_id',
       'payment_collections.payments.captured_at',
       'payment_collections.payment_sessions.provider_id',
     ],
@@ -101,18 +118,21 @@ export const POST = async (
     return res.json({ received: true, duplicate: true })
   }
 
-  if (status === 'disbursed') {
+  const isFinal = CAPTURE_STATUSES.has(status) || CANCEL_STATUSES.has(status)
+
+  if (CAPTURE_STATUSES.has(status)) {
+    // Doar plata UniCredit — o comandă poate avea și alte plăți pe ea.
     const payment = (order.payment_collections ?? [])
       .flatMap((pc: any) => pc?.payments ?? [])
-      .find((p: any) => p?.id)
+      .find((p: any) => p?.id && p?.provider_id?.includes('unicredit'))
     if (payment && !payment.captured_at) {
       await capturePaymentWorkflow(req.scope).run({
         input: { payment_id: payment.id },
       })
     }
-  } else {
-    // Rejected / Cancelled → nu se livrează. Dacă anularea nu mai e posibilă
-    // (ex. comanda deja procesată manual), doar consemnăm statusul.
+  } else if (CANCEL_STATUSES.has(status)) {
+    // Nu se livrează. Dacă anularea nu mai e posibilă (ex. comanda deja
+    // procesată manual), doar consemnăm statusul.
     try {
       await cancelOrderWorkflow(req.scope).run({
         input: { order_id: order.id },
@@ -122,6 +142,10 @@ export const POST = async (
         `[unicredit] Comanda ${order.id} nu a putut fi anulată automat: ${e?.message}`
       )
     }
+  } else {
+    logger.info(
+      `[unicredit] Status intermediar „${body.status}" pentru ${order.id} — doar consemnat`
+    )
   }
 
   const orderModule = req.scope.resolve(Modules.ORDER)
@@ -131,6 +155,8 @@ export const POST = async (
       unicredit: {
         ...(meta.unicredit ?? {}),
         status,
+        // Statusul exact, cu majusculele UCFin, pentru suport.
+        status_raw: body.status,
         application_id: body.application_id ?? meta.unicredit?.application_id,
         amount: body.amount ?? meta.unicredit?.amount,
         status_received_at: new Date().toISOString(),
@@ -138,5 +164,5 @@ export const POST = async (
     },
   })
 
-  res.json({ received: true })
+  res.json({ received: true, final: isFinal })
 }

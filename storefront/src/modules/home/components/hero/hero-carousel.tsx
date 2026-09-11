@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight } from "@phosphor-icons/react/dist/ssr"
 import Autoplay from "embla-carousel-autoplay"
 import useEmblaCarousel from "embla-carousel-react"
 import Image from "@modules/common/components/image"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { unsplashLoader } from "@lib/util/unsplash-loader"
 import {
@@ -33,44 +33,145 @@ const AUTOPLAY_MS = 6000
 // opacitatea titlului pe primul slide când caruselul trece mai departe.
 const INTRO_MS = 2300
 
+// Cât rămâne ultimul cadru înghețat pe ecran după ce clipul s-a terminat.
+// Fără pauza asta slide-ul ar fugi exact în clipa în care imaginea se oprește.
+const VIDEO_HOLD_MS = 1200
+
+// Trecerea de la imagine la video (și înapoi). Ținută mai lungă decât
+// animația de glisare a caruselului, ca schimbul de cadru să nu se simtă.
+const VIDEO_FADE_MS = 700
+
+// Plasă de siguranță: dacă `ended` nu mai vine (fișier stricat, decodare
+// blocată, autoplay refuzat târziu), nu lăsăm caruselul înțepenit pe slide.
+const VIDEO_STUCK_MARGIN_MS = 4000
+const VIDEO_STUCK_FALLBACK_MS = 20000
+
 // Imaginile placeholder vin de pe Unsplash (au nevoie de loader-ul cu query
 // params). Cele administrate din admin vin din storage-ul propriu (S3/local)
 // și folosesc optimizatorul implicit Next.
 const isUnsplash = (src: string) => src.includes("images.unsplash.com")
 
 /**
- * Videoul unui slide, cu imaginea drept poster.
+ * Videoul unui slide, peste imaginea lui.
  *
- * Rulează doar cât timp slide-ul e cel activ: în rest îl punem pe pauză și îl
- * derulăm la început, ca următoarea trecere să nu prindă filmulețul la
- * jumătate și ca telefoanele să nu decodeze trei clipuri în paralel.
+ * Rulează o singură dată (fără `loop`) și rămâne înghețat pe ultimul cadru —
+ * de acolo preia părintele și trece la slide-ul următor. Derularea la început
+ * o facem la *activare*, nu la dezactivare: altfel, cât timp slide-ul iese din
+ * cadru, s-ar vedea cum sare înapoi la primul cadru.
+ *
+ * Pe slide-urile inactive stă pe pauză, ca telefoanele să nu decodeze trei
+ * clipuri în paralel.
+ *
+ * Cât timp nu redă efectiv, videoul e transparent și se vede imaginea de
+ * dedesubt. Altfel se vedea cum poza slide-ului e înlocuită brusc de primul
+ * cadru al clipului — două imagini diferite, schimbate dintr-o bucată. Apariția
+ * o legăm de `playing` (primul cadru chiar desenat), nu de `play` (doar
+ * intenția de redare, de dinainte să vină datele).
  */
 const SlideVideo = ({
   slide,
   src,
   isActive,
   isFirst,
+  onEnded,
+  onFailed,
 }: {
   slide: Slide
   src: string
   isActive: boolean
   isFirst: boolean
+  /** Clipul s-a terminat — ultimul cadru rămâne pe ecran. */
+  onEnded: () => void
+  /** Nu poate fi redat (autoplay refuzat, fișier stricat, blocat la mijloc). */
+  onFailed: () => void
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const stuckRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // `true` abia din clipa în care clipul chiar desenează cadre.
+  const [showing, setShowing] = useState(false)
+
+  // Handlerele se schimbă la fiecare randare a părintelui; ținute în ref ca
+  // efectul de mai jos să nu repornească videoul din cauza asta.
+  const handlers = useRef({ onEnded, onFailed })
+  handlers.current = { onEnded, onFailed }
 
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
 
-    if (isActive) {
-      video.currentTime = 0
-      // `play()` întoarce o promisiune care e respinsă dacă browserul refuză
-      // autoplay-ul (sau dacă slide-ul se schimbă între timp) — atunci rămâne
-      // vizibil poster-ul, adică exact imaginea slide-ului.
-      video.play().catch(() => {})
-    } else {
+    // `play()` se poate rezolva după ce slide-ul a plecat deja — fără steagul
+    // ăsta am arma un cronometru pe care curățarea nu-l mai prinde.
+    let cancelled = false
+
+    const clearStuck = () => {
+      if (stuckRef.current) {
+        clearTimeout(stuckRef.current)
+        stuckRef.current = null
+      }
+    }
+
+    // Cronometrul de avarie se armează pe cât a mai rămas din clip — durata o
+    // știm abia după ce vin metadatele, până atunci mergem pe o valoare
+    // generoasă. Se rearmează la fiecare repornire a redării, fiindcă orice
+    // pauză (de exemplu tabul trecut în fundal, unde browserul oprește singur
+    // videoul) ar face un termen absolut să expire degeaba.
+    const armStuck = () => {
+      clearStuck()
+      if (cancelled) return
+      const left =
+        Number.isFinite(video.duration) && video.duration > 0
+          ? (video.duration - video.currentTime) * 1000
+          : VIDEO_STUCK_FALLBACK_MS
+      stuckRef.current = setTimeout(
+        () => handlers.current.onFailed(),
+        left + VIDEO_STUCK_MARGIN_MS
+      )
+    }
+
+    if (!isActive) {
       video.pause()
-      video.currentTime = 0
+      clearStuck()
+      // Ne stingem cât slide-ul iese din cadru, ca la următoarea intrare să
+      // fim deja pe imagine — altfel s-ar vedea întâi ultimul cadru al
+      // clipului trecut, apoi saltul înapoi la primul.
+      setShowing(false)
+      return
+    }
+
+    video.currentTime = 0
+    armStuck()
+    // `play()` întoarce o promisiune care e respinsă dacă browserul refuză
+    // autoplay-ul (sau dacă slide-ul se schimbă între timp) — atunci rămâne
+    // vizibilă imaginea slide-ului.
+    video.play().catch(() => {
+      if (!cancelled) handlers.current.onFailed()
+    })
+
+    const onPlayingEvent = () => {
+      setShowing(true)
+      armStuck()
+    }
+    const onEndedEvent = () => {
+      clearStuck()
+      handlers.current.onEnded()
+    }
+    const onErrorEvent = () => {
+      clearStuck()
+      handlers.current.onFailed()
+    }
+
+    video.addEventListener("playing", onPlayingEvent)
+    video.addEventListener("pause", clearStuck)
+    video.addEventListener("ended", onEndedEvent)
+    video.addEventListener("error", onErrorEvent)
+
+    return () => {
+      cancelled = true
+      clearStuck()
+      video.removeEventListener("playing", onPlayingEvent)
+      video.removeEventListener("pause", clearStuck)
+      video.removeEventListener("ended", onEndedEvent)
+      video.removeEventListener("error", onErrorEvent)
     }
     // `src` e în dependențe fiindcă rotirea telefonului schimbă fișierul: fără
     // el, varianta nou montată ar rămâne pe pauză până la următorul slide.
@@ -80,14 +181,21 @@ const SlideVideo = ({
     <video
       ref={videoRef}
       src={src}
-      poster={slide.image}
       muted
-      loop
       playsInline
-      autoPlay={isFirst}
+      // Fără `poster`: sub video stă deja aceeași imagine, trecută prin
+      // optimizatorul Next. Atributul ar mai descărca o dată originalul, la
+      // dimensiune întreagă, pentru un cadru care oricum nu se vede.
+      //
+      // Redarea o pornește efectul de mai sus, nu atributul `autoplay`: pe
+      // primul slide clipul trebuie să înceapă *după* voalul de intro, altfel
+      // s-ar consuma două secunde din el în spatele unui ecran negru.
       preload={isFirst ? "auto" : "metadata"}
       aria-label={slide.alt}
-      className="absolute inset-0 h-full w-full object-cover"
+      style={{ transitionDuration: `${VIDEO_FADE_MS}ms` }}
+      className={`absolute inset-0 h-full w-full object-cover transition-opacity ${
+        showing ? "opacity-100" : "opacity-0"
+      }`}
     />
   )
 }
@@ -121,6 +229,69 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
   // decupare pe care varianta verticală o rezolvă.
   const [portrait, setPortrait] = useState(false)
 
+  // Trecerea amânată după terminarea unui clip.
+  const advanceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clearAdvance = () => {
+    if (advanceRef.current) {
+      clearTimeout(advanceRef.current)
+      advanceRef.current = null
+    }
+  }
+
+  const slideHasVideo = useCallback(
+    (index: number) => {
+      const slide = slides[index]
+      return !!slide && !reducedMotion && !!videoSrc(slide, portrait)
+    },
+    [slides, reducedMotion, portrait]
+  )
+
+  /**
+   * Pe slide-urile cu video nu cronometrul fix de 6s hotărăște trecerea, ci
+   * sfârșitul clipului — altfel un clip mai lung s-ar tăia la jumătate, iar
+   * unul scurt ar sta degeaba pe ultimul cadru. Deci oprim autoplay-ul cât
+   * rulează videoul și îl repornim pe slide-urile cu imagine.
+   */
+  useEffect(() => {
+    // Cu un singur slide pluginul iese devreme din `init` și rămâne fără
+    // tabelul de delay-uri: un `play()` pe el ar arunca.
+    if (slides.length < 2) return
+    const autoplay = emblaApi?.plugins()?.autoplay
+    if (!autoplay) return
+
+    const apply = () => {
+      if (slideHasVideo(emblaApi.selectedScrollSnap())) autoplay.stop()
+      else autoplay.play()
+    }
+
+    apply()
+    // După o glisare pluginul își repornește singur cronometrul, chiar dacă am
+    // rămas pe același slide cu video — de aceea reaplicăm și acolo.
+    emblaApi.on("pointerUp", apply)
+    return () => {
+      emblaApi.off("pointerUp", apply)
+    }
+  }, [emblaApi, selectedIndex, slides, slideHasVideo])
+
+  // Orice schimbare de slide (manuală sau automată) anulează avansul programat
+  // de clipul precedent.
+  useEffect(() => clearAdvance, [selectedIndex])
+
+  /** Clipul s-a terminat: ultimul cadru mai stă o clipă, apoi mergem mai departe. */
+  const handleVideoEnded = (index: number) => {
+    // `ended` poate veni pentru un slide de pe care clientul a plecat deja.
+    if (!emblaApi || emblaApi.selectedScrollSnap() !== index) return
+    clearAdvance()
+    advanceRef.current = setTimeout(() => emblaApi.scrollNext(), VIDEO_HOLD_MS)
+  }
+
+  /** Videoul nu poate fi redat: slide-ul rămâne pe imagine, cu ritmul normal. */
+  const handleVideoFailed = (index: number) => {
+    if (!emblaApi || emblaApi.selectedScrollSnap() !== index) return
+    if (slides.length < 2) return
+    emblaApi.plugins()?.autoplay?.play()
+  }
+
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setIntro(false)
@@ -138,8 +309,8 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
     const timeout = setTimeout(() => {
       setIntro(false)
       // Repornim cronometrul de autoplay ca primul slide să fie vizibil 6s
-      // *după* intro, nu 6s din care 2 au fost negre.
-      emblaApi?.plugins()?.autoplay?.reset()
+      // *după* intro, nu 6s din care 2 au fost negre. Pe un slide cu video
+      // autoplay-ul e deja oprit, iar `reset()` nu repornește ce e oprit.
     }, INTRO_MS)
 
     return () => {
@@ -187,8 +358,12 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
                   <SlideVideo
                     slide={slide}
                     src={videoSrc(slide, portrait)!}
-                    isActive={index === selectedIndex}
+                    // Cât ține intro-ul, videoul stă: ar rula în spatele
+                    // voalului negru.
+                    isActive={index === selectedIndex && !intro}
                     isFirst={index === 0}
+                    onEnded={() => handleVideoEnded(index)}
+                    onFailed={() => handleVideoFailed(index)}
                   />
                 )}
                 {/* Întunecare generală pentru lizibilitate */}
