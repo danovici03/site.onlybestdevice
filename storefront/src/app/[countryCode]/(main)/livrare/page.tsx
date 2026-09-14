@@ -96,11 +96,6 @@ export default function LivrarePage() {
         către tine.
       </p>
 
-      <hr />
-      <p className="text-xs text-brand-dark/50">
-        TODO: confirmați zonele deservite și eventualele suprataxe {COURIER_NAME}{" "}
-        (localități izolate, colete voluminoase) înainte de lansare.
-      </p>
     </InfoPageLayout>
   )
 }

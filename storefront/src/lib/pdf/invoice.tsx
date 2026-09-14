@@ -9,6 +9,12 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer"
 import { HttpTypes } from "@medusajs/types"
+import {
+  COMPANY as SOCIETATE,
+  indirizzoLegale,
+  indirizzoOperativo,
+  sediulCoincideCuPunctulDeLucru,
+} from "@lib/util/company-info"
 import { formatCui, readCompanyFiscal } from "@lib/util/cui"
 void React
 
@@ -56,15 +62,22 @@ Font.register({
 // numele proprii („Cluj-Napo-ca").
 Font.registerHyphenationCallback((word) => [word])
 
+/**
+ * Antetul facturii, derivat din datele societare comune — nu rescrise aici,
+ * ca să nu ajungă factura să spună altceva decât paginile legale. Adresa merge
+ * întreagă: pe o factură, „Bistrița (BN)" nu ține loc de sediu social.
+ */
 const COMPANY = {
-  brand: "onlybestdevice",
-  legalName: "ONLY BEST DEVICE S.R.L.",
-  vat: "CUI 43546040",
-  rea: "Reg. Com. J06/26/2021",
-  sedeLegale: "Sediu social: Bistrița (BN)",
-  sedeOperativa: "Punct de lucru: Bistrița (BN)",
-  email: "office@onlybestdevice.ro",
-  website: "onlybestdevice.ro",
+  brand: SOCIETATE.marchio,
+  legalName: SOCIETATE.ragioneSociale,
+  vat: `CUI ${SOCIETATE.piva}`,
+  rea: `Reg. Com. ${SOCIETATE.rea}`,
+  sedeLegale: `Sediu social: ${indirizzoLegale()}`,
+  sedeOperativa: sediulCoincideCuPunctulDeLucru()
+    ? ""
+    : `Punct de lucru: ${indirizzoOperativo()}`,
+  email: SOCIETATE.email,
+  website: SOCIETATE.dominio,
 }
 
 const styles = StyleSheet.create({
@@ -274,7 +287,9 @@ export const InvoiceDocument = ({ order }: { order: HttpTypes.StoreOrder }) => {
             <Text style={styles.companyLine}>{COMPANY.vat}</Text>
             <Text style={styles.companyLine}>{COMPANY.rea}</Text>
             <Text style={styles.companyLine}>{COMPANY.sedeLegale}</Text>
-            <Text style={styles.companyLine}>{COMPANY.sedeOperativa}</Text>
+            {COMPANY.sedeOperativa ? (
+              <Text style={styles.companyLine}>{COMPANY.sedeOperativa}</Text>
+            ) : null}
             <Text style={styles.companyLine}>{COMPANY.email}</Text>
           </View>
         </View>

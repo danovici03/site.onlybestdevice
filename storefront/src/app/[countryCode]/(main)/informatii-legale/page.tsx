@@ -1,7 +1,12 @@
 import { Metadata } from "next"
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { COMPANY, indirizzoLegale, indirizzoOperativo } from "@lib/util/company-info"
+import {
+  COMPANY,
+  indirizzoLegale,
+  indirizzoOperativo,
+  sediulCoincideCuPunctulDeLucru,
+} from "@lib/util/company-info"
 
 export const metadata: Metadata = {
   title: "Informații legale | onlybestdevice",
@@ -31,11 +36,18 @@ export default function InformatiiLegalePage() {
           {COMPANY.ragioneSociale}
         </p>
         <p className="text-brand-dark/80 mb-1">
-          <strong>Sediu social:</strong> {indirizzoLegale()}
+          <strong>
+            {sediulCoincideCuPunctulDeLucru()
+              ? "Sediu social și punct de lucru:"
+              : "Sediu social:"}
+          </strong>{" "}
+          {indirizzoLegale()}
         </p>
-        <p className="text-brand-dark/80 mb-1">
-          <strong>Punct de lucru:</strong> {indirizzoOperativo()}
-        </p>
+        {!sediulCoincideCuPunctulDeLucru() && (
+          <p className="text-brand-dark/80 mb-1">
+            <strong>Punct de lucru:</strong> {indirizzoOperativo()}
+          </p>
+        )}
         <ul className="text-sm text-brand-dark/70 space-y-1 mt-3">
           <li>
             <strong>Formă juridică</strong>: {COMPANY.formaGiuridica}
@@ -46,12 +58,16 @@ export default function InformatiiLegalePage() {
           <li>
             <strong>Nr. Reg. Comerțului</strong>: {COMPANY.rea}
           </li>
-          <li>
-            <strong>Capital social</strong>: {COMPANY.capitaleSociale}
-          </li>
-          <li>
-            <strong>Administrator</strong>: {COMPANY.amministratoreUnico}
-          </li>
+          {COMPANY.capitaleSociale && (
+            <li>
+              <strong>Capital social</strong>: {COMPANY.capitaleSociale}
+            </li>
+          )}
+          {COMPANY.amministratoreUnico && (
+            <li>
+              <strong>Administrator</strong>: {COMPANY.amministratoreUnico}
+            </li>
+          )}
           <li>
             <strong>Email</strong>:{" "}
             <a href={`mailto:${COMPANY.email}`} className="text-brand-accent hover:underline">
@@ -113,11 +129,6 @@ export default function InformatiiLegalePage() {
         </li>
       </ul>
 
-      <hr />
-      <p className="text-xs text-brand-dark/50">
-        TODO: completați datele firmei în <code>company-info.ts</code> (CUI, Reg.
-        Com., adresă, administrator, capital social).
-      </p>
     </InfoPageLayout>
   )
 }

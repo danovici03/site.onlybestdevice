@@ -134,11 +134,6 @@ export default function ConfidentialitatePage() {
         {REVISION_DATE}.
       </p>
 
-      <hr />
-      <p className="text-xs text-brand-dark/50">
-        TODO: completați datele operatorului în <code>company-info.ts</code> și
-        validați textul cu un consilier juridic / DPO înainte de lansare.
-      </p>
     </InfoPageLayout>
   )
 }

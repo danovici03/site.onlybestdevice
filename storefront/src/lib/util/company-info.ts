@@ -8,7 +8,8 @@
  *   rea           -> Nr. Reg. Comerțului (J..)
  *   amministratoreUnico -> Administrator
  *
- * TODO rămase: capital social real, administrator, strada + codul poștal al sediului.
+ * Câmpurile pe care nu le avem confirmate rămân string gol, nu „TODO": paginile
+ * care le afișează sar peste ele, în loc să publice un marcaj de lucru.
  */
 
 export const COMPANY = {
@@ -19,15 +20,16 @@ export const COMPANY = {
   piva: "43546040",
   codiceFiscale: "43546040",
   rea: "J06/26/2021",
-  capitaleSociale: "200 RON", // TODO: capital social real
-  amministratoreUnico: "TODO", // TODO: nume administrator
+  capitaleSociale: "", // necunoscut încă
+  amministratoreUnico: "", // necunoscut încă
 
-  // Sediu social (TODO: stradă + cod poștal reale)
+  // Sediul social e la aceeași adresă cu punctul de lucru.
   sedeLegale: {
-    via: "Str. Exemplu nr. 1",
-    cap: "420000",
+    via: "Bulevardul Independenței nr. 19, Spațiu Comercial 2",
+    cap: "420170",
     citta: "Bistrița",
     provincia: "BN",
+    judet: "Bistrița-Năsăud",
     paese: "România",
   },
 
@@ -38,12 +40,11 @@ export const COMPANY = {
     cap: "420170",
     citta: "Bistrița",
     provincia: "BN",
+    judet: "Bistrița-Năsăud",
     paese: "România",
   },
 
-  // Adresa la care se expediază retururile și produsele pentru service
-  // (comunicată de client, e reală — spre deosebire de sediul social de mai
-  // sus, rămas placeholder).
+  // Adresa la care se expediază retururile și produsele pentru service.
   adresaRetur: {
     via: "Bulevardul Independenței nr. 19",
     spatiu: "Spațiu Comercial 2",
@@ -83,12 +84,16 @@ type Indirizzo = {
   readonly cap: string
   readonly citta: string
   readonly provincia: string
+  readonly judet?: string
   readonly paese: string
 }
 
+/** Ordinea în care se scrie o adresă în România: stradă, oraș, cod, județ. */
 function format(s: Indirizzo): string {
-  return `${s.via}, ${s.cap} ${s.citta} (${s.provincia}), ${s.paese}`
+  const judet = s.judet ? `jud. ${s.judet}` : `jud. ${s.provincia}`
+  return `${s.via}, ${s.citta}, ${s.cap}, ${judet}`
 }
+
 
 export function indirizzoLegale(): string {
   return format(COMPANY.sedeLegale)
@@ -105,4 +110,12 @@ export function indirizzoRetur(): string {
 /** @deprecated Folosește `indirizzoLegale()` sau `indirizzoOperativo()` — această funcție trimite la sediul social pentru retro-compatibilitate. */
 export function indirizzoCompleto(): string {
   return indirizzoLegale()
+}
+
+/**
+ * Sediul social și punctul de lucru sunt la aceeași adresă — paginile care le
+ * listează pe amândouă n-au de ce s-o scrie de două ori.
+ */
+export function sediulCoincideCuPunctulDeLucru(): boolean {
+  return indirizzoLegale() === indirizzoOperativo()
 }
