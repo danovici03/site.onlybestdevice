@@ -12,15 +12,16 @@ type CartTotalsProps = {
     item_subtotal?: number | null
     shipping_subtotal?: number | null
     discount_subtotal?: number | null
+    /**
+     * Prezența metodei, nu suma ei, spune dacă transportul e stabilit: un coș
+     * fără metodă aleasă are `shipping_subtotal` 0, exact ca ridicarea din
+     * magazin, care chiar e gratuită.
+     */
+    shipping_methods?: unknown[] | null
   }
-  /**
-   * Ce scriem pe rândul „Livrare" când transportul e 0 în Medusa fiindcă se
-   * achită curierului. Fără el rândul ar rămâne pe „Se calculează" la infinit.
-   */
-  shippingNote?: string
 }
 
-const CartTotals: React.FC<CartTotalsProps> = ({ totals, shippingNote }) => {
+const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
   const {
     currency_code,
     total,
@@ -28,6 +29,7 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals, shippingNote }) => {
     item_subtotal,
     shipping_subtotal,
     discount_subtotal,
+    shipping_methods,
   } = totals
 
   return (
@@ -50,12 +52,14 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals, shippingNote }) => {
             data-testid="cart-shipping"
             data-value={shipping_subtotal || 0}
           >
-            {shipping_subtotal
-              ? convertToLocale({
-                  amount: shipping_subtotal,
-                  currency_code,
-                })
-              : shippingNote ?? "Se calculează"}
+            {!shipping_methods?.length
+              ? "Se calculează"
+              : shipping_subtotal
+                ? convertToLocale({
+                    amount: shipping_subtotal,
+                    currency_code,
+                  })
+                : "Gratuit"}
           </span>
         </div>
         {!!discount_subtotal && (

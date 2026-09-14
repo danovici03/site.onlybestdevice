@@ -190,6 +190,22 @@ const renderOrderItems = (
     </table>`
 }
 
+/**
+ * Ramburs: singura metodă la care banii trec prin curier, nu prin noi. Citim
+ * întâi plata efectivă, apoi sesiunea — ca în `resolvePaymentProvider` din ERP.
+ */
+const isCodOrder = (order: Record<string, any>) => {
+  const collections = order.payment_collections ?? []
+  const provider =
+    collections
+      .flatMap((pc: any) => pc?.payments ?? [])
+      .find((p: any) => p?.provider_id)?.provider_id ??
+    collections
+      .flatMap((pc: any) => pc?.payment_sessions ?? [])
+      .find((sn: any) => sn?.provider_id)?.provider_id
+  return typeof provider === "string" && provider.includes("cod")
+}
+
 /** Ridicarea din magazin e singura opțiune fără taxă de curier. */
 const isPickupOrder = (order: Record<string, any>) =>
   (order.shipping_methods ?? []).some((m: any) => /ridicare/i.test(m?.name ?? ""))
@@ -309,10 +325,12 @@ const orderPlacedCustomer: Renderer = ({ order, storefront_url }) => {
   const orderUrl = `${resolveStorefrontUrl(storefront_url)}/${locale()}/order/${order.id}/confirmed`
   const firstName = order.shipping_address?.first_name
   const pickup = isPickupOrder(order)
-  // Totalul comenzii nu conține transportul — clientul îl dă curierului.
-  const courierNote = pickup
-    ? ""
-    : `<p style="margin:0 0 16px;font-size:13px;color:${COLOR.muted};">Taxa de transport nu este inclusă în acest total: o achiți direct curierului, la primirea coletului.</p>`
+  // Transportul e în total ca orice altă linie. La ramburs banii îi oprește
+  // curierul, deci spunem asta — altfel pare că îl mai plătește o dată la ușă.
+  const courierNote =
+    pickup || !isCodOrder(order)
+      ? ""
+      : `<p style="margin:0 0 16px;font-size:13px;color:${COLOR.muted};">Plătești acest total curierului, la primirea coletului. Taxa de transport din el este decontată direct de firma de curierat.</p>`
   const body = `
     ${greeting(firstName)}
     <p style="margin:0 0 16px;">îți mulțumim pentru comanda <strong>#${escape(display)}</strong>. Am primit-o cu bine și o pregătim.</p>

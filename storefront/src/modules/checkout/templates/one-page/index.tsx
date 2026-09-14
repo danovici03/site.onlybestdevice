@@ -72,12 +72,9 @@ import {
 } from "@lib/util/cui"
 import {
   COURIER_NAME,
-  COURIER_PAID_EXPLAINER,
-  COURIER_PAID_NOTE,
+  COURIER_INCLUDED_NOTE,
+  COURIER_SETTLED_EXPLAINER,
   COURIER_TARIFF_FROM,
-  courierTariff,
-  courierTariffForMethodName,
-  courierTariffLabel,
 } from "@lib/util/shipping-tariff"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Installments from "@modules/products/components/installments"
@@ -160,7 +157,7 @@ const methodMeta = (
   if (isCod(id)) {
     return {
       title: "Numerar la livrare (ramburs)",
-      description: `Plătești curierului în numerar, la primirea coletului. Disponibil pentru comenzi de până la ${COD_MAX_AMOUNT.toLocaleString("ro-RO")} lei.`,
+      description: `Plătești curierului în numerar, la primirea coletului — produsele și transportul, într-o singură sumă. Disponibil pentru comenzi de până la ${COD_MAX_AMOUNT.toLocaleString("ro-RO")} lei marfă.`,
       badges: <CashBadge />,
     }
   }
@@ -789,7 +786,12 @@ const OnePageCheckout = ({
       : lowestOfferFrom("tbi", cartTotal)?.months
 
   /** Ramburs-ul cade peste plafonul legal de numerar (Legea 70/2015). */
-  const cashAllowed = codAvailable(cartTotal, cart?.currency_code)
+  // Plafonul de numerar se uită la marfă, nu la total: transportul din total
+  // rămâne la curier, nu îl încasăm noi.
+  const cashAllowed = codAvailable(
+    cart?.item_subtotal ?? cartTotal,
+    cart?.currency_code
+  )
 
   const visibleMethods = useMemo(() => {
     const filtered = paymentMethods
@@ -1355,11 +1357,6 @@ const OnePageCheckout = ({
                 option.price_type === "flat"
                   ? option.amount
                   : calculatedPrices[option.id]
-              // Fallback pe nume: dacă API-ul n-ar întoarce codul tipului, o
-              // opțiune de curier ar apărea „Gratuit" — exact ce nu vrem.
-              const tariff =
-                courierTariff(option.type?.code) ??
-                courierTariffForMethodName(option.name)
               return (
                 <Radio
                   key={option.id}
@@ -1394,37 +1391,20 @@ const OnePageCheckout = ({
                       )}
                     </span>
                   </span>
-                  {/* Transportul nu e încasat de noi: pentru opțiunile de
-                      curier afișăm tariful informativ, nu prețul (0) din
-                      Medusa. */}
-                  {tariff ? (
-                    <span className="flex flex-col items-end shrink-0 text-right">
-                      <span className="text-sm font-bold text-brand-dark">
-                        {courierTariffLabel(tariff).main}
-                      </span>
-                      <span className="text-[11px] text-brand-dark/55 leading-tight">
-                        {courierTariffLabel(tariff).sub}
-                      </span>
-                    </span>
-                  ) : (
-                    <span className="text-sm font-bold text-brand-dark shrink-0">
-                      {typeof amount === "number"
-                        ? amount === 0
-                          ? "Gratuit"
-                          : convertToLocale({
-                              amount,
-                              currency_code: cart?.currency_code,
-                            })
-                        : "—"}
-                    </span>
-                  )}
+                  <span className="text-sm font-bold text-brand-dark shrink-0">
+                    {typeof amount === "number"
+                      ? amount === 0
+                        ? "Gratuit"
+                        : convertToLocale({
+                            amount,
+                            currency_code: cart?.currency_code,
+                          })
+                      : "—"}
+                  </span>
                 </Radio>
               )
             })}
           </RadioGroup>
-          <p className="mt-2 text-xs leading-relaxed text-brand-dark/55">
-            {COURIER_PAID_EXPLAINER}
-          </p>
           <ErrorMessage
             error={shippingError}
             data-testid="delivery-option-error-message"
@@ -1637,7 +1617,15 @@ const OnePageCheckout = ({
 
           <div className="border-t border-brand-dark/10" />
 
-          <CartTotals totals={cart} shippingNote="Plata la curier" />
+          <CartTotals totals={cart} />
+
+          {/* La ramburs transportul e în total ca la orice metodă, dar banii îi
+              oprește curierul — fără rândul ăsta pare că îl plătește de două ori. */}
+          {isCod(selectedPayment) && (
+            <p className="-mt-2 text-xs leading-relaxed text-brand-dark/55">
+              {COURIER_SETTLED_EXPLAINER}
+            </p>
+          )}
 
           <label className="flex items-start gap-2.5 text-xs leading-relaxed text-brand-dark/70 cursor-pointer">
             <input
@@ -1707,7 +1695,7 @@ const OnePageCheckout = ({
             {
               Icon: Truck,
               title: `Livrare prin ${COURIER_NAME}`,
-              note: `Transport ${COURIER_TARIFF_FROM}, ${COURIER_PAID_NOTE}`,
+              note: `Transport ${COURIER_TARIFF_FROM}, ${COURIER_INCLUDED_NOTE}`,
             },
             {
               Icon: ArrowUUpLeft,

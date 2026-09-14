@@ -20,7 +20,7 @@ const baseOrder = {
       currency_code: "ron",
     },
   ],
-  shipping_methods: [{ name: "Livrare prin Fan Curier", amount: 0 }],
+  shipping_methods: [{ name: "Livrare prin Fan Curier", amount: 38 }],
   shipping_address: {
     first_name: "Ion",
     last_name: "Popescu",
@@ -40,6 +40,16 @@ const pickupOrder = {
   ],
 }
 
+const codOrder = {
+  ...baseOrder,
+  payment_collections: [{ payments: [{ provider_id: "pp_cod_cod" }] }],
+}
+
+const cardOrder = {
+  ...baseOrder,
+  payment_collections: [{ payments: [{ provider_id: "pp_netopia_netopia" }] }],
+}
+
 describe("emailurile de comandă plasată", () => {
   it("dă operatorului adresa completă, ca s-o poată pune pe AWB", () => {
     const html = render("order-placed-admin", { order: baseOrder })
@@ -57,6 +67,22 @@ describe("emailurile de comandă plasată", () => {
 
     expect(html).toContain("Str. Mihai Viteazu nr. 12")
     expect(html).toContain("Dacă adresa nu e corectă")
+  })
+
+  // Transportul e în total la orice metodă, dar la ramburs banii îi oprește
+  // curierul — fără nota asta pare că îl mai plătește o dată la ușă.
+  it("explică la ramburs cine decontează transportul", () => {
+    const html = render("order-placed-customer", { order: codOrder })
+
+    expect(html).toContain("Plătești acest total curierului")
+    expect(html).toContain("decontată direct de firma de curierat")
+  })
+
+  it("nu pomenește transportul separat când s-a plătit deja cu cardul", () => {
+    const html = render("order-placed-customer", { order: cardOrder })
+
+    expect(html).not.toContain("Taxa de transport")
+    expect(html).not.toContain("Plătești acest total curierului")
   })
 
   // Bugul reparat: fără `shipping_methods` în query, orice comandă părea

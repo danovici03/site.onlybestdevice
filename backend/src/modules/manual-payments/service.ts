@@ -28,16 +28,33 @@ import {
 } from '@medusajs/framework/utils'
 import { randomUUID } from 'crypto'
 
+import { MAX_COURIER_TARIFF } from '../../lib/shipping/tariffs'
+
 /**
  * Plafonul legal pentru încasările în numerar de la persoane fizice
  * (Legea 70/2015): 5.000 lei/persoană/zi. Curierul încasează exclusiv cash,
  * deci comenzile peste prag nu pot merge la ramburs — clientul plătește
  * online, cu cardul sau în rate.
  *
+ * Se aplică pe marfă, nu pe totalul comenzii: transportul apare în total, dar
+ * îl încasează curierul pentru el, deci nu intră în ramburs-ul care ajunge la
+ * noi.
+ *
  * ATENȚIE: dublat în storefront (`src/lib/constants.tsx` → COD_MAX_AMOUNT),
  * unde ascunde metoda din checkout. Se schimbă în ambele locuri.
  */
 export const COD_MAX_AMOUNT = 5000
+
+/**
+ * Cât acceptăm aici, unde vedem doar suma plății, fără defalcare.
+ *
+ * Verificarea exactă (pe marfă) se face în checkout, care are defalcarea. Rolul
+ * pragului de aici e să oprească un POST direct pe
+ * `/store/payment-collections/:id/payment-sessions`, deci îi lăsăm marja celui
+ * mai scump transport posibil — altfel ar respinge fix comenzile pe care
+ * checkout-ul tocmai le-a considerat valide.
+ */
+const COD_MAX_PAYMENT_AMOUNT = COD_MAX_AMOUNT + MAX_COURIER_TARIFF
 
 /** Ramburs-ul e activ doar pe RON; plafonul e o normă fiscală românească. */
 const COD_CURRENCY = 'ron'
@@ -70,7 +87,7 @@ export class CodProviderService extends AbstractPaymentProvider {
     if (amount == null) {
       return
     }
-    if (MathBN.gt(amount, COD_MAX_AMOUNT)) {
+    if (MathBN.gt(amount, COD_MAX_PAYMENT_AMOUNT)) {
       throw new MedusaError(
         MedusaError.Types.NOT_ALLOWED,
         `Plata la livrare este disponibilă doar pentru comenzi de până la ${COD_MAX_AMOUNT} lei. ` +

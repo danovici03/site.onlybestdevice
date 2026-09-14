@@ -12,9 +12,8 @@ import {
   Truck,
 } from "@phosphor-icons/react/dist/ssr"
 import {
+  COURIER_INCLUDED_NOTE,
   COURIER_NAME,
-  COURIER_PAID_EXPLAINER,
-  COURIER_PAID_NOTE,
   COURIER_TARIFF_FROM,
 } from "@lib/util/shipping-tariff"
 
@@ -53,11 +52,7 @@ const Summary = ({ cart }: SummaryProps) => {
 
         <div className="border-t border-brand-dark/10" />
 
-        <CartTotals totals={cart} shippingNote="Plata la curier" />
-
-        <p className="-mt-2 text-xs leading-relaxed text-brand-dark/55">
-          {COURIER_PAID_EXPLAINER}
-        </p>
+        <CartTotals totals={cart} />
 
         <LocalizedClientLink
           href={"/checkout?step=" + step}
@@ -83,7 +78,7 @@ const Summary = ({ cart }: SummaryProps) => {
           {
             Icon: Truck,
             title: `Livrare prin ${COURIER_NAME}`,
-            note: `Transport ${COURIER_TARIFF_FROM}, ${COURIER_PAID_NOTE}`,
+            note: `Transport ${COURIER_TARIFF_FROM}, ${COURIER_INCLUDED_NOTE}`,
           },
           {
             Icon: ArrowUUpLeft,

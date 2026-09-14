@@ -4,8 +4,6 @@ import { retrieveCustomer } from "@lib/data/customer"
 import { account as t } from "@lib/i18n/account.it"
 import { convertToLocale } from "@lib/util/money"
 import {
-  courierTariffForMethodName,
-  formatTariff,
 } from "@lib/util/shipping-tariff"
 import { HttpTypes } from "@medusajs/types"
 import { formatCui, readCompanyFiscal } from "@lib/util/cui"
@@ -92,7 +90,6 @@ export default async function OrderCompletedTemplate({
         })
 
   const shippingMethod = order.shipping_methods?.[0]
-  const methodTariff = courierTariffForMethodName(shippingMethod?.name)
   const payment = order.payment_collections?.[0]?.payments?.[0]
   const paymentTitle = paymentLabelFor(payment?.provider_id)
   const paidAt = payment?.created_at
@@ -256,10 +253,7 @@ export default async function OrderCompletedTemplate({
           </AccountCard>
 
           <AccountCard title={t.orderConfirmed.summaryTitle}>
-            <CartTotals
-              totals={order}
-              shippingNote={t.orderConfirmed.shippingPaidToCourier}
-            />
+            <CartTotals totals={order} />
           </AccountCard>
         </div>
 
@@ -279,14 +273,8 @@ export default async function OrderCompletedTemplate({
                 <p className="text-brand-dark font-medium">
                   {shippingMethod.name}
                 </p>
-                {/* Transportul nu e încasat de noi, deci `total` e 0 —
-                    afișăm tariful pe care clientul îl dă curierului. */}
                 <p className="text-brand-dark/60 mt-1 tabular-nums">
-                  {methodTariff
-                    ? `${formatTariff(methodTariff)} · ${
-                        t.orderConfirmed.shippingPaidToCourier
-                      }`
-                    : money(shippingMethod.total)}
+                  {money(shippingMethod.total)}
                 </p>
               </div>
             ) : (

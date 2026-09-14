@@ -200,7 +200,8 @@ const CartDrawer = () => {
                     </div>
                     <p className="-mt-2 text-xs text-brand-dark/50">
                       Reducerile se aplică la finalizare. Transportul (
-                      {COURIER_TARIFF_FROM}) se achită curierului la livrare.
+                      {COURIER_TARIFF_FROM}) se adaugă la total când alegi
+                      metoda de livrare.
                     </p>
 
                     <LocalizedClientLink

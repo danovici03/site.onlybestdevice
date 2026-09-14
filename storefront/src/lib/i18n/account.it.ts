@@ -244,7 +244,6 @@ export const account = {
     summaryTitle: "Rezumat",
     shippingAddress: "Adresă de livrare",
     shippingMethod: "Metodă de livrare",
-    shippingPaidToCourier: "Plata la curier",
     paymentMethod: "Metodă de plată",
     paidAt: "Plătită la",
     nextStepsTitle: "Ce urmează?",

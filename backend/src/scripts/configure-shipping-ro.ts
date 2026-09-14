@@ -3,9 +3,9 @@
  *  - șterge opțiunile demo din seed
  *  - creează: Fan Curier standard, Fan Curier prioritar, Ridicare personală
  *
- * Toate au preț 0 în Medusa: taxa de transport nu trece prin site, clientul o
- * achită direct curierului la primirea coletului. Cifrele afișate clientului
- * stau în storefront/src/lib/util/shipping-tariff.ts.
+ * Opțiunile de curier intră cu tariful real (transportul se încasează prin
+ * site); ridicarea din magazin rămâne pe 0. Cifrele stau în
+ * src/lib/shipping/tariffs.ts.
  *
  * Rulare: cd backend && yarn medusa exec ./src/scripts/configure-shipping-ro.ts
  */
@@ -13,10 +13,9 @@ import { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createShippingOptionsWorkflow } from "@medusajs/medusa/core-flows"
 
-// Nu încasăm transportul, deci opțiunile intră în coș pe 0.
-const SHIPPING_PRICE = 0
-const COURIER_NOTE =
-  "Taxa de transport se achită direct curierului, la primirea coletului."
+import { PRIORITY_TARIFF, STANDARD_TARIFF } from "../lib/shipping/tariffs"
+
+const COURIER_NOTE = "Taxa de transport este inclusă în totalul comenzii."
 
 export default async function configureShippingRo({ container }: ExecArgs) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
@@ -79,7 +78,7 @@ export default async function configureShippingRo({ container }: ExecArgs) {
         "standard",
         "Standard",
         `Livrare în 1–3 zile lucrătoare. ${COURIER_NOTE}`,
-        SHIPPING_PRICE
+        STANDARD_TARIFF
       ),
       opt(
         "Livrare prioritară prin Fan Curier",
@@ -87,7 +86,7 @@ export default async function configureShippingRo({ container }: ExecArgs) {
         "Prioritară",
         "Comanda ta e procesată și expediată cu prioritate, înaintea " +
           `celorlalte. ${COURIER_NOTE}`,
-        SHIPPING_PRICE
+        PRIORITY_TARIFF
       ),
       opt(
         "Ridicare personală de la locația magazinului",
