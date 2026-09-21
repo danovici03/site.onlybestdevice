@@ -2,6 +2,7 @@ import { HttpTypes } from "@medusajs/types"
 
 import { categorySlug } from "@lib/util/category-slug"
 import { emptySelectedFilters } from "@lib/util/product-filters"
+import { isInStock } from "@lib/util/stock"
 import {
   RAIL_MAX_ITEMS,
   RAIL_PAGE_SIZE,
@@ -104,11 +105,14 @@ const fetchFeaturedPage = async (
     listCatalog({ countryCode: source.countryCode, selected, page, limit }),
   ])
 
-  const pinnedIds = new Set(pinned.products.map((p) => p.id))
+  // Doar bifatele în stoc urcă în față; una epuizată rămâne în catalog, la
+  // locul ei de după produsele disponibile.
+  const pinnedInStock = pinned.products.filter(isInStock)
+  const pinnedIds = new Set(pinnedInStock.map((p) => p.id))
   // Bifatele stau pe prima pagină (cât încap); dacă cineva bifează mai multe
   // decât încap, restul rămân la locul lor din catalog — o vitrină nu e o
   // listă completă.
-  const head = page === 1 ? pinned.products.slice(0, limit) : []
+  const head = page === 1 ? pinnedInStock.slice(0, limit) : []
 
   return {
     products: [...head, ...products.filter((p) => !pinnedIds.has(p.id))].slice(
@@ -165,10 +169,13 @@ const fetchBestSellersPage = async (
       queryParams: { id: wanted, limit: wanted.length },
     })
     const byId = new Map(response.products.map((p) => [p.id, p]))
+    // Un best-seller epuizat nu are ce căuta în vitrină. Nu cade nici în
+    // completarea din catalog (`shown` exclude tot clasamentul), deci iese din
+    // rail cu totul până revine în stoc.
     ranked.push(
       ...wanted
         .map((id) => byId.get(id))
-        .filter((p): p is HttpTypes.StoreProduct => !!p)
+        .filter((p): p is HttpTypes.StoreProduct => !!p && isInStock(p))
     )
   }
 

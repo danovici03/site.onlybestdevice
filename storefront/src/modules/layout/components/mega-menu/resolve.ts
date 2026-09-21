@@ -1,5 +1,5 @@
 import { listCategories } from "@lib/data/categories"
-import { listCatalog, listProducts } from "@lib/data/products"
+import { listCatalog } from "@lib/data/products"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { emptySelectedFilters } from "@lib/util/product-filters"
 import { HttpTypes } from "@medusajs/types"
@@ -72,14 +72,13 @@ export async function resolveMegaMenu(
           }
 
           try {
-            const {
-              response: { products, count },
-            } = await listProducts({
+            // Prin catalog, nu prin /store/products: acolo produsele în stoc
+            // vin primele, deci meniul nu deschide cu trei „Stoc epuizat".
+            const { products, count } = await listCatalog({
               countryCode,
-              queryParams: {
-                category_id: [categoryId],
-                limit: PRODUCTS_PER_CATEGORY,
-              },
+              categoryIds: [categoryId],
+              selected: emptySelectedFilters(),
+              limit: PRODUCTS_PER_CATEGORY,
             })
 
             return { ...item, count, products: toMenuProducts(products) }

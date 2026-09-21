@@ -377,6 +377,36 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   }
 
   /**
+   * „În stoc", cu aceeași regulă ca badge-ul din cardul de produs: vreo
+   * variantă fără inventar gestionat, cu backorder sau cu stoc disponibil în
+   * locațiile canalului de vânzare. Un produs fără variante contează în stoc,
+   * tot ca în card. Jumătate din catalogul importat e epuizat — fără criteriul
+   * ăsta în față, prima pagină a oricărei liste era plină de „Stoc epuizat".
+   */
+  const locationFilter = channelIds.length
+    ? `AND il.location_id IN (
+         SELECT stock_location_id FROM sales_channel_stock_location
+         WHERE deleted_at IS NULL AND sales_channel_id IN (${bindList(channelIds, "sloc")})
+       )`
+    : ""
+  const inStockSql = `(
+    COUNT(v.id) = 0
+    OR BOOL_OR(
+      NOT v.manage_inventory
+      OR v.allow_backorder
+      OR EXISTS (
+        SELECT 1
+        FROM product_variant_inventory_item pvi
+        JOIN inventory_level il ON il.inventory_item_id = pvi.inventory_item_id
+                               AND il.deleted_at IS NULL ${locationFilter}
+        WHERE pvi.variant_id = v.id AND pvi.deleted_at IS NULL
+        GROUP BY pvi.inventory_item_id, pvi.required_quantity
+        HAVING SUM(il.stocked_quantity - il.reserved_quantity) >= pvi.required_quantity
+      )
+    )
+  )`
+
+  /**
    * Scope-ul, cu prețul pe care îl vede clientul.
    *
    * Nu prețul de bază: un produs cu preț promoțional se afișează cu prețul
@@ -396,7 +426,8 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
              p.metadata->>'filter_ram'       AS ram,
              p.metadata->>'filter_color'     AS color,
              p.metadata->>'filter_color_hex' AS color_hex,
-             MIN(ep.amount) AS price
+             MIN(ep.amount) AS price,
+             ${inStockSql} AS in_stock
       FROM product p
       LEFT JOIN product_variant v ON v.product_id = p.id AND v.deleted_at IS NULL
       LEFT JOIN product_variant_price_set vps ON vps.variant_id = v.id
@@ -552,7 +583,9 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       ].join(", ") + ", "
     : ""
 
-  const orderBy = `${relevance}${baseOrderBy}`
+  // Stocul trece înaintea oricărui alt criteriu, inclusiv relevanța la căutare
+  // și sortarea după preț: un produs epuizat nu are ce căuta pe primul ecran.
+  const orderBy = `in_stock DESC, ${relevance}${baseOrderBy}`
 
   const pageSql = `
     WITH ${scopedCte}, ${filteredCte}
