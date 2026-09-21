@@ -116,7 +116,7 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
               sizes="(min-width: 1280px) 22vw, (min-width: 640px) 33vw, 50vw"
               priority={priority}
               draggable={false}
-              className="object-contain sm:object-cover transition-transform duration-700 group-hover:scale-105"
+              className="object-contain sm:object-cover transition-transform duration-700 [@media(hover:hover)]:group-hover:scale-105"
             />
           )}
           {badge && (
@@ -145,7 +145,7 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
             {inStock ? "În stoc" : "Stoc epuizat"}
           </span>
           <h3
-            className="mt-0.5 text-sm sm:text-base font-bold text-brand-dark leading-snug line-clamp-2 group-hover:text-brand-accent transition-colors"
+            className="mt-0.5 text-sm sm:text-base font-bold text-brand-dark leading-snug line-clamp-2 [@media(hover:hover)]:group-hover:text-brand-accent transition-colors"
             data-testid="product-title"
           >
             {product.title}
@@ -230,11 +230,14 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
             </div>
           )}
 
+          {/* Pe mobil cardul are ~150px: prețul vechi coboară pe rândul lui
+              (flex-wrap, fiecare sumă `nowrap`), iar economia devine un „-19%”
+              lângă el — „Economisești 406,00 RON” nu încape pe un rând. */}
           <div className="mt-auto flex flex-col gap-1 pt-1.5 sm:pt-2">
             {cheapestPrice && (
-              <div className="flex items-baseline gap-2">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 <span
-                  className={`text-base sm:text-lg font-bold ${
+                  className={`whitespace-nowrap text-base sm:text-lg font-bold leading-tight ${
                     isSale ? "text-brand-accent" : "text-brand-dark"
                   }`}
                   data-testid="price"
@@ -242,18 +245,25 @@ const ProductCard = ({ product, priority }: ProductCardProps) => {
                   {cheapestPrice.calculated_price}
                 </span>
                 {isSale && (
-                  <span
-                    className="text-xs font-medium text-brand-dark/40 line-through"
-                    data-testid="original-price"
-                  >
-                    {cheapestPrice.original_price}
+                  <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                    <span
+                      className="text-xs font-medium text-brand-dark/40 line-through"
+                      data-testid="original-price"
+                    >
+                      {cheapestPrice.original_price}
+                    </span>
+                    {savedLabel && (
+                      <span className="sm:hidden rounded-full bg-brand-accent/10 px-1.5 py-px text-[10px] font-bold text-brand-accent">
+                        -{cheapestPrice.percentage_diff}%
+                      </span>
+                    )}
                   </span>
                 )}
               </div>
             )}
             {savedLabel && (
               <span
-                className="inline-flex w-fit items-center rounded-full bg-brand-accent/10 px-2 py-0.5 text-[11px] font-bold text-brand-accent"
+                className="hidden sm:inline-flex w-fit items-center whitespace-nowrap rounded-full bg-brand-accent/10 px-2 py-0.5 text-[11px] font-bold text-brand-accent"
                 data-testid="savings"
               >
                 Economisești {savedLabel}
