@@ -22,7 +22,7 @@ import {
 } from "@lib/util/shipping-tariff"
 
 export const metadata: Metadata = {
-  title: "Garanție și service | onlybestdevice",
+  title: "Garanție și service",
   description:
     "Garanția legală de conformitate 2 ani pentru consumatori și 12 luni pentru persoane juridice, conform OUG 140/2021. Cum trimiți un produs în service.",
 }

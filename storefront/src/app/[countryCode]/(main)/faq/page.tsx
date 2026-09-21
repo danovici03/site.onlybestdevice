@@ -5,7 +5,7 @@ import FaqClient from "@modules/suport/components/faq-client"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 export const metadata: Metadata = {
-  title: "Întrebări frecvente (FAQ) | onlybestdevice",
+  title: "Întrebări frecvente (FAQ)",
   description:
     "Toate răspunsurile despre comenzi, livrare, plăți, retururi și garanție. Caută în FAQ sau navighează pe categorii.",
 }

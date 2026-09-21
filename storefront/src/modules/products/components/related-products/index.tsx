@@ -1,5 +1,6 @@
 import { listProducts } from "@lib/data/products"
 import { getRegion } from "@lib/data/regions"
+import { isInStock } from "@lib/util/stock"
 import { WARRANTY_TAG } from "@lib/util/warranty"
 import { HttpTypes } from "@medusajs/types"
 import { ArrowRight } from "@phosphor-icons/react/dist/ssr"
@@ -49,9 +50,11 @@ export default async function RelatedProducts({
     queryParams,
     countryCode,
   }).then(({ response }) => {
-    return response.products.filter(
-      (responseProduct) => responseProduct.id !== product.id
-    )
+    // Cele în stoc în față (sortarea e stabilă, restul ordinii rămâne):
+    // raftul arată doar primele 4, care nu trebuie să fie epuizate.
+    return response.products
+      .filter((responseProduct) => responseProduct.id !== product.id)
+      .sort((a, b) => Number(isInStock(b)) - Number(isInStock(a)))
   })
 
   if (!products.length) {

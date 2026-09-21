@@ -12,7 +12,7 @@ import {
 // nouă de la UCFin.
 
 export const metadata: Metadata = {
-  title: "Credit Online UniCredit Consumer Financing | onlybestdevice",
+  title: "Credit Online UniCredit Consumer Financing",
   description:
     "Cumpără în rate prin Creditul Online de la UniCredit Consumer Financing IFN S.A. — 100% online, cu răspuns în maximum 15 minute. Condiții, produse financiare și DAE.",
 }

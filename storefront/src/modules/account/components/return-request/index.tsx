@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import {
+  groupWarrantyLines,
+  isWarrantyLine,
+  warrantyTargetTitle,
+} from "@lib/util/warranty"
 import Thumbnail from "@modules/products/components/thumbnail"
 import AccountCard from "../account-card"
 import { createReturnRequest } from "@lib/data/returns"
@@ -128,7 +133,7 @@ const ReturnRequestForm = ({
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <AccountCard title={t.returns.selectItems} padded={false}>
           <ul className="divide-y divide-brand-dark/[0.06]">
-            {(order.items ?? []).map((item) => {
+            {groupWarrantyLines(order.items ?? []).map((item) => {
               const it = items[item.id]
               return (
                 <li key={item.id} className="p-4 small:p-6">
@@ -144,13 +149,18 @@ const ReturnRequestForm = ({
                         data-testid={`return-item-${item.id}`}
                       />
                     </label>
-                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-brand-light shrink-0">
-                      <Thumbnail
-                        thumbnail={item.thumbnail}
-                        images={[]}
-                        size="full"
-                      />
-                    </div>
+                    {/* Garanția e o opțiune, nu un produs: fără poză. */}
+                    {isWarrantyLine(item) ? (
+                      <div className="w-16 shrink-0" aria-hidden />
+                    ) : (
+                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-brand-light shrink-0">
+                        <Thumbnail
+                          thumbnail={item.thumbnail}
+                          images={[]}
+                          size="full"
+                        />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-brand-dark">
                         {item.product_title || item.title}
@@ -162,8 +172,13 @@ const ReturnRequestForm = ({
                             {item.variant_title}
                           </p>
                         )}
+                      {warrantyTargetTitle(item) && (
+                        <p className="text-xs text-brand-dark/60">
+                          pentru {warrantyTargetTitle(item)}
+                        </p>
+                      )}
                       <p className="text-xs text-brand-dark/60 mt-1">
-                        Ordinati: {item.quantity}
+                        Comandate: {item.quantity}
                       </p>
                     </div>
                   </div>

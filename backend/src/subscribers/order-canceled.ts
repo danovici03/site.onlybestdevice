@@ -28,7 +28,9 @@ export default async function orderCanceledHandler({
       "items.title",
       "items.variant_title",
       "items.thumbnail",
-      "items.quantity",
+      // `items.*`, nu `items.quantity`: cantitatea liniei de comandă stă în
+      // `order_item`, iar query.graph o mapează doar la `*` — altfel e undefined.
+      "items.*",
       "items.total",
       "shipping_address.first_name",
     ],

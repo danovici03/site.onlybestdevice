@@ -9,7 +9,7 @@ import {
 } from "@lib/util/shipping-tariff"
 
 export const metadata: Metadata = {
-  title: "Livrarea comenzilor | onlybestdevice",
+  title: "Livrarea comenzilor",
   description:
     "Termene, costuri și modalități de livrare prin curier. Ce faci în cazul unui colet deteriorat.",
 }
@@ -54,23 +54,20 @@ export default function LivrarePage() {
 
       <h2>Cum se plătește transportul</h2>
       <p>
-        <strong>
-          Taxa de transport nu este încasată de noi și nu este inclusă în totalul
-          comenzii.
-        </strong>{" "}
-        O achiți direct curierului {COURIER_NAME}, la primirea coletului, odată
-        cu semnarea de primire. Tariful este afișat în coș și în pagina de
-        finalizare a comenzii, înainte să plasezi comanda, iar suma pe care o
-        plătești online (sau prin rate) acoperă doar produsele.
+        <strong>Taxa de transport este inclusă în totalul comenzii.</strong>{" "}
+        Tariful apare pe rând separat în coș și în pagina de finalizare, înainte
+        să plasezi comanda, iar totalul afișat este suma finală: nu mai apare
+        nimic în plus la livrare.
       </p>
       <p>
-        Dacă alegi <strong>plata la livrare (ramburs)</strong>, curierul
-        încasează într-o singură tranzacție atât contravaloarea produselor, cât
-        și taxa de transport.
+        La <strong>plata cu cardul</strong>, la <strong>plata în rate</strong>{" "}
+        și la <strong>ordinul de plată</strong>, transportul se achită odată cu
+        produsele, în aceeași tranzacție.
       </p>
       <p>
-        Pentru transport, documentul fiscal îl emite {COURIER_NAME}; factura
-        noastră cuprinde doar produsele comandate.
+        La <strong>plata la livrare (ramburs)</strong> dai o singură sumă
+        curierului — produsele plus transportul — iar taxa de transport o reține{" "}
+        {COURIER_NAME}.
       </p>
 
       <h2>Verificarea coletului la livrare</h2>
@@ -99,11 +96,6 @@ export default function LivrarePage() {
         către tine.
       </p>
 
-      <hr />
-      <p className="text-xs text-brand-dark/50">
-        TODO: confirmați zonele deservite și eventualele suprataxe {COURIER_NAME}{" "}
-        (localități izolate, colete voluminoase) înainte de lansare.
-      </p>
     </InfoPageLayout>
   )
 }

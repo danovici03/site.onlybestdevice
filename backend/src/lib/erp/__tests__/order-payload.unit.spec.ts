@@ -154,4 +154,86 @@ describe("toErpPayload", () => {
 
     expect(p.line_items[0].name).toBe("iPhone 15")
   })
+
+  it("marcheaza garantia extinsa si o leaga de linia telefonului", () => {
+    const p = toErpPayload({
+      ...base,
+      items: [
+        { ...base.items[0], quantity: 2, total: 7998 },
+        {
+          id: "item_w",
+          variant_id: "variant_w2",
+          product_id: "prod_warranty",
+          product_handle: "garantie-extinsa",
+          variant_sku: "garantie-extinsa-2ani",
+          product_title: "Garanție extinsă",
+          variant_title: "+2 ani",
+          metadata: { warranty_for: "prod_01H", warranty_for_title: "iPhone 15" },
+          quantity: 2,
+          unit_price: 169,
+          tax_total: 0,
+          total: 338,
+        },
+      ],
+    })
+
+    expect(p.line_items[0]).toMatchObject({
+      is_extended_warranty: false,
+      warranty_extra_months: null,
+      warranty_for_line_id: null,
+    })
+    expect(p.line_items[1]).toMatchObject({
+      is_extended_warranty: true,
+      warranty_extra_months: 24,
+      warranty_for_line_id: "item_1",
+      warranty_for_product_id: "prod_01H",
+      warranty_for_variant_id: "variant_01H",
+      warranty_for_title: "iPhone 15",
+      quantity: 2,
+    })
+  })
+
+  it("imparte garantia pe toate liniile aceluiasi produs", () => {
+    const p = toErpPayload({
+      ...base,
+      items: [
+        base.items[0],
+        { ...base.items[0], id: "item_2", variant_id: "variant_alb", variant_title: "128GB Alb" },
+        {
+          id: "item_w",
+          product_id: "prod_warranty",
+          product_handle: "garantie-extinsa",
+          variant_title: "+1 an",
+          metadata: { warranty_for: "prod_01H" },
+          quantity: 2,
+          unit_price: 99,
+        },
+      ],
+    })
+
+    expect(p.line_items[2].warranty_covers).toEqual([
+      { line_id: "item_1", variant_id: "variant_01H", quantity: 1 },
+      { line_id: "item_2", variant_id: "variant_alb", quantity: 1 },
+    ])
+  })
+
+  it("garantia de un an adauga 12 luni", () => {
+    const p = toErpPayload({
+      ...base,
+      items: [
+        base.items[0],
+        {
+          id: "item_w",
+          product_id: "prod_warranty",
+          product_handle: "garantie-extinsa",
+          variant_title: "+1 an",
+          metadata: { warranty_for: "prod_01H" },
+          quantity: 1,
+          unit_price: 99,
+        },
+      ],
+    })
+
+    expect(p.line_items[1].warranty_extra_months).toBe(12)
+  })
 })

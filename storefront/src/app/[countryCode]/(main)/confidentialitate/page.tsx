@@ -4,7 +4,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import { COMPANY, indirizzoLegale } from "@lib/util/company-info"
 
 export const metadata: Metadata = {
-  title: "Politica de confidențialitate | onlybestdevice",
+  title: "Politica de confidențialitate",
   description:
     "Informații privind prelucrarea datelor cu caracter personal conform Regulamentului (UE) 2016/679 (GDPR).",
 }
@@ -134,11 +134,6 @@ export default function ConfidentialitatePage() {
         {REVISION_DATE}.
       </p>
 
-      <hr />
-      <p className="text-xs text-brand-dark/50">
-        TODO: completați datele operatorului în <code>company-info.ts</code> și
-        validați textul cu un consilier juridic / DPO înainte de lansare.
-      </p>
     </InfoPageLayout>
   )
 }

@@ -1,3 +1,4 @@
+import { isInStock } from "@lib/util/stock"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { getProductBadge } from "@lib/util/product-badge"
 import {
@@ -31,20 +32,6 @@ const getColorOption = (product: HttpTypes.StoreProduct) => {
   return (product.options ?? []).find((o) =>
     /colou?r|culoare/i.test(o.title ?? "")
   )
-}
-
-// În stoc dacă vreo variantă e cumpărabilă. Produsele importate au
-// manage_inventory=false (mereu disponibile), deci implicit „În stoc"; arătăm
-// „Stoc epuizat" doar când inventarul e gestionat și e 0.
-const isInStock = (product: HttpTypes.StoreProduct): boolean => {
-  const variants = product.variants ?? []
-  if (!variants.length) return true
-  return variants.some((v) => {
-    const mi = (v as any).manage_inventory
-    if (mi === false || mi == null) return true
-    if ((v as any).allow_backorder) return true
-    return ((v as any).inventory_quantity ?? 0) > 0
-  })
 }
 
 type ProductCardProps = {

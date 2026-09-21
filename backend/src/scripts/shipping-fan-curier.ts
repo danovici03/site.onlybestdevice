@@ -1,15 +1,18 @@
 /**
- * Trece livrarea pe modelul „taxa se achită curierului":
- *  - opțiunile de curier rămân în checkout, dar cu preț 0 în Medusa — banii de
- *    transport nu trec prin site, clientul îi dă curierului la primirea coletului;
+ * Aduce livrarea la starea curentă: transportul se încasează prin site.
+ *  - pune tariful real pe opțiunile de curier (38 lei / 43,99 lei), ca el să
+ *    intre în `shipping_total` și în totalul comenzii — de acolo ajunge singur
+ *    în suma cerută la card, la rate și la ordin de plată;
  *  - le redenumește pe Fan Curier și le pune descrierea corectă;
- *  - aliniază și „Ridicare personală" la denumirea/descrierea curente;
- *  - dezactivează promoția „transport gratuit peste 1000 lei" (nu mai are ce să
- *    facă gratuit, iar afișată ar fi o promisiune falsă).
+ *  - aliniază și „Ridicare personală" la denumirea/descrierea curente (rămâne 0);
+ *  - dezactivează promoția „transport gratuit peste 1000 lei", care ar face
+ *    gratuit exact ce tocmai am pus la plată.
  *
- * Cifrele afișate clientului (38 lei / 43,99 lei) NU stau aici: transportul nu e
- * un preț Medusa, ci text informativ. Sursa unică e
- * storefront/src/lib/util/shipping-tariff.ts.
+ * La ramburs tariful apare la fel în total, dar banii îi ia curierul direct;
+ * diferența o explică textul din checkout, nu configurația de aici.
+ *
+ * Cifrele stau în `src/lib/shipping/tariffs.ts`, dublate în storefront pentru
+ * textele informative de pe paginile statice.
  *
  * Idempotent: îl poți rula de câte ori vrei (local și pe producție).
  *
@@ -19,17 +22,16 @@ import { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { updateShippingOptionsWorkflow } from "@medusajs/medusa/core-flows"
 
+import { PRIORITY_TARIFF, STANDARD_TARIFF } from "../lib/shipping/tariffs"
+
 const STANDARD_NAME = "Livrare prin Fan Curier"
 const STANDARD_LABEL = "Standard"
-const STANDARD_DESCRIPTION =
-  "Livrare în 1–3 zile lucrătoare. Taxa de transport se achită direct " +
-  "curierului, la primirea coletului."
+const STANDARD_DESCRIPTION = "Livrare în 1–3 zile lucrătoare."
 
 const PRIORITY_NAME = "Livrare prioritară prin Fan Curier"
 const PRIORITY_LABEL = "Prioritară"
 const PRIORITY_DESCRIPTION =
-  "Comanda ta e procesată și expediată cu prioritate, înaintea celorlalte. " +
-  "Taxa de transport se achită direct curierului, la primirea coletului."
+  "Comanda ta e procesată și expediată cu prioritate, înaintea celorlalte."
 
 const PICKUP_NAME = "Ridicare personală de la locația magazinului"
 const PICKUP_LABEL = "Ridicare din magazin"
@@ -71,23 +73,31 @@ export default async function shippingFanCurier({ container }: ExecArgs) {
   if (!priority) throw new Error("Nu găsesc opțiunea de livrare prioritară.")
   if (!pickup) throw new Error("Nu găsesc opțiunea de ridicare personală.")
 
-  // Rescriem toate prețurile existente pe 0, păstrând structura (preț pe monedă
-  // + preț pe regiune), ca să nu pierdem regula de regiune.
-  const zeroPrices = (option: any) =>
+  // Rescriem toate prețurile existente pe tarif, păstrând structura (preț pe
+  // monedă + preț pe regiune), ca să nu pierdem regula de regiune.
+  const pricesAt = (option: any, amount: number) =>
     (option.prices || []).map((p: any) => {
       const regionRule = (p.price_rules || []).find(
         (r: any) => r.attribute === "region_id"
       )
       return regionRule
-        ? { region_id: regionRule.value, amount: 0 }
-        : { currency_code: p.currency_code, amount: 0 }
+        ? { region_id: regionRule.value, amount }
+        : { currency_code: p.currency_code, amount }
     })
 
   await updateShippingOptionsWorkflow(container).run({
     input: [
-      { id: standard.id, name: STANDARD_NAME, prices: zeroPrices(standard) },
-      { id: priority.id, name: PRIORITY_NAME, prices: zeroPrices(priority) },
-      { id: pickup.id, name: PICKUP_NAME },
+      {
+        id: standard.id,
+        name: STANDARD_NAME,
+        prices: pricesAt(standard, STANDARD_TARIFF),
+      },
+      {
+        id: priority.id,
+        name: PRIORITY_NAME,
+        prices: pricesAt(priority, PRIORITY_TARIFF),
+      },
+      { id: pickup.id, name: PICKUP_NAME, prices: pricesAt(pickup, 0) },
     ] as any,
   })
 
@@ -115,11 +125,11 @@ export default async function shippingFanCurier({ container }: ExecArgs) {
     })
   }
 
-  logger.info(`✓ „${STANDARD_NAME}" — 0 lei în coș, taxa se achită curierului.`)
-  logger.info(`✓ „${PRIORITY_NAME}" — 0 lei în coș, taxa se achită curierului.`)
+  logger.info(`✓ „${STANDARD_NAME}" — ${STANDARD_TARIFF} lei în coș.`)
+  logger.info(`✓ „${PRIORITY_NAME}" — ${PRIORITY_TARIFF} lei în coș.`)
   logger.info(`✓ „${PICKUP_NAME}" — gratuită.`)
 
-  // Transportul nu mai e încasat de noi → promoția de transport gratuit iese.
+  // Transportul se încasează din nou → promoția l-ar face gratuit pe tăcute.
   const { data: promos } = await query.graph({
     entity: "promotion",
     fields: ["id", "code", "status"],
@@ -139,20 +149,30 @@ export default async function shippingFanCurier({ container }: ExecArgs) {
     logger.info(`✓ Promoția „${FREE_SHIPPING_CODE}" dezactivată.`)
   }
 
-  await clearStaleShippingMethods(container, logger)
+  await clearStaleShippingMethods(container, logger, {
+    [standard.id]: STANDARD_TARIFF,
+    [priority.id]: PRIORITY_TARIFF,
+    [pickup.id]: 0,
+  })
 
-  logger.info("✓ Livrare Fan Curier cu plata la curier — configurare completă.")
+  logger.info("✓ Livrare Fan Curier, transport inclus în coș — configurare completă.")
 }
 
 /**
  * Medusa îngheață suma în metoda de livrare salvată pe coș, deci coșurile
- * deschise dinainte de schimbare ar mai încasa vechea taxă. Le scoatem metoda:
- * clientul o realege în checkout, deja pe 0.
+ * deschise dinainte de schimbare ar rămâne cu taxa veche (0, de pe vremea când
+ * transportul se plătea curierului). Le scoatem metoda: clientul o realege în
+ * checkout, deja pe tariful nou.
  *
- * Acum că toate opțiunile sunt pe 0, „metodă cu sumă > 0 pe un coș neîncheiat"
- * înseamnă exact „rest din configurația veche".
+ * „Veche" înseamnă sumă diferită de prețul curent al opțiunii ei — comparăm
+ * per opțiune, nu cu o valoare fixă, ca ridicarea din magazin (0) să nu fie
+ * ștearsă la fiecare rulare.
  */
-async function clearStaleShippingMethods(container: any, logger: any) {
+async function clearStaleShippingMethods(
+  container: any,
+  logger: any,
+  priceByOption: Record<string, number>
+) {
   const cart = container.resolve(Modules.CART)
 
   const PAGE = 500
@@ -160,10 +180,16 @@ async function clearStaleShippingMethods(container: any, logger: any) {
   for (let skip = 0; ; skip += PAGE) {
     const page = await cart.listShippingMethods(
       {},
-      { select: ["id", "cart_id", "amount"], skip, take: PAGE }
+      { select: ["id", "cart_id", "amount", "shipping_option_id"], skip, take: PAGE }
     )
     stale.push(
-      ...page.filter((m: any) => Number(m.amount) > 0 && m.cart_id)
+      ...page.filter((m: any) => {
+        if (!m.cart_id) return false
+        const expected = priceByOption[m.shipping_option_id]
+        // Opțiune necunoscută (ștearsă între timp): nu ne atingem de ea.
+        if (expected === undefined) return false
+        return Number(m.amount) !== expected
+      })
     )
     if (page.length < PAGE) break
   }

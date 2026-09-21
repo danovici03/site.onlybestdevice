@@ -1,3 +1,4 @@
+import { WARRANTY_HANDLE } from "../../../lib/warranty-prices"
 import { bankAccount } from "../../../lib/company/bank-account"
 import {
   formatCui as formatBuyerCui,
@@ -149,18 +150,50 @@ const thumbnailImg = (item: any) => {
   return `<div style="width:56px;height:56px;border-radius:10px;background:${COLOR.light};"></div>`
 }
 
+/**
+ * Garanția extinsă e o opțiune a produsului pe care îl acoperă, nu un produs:
+ * pagina ei e ascunsă din catalog și n-are poză. În email apare fără miniatură
+ * și fără link, imediat sub produsul acoperit — la fel ca în storefront
+ * (`groupWarrantyLines` din `storefront/src/lib/util/warranty.ts`).
+ */
+const isWarrantyItem = (i: any) =>
+  (i.product_handle || i.variant?.product?.handle) === WARRANTY_HANDLE
+
+const groupWarrantyItems = (items: any[]) => {
+  const warranties = items.filter(isWarrantyItem)
+  if (!warranties.length) return items
+  const placed = new Set<any>()
+  const out: any[] = []
+  for (const item of items) {
+    if (isWarrantyItem(item)) continue
+    out.push(item)
+    for (const w of warranties) {
+      if (!placed.has(w) && item.product_id && w.metadata?.warranty_for === item.product_id) {
+        out.push(w)
+        placed.add(w)
+      }
+    }
+  }
+  return [...out, ...warranties.filter((w) => !placed.has(w))]
+}
+
 const renderOrderItems = (
   items: any[] | undefined,
   storefrontUrl?: string
 ) => {
   if (!items?.length) return ""
-  const rows = items
+  const rows = groupWarrantyItems(items)
     .map((i) => {
-      const href = productUrlFor(i, storefrontUrl)
-      const thumb = thumbnailImg(i)
+      const warranty = isWarrantyItem(i)
+      const href = warranty ? null : productUrlFor(i, storefrontUrl)
+      const thumb = warranty ? "" : thumbnailImg(i)
       const thumbCell = href
         ? `<a href="${escape(href)}" style="display:block;text-decoration:none;">${thumb}</a>`
         : thumb
+      const coveredTitle =
+        warranty && typeof i.metadata?.warranty_for_title === "string"
+          ? i.metadata.warranty_for_title
+          : null
       const title = escape(i.product_title || i.title || "")
       const titleEl = href
         ? `<a href="${escape(href)}" style="color:${COLOR.dark};text-decoration:none;font-weight:600;">${title}</a>`
@@ -172,7 +205,8 @@ const renderOrderItems = (
         </td>
         <td valign="top" style="padding:14px 0 14px 14px;border-bottom:1px solid ${COLOR.border};">
           <span style="font-size:14px;line-height:1.4;">${titleEl}</span>
-          ${i.variant_title ? `<br><span style="color:${COLOR.muted};font-size:13px;line-height:1.5;">${escape(i.variant_title)}</span>` : ""}
+          ${i.variant_title && i.variant_title !== (i.product_title || i.title) ? `<br><span style="color:${COLOR.muted};font-size:13px;line-height:1.5;">${escape(i.variant_title)}</span>` : ""}
+          ${coveredTitle ? `<br><span style="color:${COLOR.muted};font-size:13px;line-height:1.5;">pentru ${escape(coveredTitle)}</span>` : ""}
         </td>
         <td valign="top" style="padding:14px 0;border-bottom:1px solid ${COLOR.border};text-align:center;color:${COLOR.muted};font-size:14px;">${i.quantity}</td>
         <td valign="top" style="padding:14px 0;border-bottom:1px solid ${COLOR.border};text-align:right;font-variant-numeric:tabular-nums;color:${COLOR.dark};font-size:14px;">${money(i.total, i.currency_code)}</td>
@@ -190,9 +224,55 @@ const renderOrderItems = (
     </table>`
 }
 
+/**
+ * Ramburs: singura metodă la care banii trec prin curier, nu prin noi. Citim
+ * întâi plata efectivă, apoi sesiunea — ca în `resolvePaymentProvider` din ERP.
+ */
+const isCodOrder = (order: Record<string, any>) => {
+  const collections = order.payment_collections ?? []
+  const provider =
+    collections
+      .flatMap((pc: any) => pc?.payments ?? [])
+      .find((p: any) => p?.provider_id)?.provider_id ??
+    collections
+      .flatMap((pc: any) => pc?.payment_sessions ?? [])
+      .find((sn: any) => sn?.provider_id)?.provider_id
+  return typeof provider === "string" && provider.includes("cod")
+}
+
 /** Ridicarea din magazin e singura opțiune fără taxă de curier. */
 const isPickupOrder = (order: Record<string, any>) =>
   (order.shipping_methods ?? []).some((m: any) => /ridicare/i.test(m?.name ?? ""))
+
+/**
+ * Subtotal produse + livrare (+ reducere) = total. Fără rândul de livrare,
+ * clientul vedea produsele adunând 4.298 lei și un total de 4.336, fără să
+ * afle de unde vin cei 38 de lei.
+ */
+const renderOrderTotals = (order: Record<string, any>): string => {
+  const currency = order.currency_code
+  const shipping =
+    order.shipping_total ??
+    (order.shipping_methods ?? []).reduce(
+      (sum: number, m: any) => sum + Number(m?.amount ?? 0),
+      0
+    )
+  const discount = Number(order.discount_total ?? 0)
+  const items =
+    order.item_subtotal ?? Number(order.total ?? 0) - Number(shipping) + discount
+  const row = (label: string, value: string, strong = false) => `
+      <tr>
+        <td style="padding:4px 0;font-size:${strong ? 16 : 14}px;color:${strong ? COLOR.dark : COLOR.muted};">${strong ? `<strong>${label}</strong>` : label}</td>
+        <td style="padding:4px 0;font-size:${strong ? 16 : 14}px;text-align:right;font-variant-numeric:tabular-nums;color:${COLOR.dark};">${strong ? `<strong>${value}</strong>` : value}</td>
+      </tr>`
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0 16px;border-collapse:collapse;">
+      ${row("Subtotal produse", money(items, currency))}
+      ${discount > 0 ? row("Reducere", `- ${money(discount, currency)}`) : ""}
+      ${row("Livrare", Number(shipping) > 0 ? money(Number(shipping), currency) : "Gratuit")}
+      ${row("Total", money(order.total, currency), true)}
+    </table>`
+}
 
 /** Metoda (sau metodele) de livrare alese, cu preț doar când chiar costă. */
 const shippingMethodLine = (order: Record<string, any>): string => {
@@ -309,15 +389,18 @@ const orderPlacedCustomer: Renderer = ({ order, storefront_url }) => {
   const orderUrl = `${resolveStorefrontUrl(storefront_url)}/${locale()}/order/${order.id}/confirmed`
   const firstName = order.shipping_address?.first_name
   const pickup = isPickupOrder(order)
-  // Totalul comenzii nu conține transportul — clientul îl dă curierului.
-  const courierNote = pickup
-    ? ""
-    : `<p style="margin:0 0 16px;font-size:13px;color:${COLOR.muted};">Taxa de transport nu este inclusă în acest total: o achiți direct curierului, la primirea coletului.</p>`
+  // Livrarea face parte din comandă: e în total, ca orice altă linie. La
+  // ramburs spunem explicit că la ușă se dă o singură sumă — altfel pare că
+  // transportul se mai plătește o dată curierului.
+  const courierNote =
+    pickup || !isCodOrder(order)
+      ? ""
+      : `<p style="margin:0 0 16px;font-size:13px;color:${COLOR.muted};">Plătești acest total curierului, la primirea coletului — produsele și livrarea, într-o singură sumă.</p>`
   const body = `
     ${greeting(firstName)}
     <p style="margin:0 0 16px;">îți mulțumim pentru comanda <strong>#${escape(display)}</strong>. Am primit-o cu bine și o pregătim.</p>
     ${renderOrderItems(order.items, storefront_url)}
-    <p style="margin:16px 0;font-size:16px;"><strong>Total: ${money(order.total, order.currency_code)}</strong></p>
+    ${renderOrderTotals(order)}
     ${courierNote}
     ${deliveryPanel(
       order,

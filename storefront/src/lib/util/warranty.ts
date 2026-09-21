@@ -187,7 +187,18 @@ export function canOfferWarrantyFor(
   return price !== null && price >= WARRANTY_MIN_PRICE
 }
 
-export function isWarrantyLine(item: Line): boolean {
+/**
+ * O linie de coș SAU de comandă — cât ne trebuie ca să recunoaștem garanția.
+ * Liniile de comandă păstrează `product_handle` și `metadata` de la coș.
+ */
+type AnyLine = {
+  product_id?: string | null
+  product_handle?: string | null
+  metadata?: Record<string, unknown> | null
+  variant?: { product?: { handle?: string | null } | null } | null
+}
+
+export function isWarrantyLine(item: AnyLine): boolean {
   return (
     item.product_handle === WARRANTY_HANDLE ||
     item.variant?.product?.handle === WARRANTY_HANDLE
@@ -195,11 +206,40 @@ export function isWarrantyLine(item: Line): boolean {
 }
 
 /** Produsul pe care îl acoperă o linie de garanție, dacă e legată de unul. */
-export function warrantyTargetTitle(item: Line): string | null {
+export function warrantyTargetTitle(item: AnyLine): string | null {
   const raw = (item.metadata as Record<string, unknown> | undefined)?.[
     WARRANTY_FOR_TITLE
   ]
   return typeof raw === "string" && raw.length > 0 ? raw : null
+}
+
+/**
+ * Liniile în ordinea de afișare: fiecare garanție imediat sub produsul pe care
+ * îl acoperă.
+ *
+ * Garanția nu e un produs, ci o opțiune a celui de deasupra — se arată fără
+ * poză și fără link, deci are nevoie de vecinătate ca să se înțeleagă. Sortat
+ * doar după `created_at`, ajungea deasupra telefonului (e adăugată după el).
+ * Ordinea celorlalte linii rămâne cea primită; garanțiile nelegate sau al căror
+ * produs a fost scos din coș cad la final.
+ */
+export function groupWarrantyLines<T extends AnyLine>(items: T[]): T[] {
+  const warranties = items.filter(isWarrantyLine)
+  if (!warranties.length) return items
+
+  const placed = new Set<T>()
+  const out: T[] = []
+  for (const item of items) {
+    if (isWarrantyLine(item)) continue
+    out.push(item)
+    for (const w of warranties) {
+      if (!placed.has(w) && item.product_id && w.metadata?.[WARRANTY_FOR] === item.product_id) {
+        out.push(w)
+        placed.add(w)
+      }
+    }
+  }
+  return [...out, ...warranties.filter((w) => !placed.has(w))]
 }
 
 /**

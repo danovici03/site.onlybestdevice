@@ -6,7 +6,7 @@ import { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 export const metadata: Metadata = {
-  title: "Finalizare comandă | onlybestdevice",
+  title: "Finalizare comandă",
   description: "Finalizează comanda într-un singur pas.",
 }
 

@@ -35,7 +35,7 @@ export const paymentInfoMap: Record<
     icon: <PayPal />,
   },
   pp_system_default: {
-    title: "Bonifico bancario",
+    title: "Ordin de plată (transfer bancar)",
     icon: <CreditCard />,
   },
   // Add more payment providers here
@@ -78,9 +78,19 @@ export const COD_MAX_AMOUNT = 5000
 /** Moneda pe care e activ ramburs-ul; plafonul e o normă fiscală românească. */
 const COD_CURRENCY = "ron"
 
-/** Ramburs-ul e disponibil doar sub plafonul de numerar, și doar în lei. */
-export const codAvailable = (total: number, currencyCode?: string) => {
-  return currencyCode?.toLowerCase() === COD_CURRENCY && total <= COD_MAX_AMOUNT
+/**
+ * Ramburs-ul e disponibil doar sub plafonul de numerar, și doar în lei.
+ *
+ * Se compară pe marfă, nu pe totalul comenzii: transportul apare în total, dar
+ * îl oprește curierul pentru el, deci nu intră în ramburs-ul care ajunge la
+ * noi. Fără distincția asta, o comandă de fix 5.000 lei marfă ar pierde
+ * ramburs-ul din cauza celor 38 de lei de transport.
+ */
+export const codAvailable = (itemSubtotal: number, currencyCode?: string) => {
+  return (
+    currencyCode?.toLowerCase() === COD_CURRENCY &&
+    itemSubtotal <= COD_MAX_AMOUNT
+  )
 }
 
 /** Rate prin TBI Bank (eCommerce API) — flux redirect + callback criptat. */

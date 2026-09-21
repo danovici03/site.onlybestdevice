@@ -1,4 +1,5 @@
 import path from "path"
+import { groupWarrantyLines, warrantyTargetTitle } from "@lib/util/warranty"
 import React from "react"
 import {
   Document,
@@ -9,6 +10,12 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer"
 import { HttpTypes } from "@medusajs/types"
+import {
+  COMPANY as SOCIETATE,
+  indirizzoLegale,
+  indirizzoOperativo,
+  sediulCoincideCuPunctulDeLucru,
+} from "@lib/util/company-info"
 import { formatCui, readCompanyFiscal } from "@lib/util/cui"
 void React
 
@@ -56,15 +63,22 @@ Font.register({
 // numele proprii („Cluj-Napo-ca").
 Font.registerHyphenationCallback((word) => [word])
 
+/**
+ * Antetul facturii, derivat din datele societare comune — nu rescrise aici,
+ * ca să nu ajungă factura să spună altceva decât paginile legale. Adresa merge
+ * întreagă: pe o factură, „Bistrița (BN)" nu ține loc de sediu social.
+ */
 const COMPANY = {
-  brand: "onlybestdevice",
-  legalName: "ONLY BEST DEVICE S.R.L.",
-  vat: "CUI 43546040",
-  rea: "Reg. Com. J06/26/2021",
-  sedeLegale: "Sediu social: Bistrița (BN)",
-  sedeOperativa: "Punct de lucru: Bistrița (BN)",
-  email: "office@onlybestdevice.ro",
-  website: "onlybestdevice.ro",
+  brand: SOCIETATE.marchio,
+  legalName: SOCIETATE.ragioneSociale,
+  vat: `CUI ${SOCIETATE.piva}`,
+  rea: `Reg. Com. ${SOCIETATE.rea}`,
+  sedeLegale: `Sediu social: ${indirizzoLegale()}`,
+  sedeOperativa: sediulCoincideCuPunctulDeLucru()
+    ? ""
+    : `Punct de lucru: ${indirizzoOperativo()}`,
+  email: SOCIETATE.email,
+  website: SOCIETATE.dominio,
 }
 
 const styles = StyleSheet.create({
@@ -91,13 +105,16 @@ const styles = StyleSheet.create({
     color: COLORS.dark,
   },
   brandAccent: { color: COLORS.accent },
+  // Coloana firmei are lățime fixă: fără ea, rândul lung cu sediul social o
+  // lățea până peste logo și ieșea din pagină în dreapta.
   companyMeta: {
+    width: 230,
     fontSize: 8,
     color: COLORS.muted,
     textAlign: "right",
     lineHeight: 1.5,
   },
-  companyLine: { fontSize: 8, color: COLORS.muted },
+  companyLine: { fontSize: 8, color: COLORS.muted, textAlign: "right" },
   docTitleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -274,7 +291,9 @@ export const InvoiceDocument = ({ order }: { order: HttpTypes.StoreOrder }) => {
             <Text style={styles.companyLine}>{COMPANY.vat}</Text>
             <Text style={styles.companyLine}>{COMPANY.rea}</Text>
             <Text style={styles.companyLine}>{COMPANY.sedeLegale}</Text>
-            <Text style={styles.companyLine}>{COMPANY.sedeOperativa}</Text>
+            {COMPANY.sedeOperativa ? (
+              <Text style={styles.companyLine}>{COMPANY.sedeOperativa}</Text>
+            ) : null}
             <Text style={styles.companyLine}>{COMPANY.email}</Text>
           </View>
         </View>
@@ -322,12 +341,18 @@ export const InvoiceDocument = ({ order }: { order: HttpTypes.StoreOrder }) => {
             <Text style={styles.cellUnit}>Preț unit.</Text>
             <Text style={styles.cellTotal}>Total</Text>
           </View>
-          {(order.items ?? []).map((item) => (
+          {groupWarrantyLines(order.items ?? []).map((item) => (
             <View key={item.id} style={styles.tr}>
               <View style={styles.cellProduct}>
                 <Text>{item.product_title || item.title}</Text>
-                {item.variant_title ? (
+                {item.variant_title &&
+                item.variant_title !== (item.product_title || item.title) ? (
                   <Text style={styles.variant}>{item.variant_title}</Text>
+                ) : null}
+                {warrantyTargetTitle(item) ? (
+                  <Text style={styles.variant}>
+                    pentru {warrantyTargetTitle(item)}
+                  </Text>
                 ) : null}
               </View>
               <Text style={styles.cellQty}>{item.quantity}</Text>
@@ -341,7 +366,11 @@ export const InvoiceDocument = ({ order }: { order: HttpTypes.StoreOrder }) => {
         <View style={styles.totalsBox}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal</Text>
-            <Text style={styles.totalValue}>{money(order.subtotal)}</Text>
+            {/* `subtotal` include deja transportul în Medusa 2 — cu rândul
+                „Livrare" dedesubt, l-am fi numărat de două ori. Ca în coș. */}
+            <Text style={styles.totalValue}>
+              {money(order.item_subtotal ?? order.subtotal)}
+            </Text>
           </View>
           {order.discount_total > 0 && (
             <View style={styles.totalRow}>
@@ -355,10 +384,14 @@ export const InvoiceDocument = ({ order }: { order: HttpTypes.StoreOrder }) => {
             <Text style={styles.totalLabel}>Livrare</Text>
             <Text style={styles.totalValue}>{money(order.shipping_total)}</Text>
           </View>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>TVA</Text>
-            <Text style={styles.totalValue}>{money(order.tax_total)}</Text>
-          </View>
+          {/* Prețurile includ TVA; „TVA 0,00" ar sugera că nu se plătește.
+              Rândul apare doar când Medusa chiar calculează taxa — ca în coș. */}
+          {!!order.tax_total && (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>TVA</Text>
+              <Text style={styles.totalValue}>{money(order.tax_total)}</Text>
+            </View>
+          )}
           <View style={styles.totalGrand}>
             <Text>Total</Text>
             <Text>{money(order.total)}</Text>

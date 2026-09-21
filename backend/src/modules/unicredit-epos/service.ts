@@ -30,10 +30,11 @@ import { EposClientOptions } from './client'
  *
  * Banii nu se mișcă prin acest provider: după plasarea comenzii, storefront-ul
  * cere `/store/unicredit/session`, care creează cererea de credit în ePOS și
- * redirecționează clientul acolo. Statusul final vine prin callback-ul
- * `/hooks/unicredit`:
+ * redirecționează clientul acolo. Statusurile vin prin callback-ul
+ * `/hooks/unicredit` (ePOS trimite tot ciclul de viață, nu doar finalul):
  *   - Disbursed → coșul a fost finanțat → capturăm plata, comanda se livrează
- *   - Rejected / Cancelled → anulăm comanda
+ *   - Rejected / Cancelled / Expired → anulăm comanda
+ *   - restul (ex. Started) → doar se consemnează în metadata comenzii
  *
  * Până la callback, plata rămâne „authorized" (autorizată, necapturată) —
  * echivalentul „în așteptare finanțare".
