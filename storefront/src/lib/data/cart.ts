@@ -225,6 +225,49 @@ export async function addWarrantyToCart({
     .catch(medusaError)
 }
 
+/**
+ * Realiniază garanțiile extinse cu produsele acoperite: aceeași cantitate,
+ * scoase odată cu produsul. Regula stă în backend (`syncWarrantyLines`); aici
+ * doar o declanșăm după orice schimbare care o poate strica. O eroare nu
+ * blochează clientul — `alignWarrantiesBeforePayment` repară la finalizare.
+ *
+ * Întoarce `true` dacă a modificat coșul.
+ */
+async function syncWarranties(cartId: string): Promise<boolean> {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+  return sdk.client
+    .fetch<{ changed?: boolean }>(`/store/carts/${cartId}/warranty/sync`, {
+      method: "POST",
+      headers,
+    })
+    .then((r) => !!r?.changed)
+    .catch(() => false)
+}
+
+/**
+ * Plasa de siguranță de la finalizare, chemată ÎNAINTE de sesiunea de plată.
+ *
+ * Nu imediat înainte de `complete`: o modificare a liniilor schimbă totalul,
+ * iar Medusa șterge atunci sesiunile de plată — comanda ar pica. Și nici n-am
+ * vrea s-o plasăm: clientul ar plăti altă sumă decât cea văzută. Dacă ceva s-a
+ * schimbat, checkout-ul se oprește și arată noul total.
+ */
+export async function alignWarrantiesBeforePayment(): Promise<{
+  changed: boolean
+}> {
+  const cartId = await getCartId()
+  if (!cartId) return { changed: false }
+
+  const changed = await syncWarranties(cartId)
+  if (changed) {
+    const cartCacheTag = await getCacheTag("carts")
+    revalidateTag(cartCacheTag)
+  }
+  return { changed }
+}
+
 export async function updateLineItem({
   lineId,
   quantity,
@@ -249,6 +292,8 @@ export async function updateLineItem({
   await sdk.store.cart
     .updateLineItem(cartId, lineId, { quantity }, {}, headers)
     .then(async () => {
+      await syncWarranties(cartId)
+
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag)
 
@@ -276,6 +321,8 @@ export async function deleteLineItem(lineId: string) {
   await sdk.store.cart
     .deleteLineItem(cartId, lineId, {}, headers)
     .then(async () => {
+      await syncWarranties(cartId)
+
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag)
 
@@ -546,7 +593,7 @@ export async function placeNetopiaOrder(cartId?: string): Promise<never> {
 
   const orderCacheTag = await getCacheTag("orders")
   revalidateTag(orderCacheTag)
-  removeCartId()
+  await removeCartId()
 
   redirect(`/${countryCode}/order/${order.id}/pay`)
 }
@@ -583,7 +630,7 @@ export async function placeOrder(cartId?: string) {
     const orderCacheTag = await getCacheTag("orders")
     revalidateTag(orderCacheTag)
 
-    removeCartId()
+    await removeCartId()
     redirect(`/${countryCode}/order/${cartRes?.order.id}/confirmed`)
   }
 
@@ -628,7 +675,7 @@ export async function placeFinancedOrder(
 
   const orderCacheTag = await getCacheTag("orders")
   revalidateTag(orderCacheTag)
-  removeCartId()
+  await removeCartId()
 
   let sessionUrl: string | null = null
   try {

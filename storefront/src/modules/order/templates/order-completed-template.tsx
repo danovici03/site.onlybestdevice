@@ -11,6 +11,12 @@ import AccountCard from "@modules/account/components/account-card"
 import CartTotals from "@modules/common/components/cart-totals"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import OnboardingCta from "@modules/order/components/onboarding-cta"
+import {
+  groupWarrantyLines,
+  isWarrantyLine,
+  warrantyTargetTitle,
+} from "@lib/util/warranty"
+import { paymentCapturedAt, paymentLabelFor } from "@lib/util/payment-label"
 import Thumbnail from "@modules/products/components/thumbnail"
 
 type OrderCompletedTemplateProps = {
@@ -23,23 +29,6 @@ const DATE_FMT: Intl.DateTimeFormatOptions = {
   year: "numeric",
 }
 
-const paymentLabelFor = (providerId?: string) => {
-  if (!providerId) return t.orderConfirmed.paymentTitles.fallback
-  if (
-    providerId.startsWith("pp_stripe_") ||
-    providerId.startsWith("pp_medusa-")
-  )
-    return t.orderConfirmed.paymentTitles.card
-  if (providerId.startsWith("pp_paypal"))
-    return t.orderConfirmed.paymentTitles.paypal
-  if (providerId.startsWith("pp_stripe-ideal"))
-    return t.orderConfirmed.paymentTitles.ideal
-  if (providerId.startsWith("pp_stripe-bancontact"))
-    return t.orderConfirmed.paymentTitles.bancontact
-  if (providerId.startsWith("pp_system_default"))
-    return t.orderConfirmed.paymentTitles.manual
-  return t.orderConfirmed.paymentTitles.fallback
-}
 
 const formatAddress = (a?: HttpTypes.StoreOrder["shipping_address"]) => {
   if (!a) return null
@@ -92,15 +81,7 @@ export default async function OrderCompletedTemplate({
   const shippingMethod = order.shipping_methods?.[0]
   const payment = order.payment_collections?.[0]?.payments?.[0]
   const paymentTitle = paymentLabelFor(payment?.provider_id)
-  const paidAt = payment?.created_at
-    ? new Date(payment.created_at).toLocaleString("ro-RO", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : null
+  const paidAt = paymentCapturedAt(payment)
 
   return (
     <div className="bg-brand-light/40 py-10 small:py-16 min-h-[calc(100vh-64px)]">
@@ -205,19 +186,25 @@ export default async function OrderCompletedTemplate({
               className="divide-y divide-brand-dark/[0.06] -mx-2"
               data-testid="products-table"
             >
-              {order.items?.map((item) => (
+              {groupWarrantyLines(order.items ?? []).map((item) => (
                 <li
                   key={item.id}
                   className="flex items-center gap-4 px-2 py-4"
                   data-testid="product-row"
                 >
-                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-brand-light shrink-0">
-                    <Thumbnail
-                      thumbnail={item.thumbnail}
-                      images={[]}
-                      size="full"
-                    />
-                  </div>
+                  {/* Garanția e o opțiune a produsului de deasupra: fără poză,
+                      doar spațiul ei, ca rândul să pară legat de el. */}
+                  {isWarrantyLine(item) ? (
+                    <div className="w-16 shrink-0" aria-hidden />
+                  ) : (
+                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-brand-light shrink-0">
+                      <Thumbnail
+                        thumbnail={item.thumbnail}
+                        images={[]}
+                        size="full"
+                      />
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p
                       className="text-sm font-medium text-brand-dark truncate"
@@ -234,6 +221,11 @@ export default async function OrderCompletedTemplate({
                           {item.variant_title}
                         </p>
                       )}
+                    {warrantyTargetTitle(item) && (
+                      <p className="text-xs text-brand-dark/60">
+                        pentru {warrantyTargetTitle(item)}
+                      </p>
+                    )}
                     <p className="text-xs text-brand-dark/60 mt-1">
                       <span data-testid="product-quantity">
                         {item.quantity}

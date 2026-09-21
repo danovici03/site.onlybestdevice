@@ -12,7 +12,11 @@ import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { useSession } from "@lib/context/session-context"
 import { lineItemThumbnail } from "@lib/util/line-item-thumbnail"
 import { convertToLocale } from "@lib/util/money"
-import { warrantyTargetTitle } from "@lib/util/warranty"
+import {
+  groupWarrantyLines,
+  isWarrantyLine,
+  warrantyTargetTitle,
+} from "@lib/util/warranty"
 import { COURIER_TARIFF_FROM } from "@lib/util/shipping-tariff"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
@@ -162,18 +166,18 @@ const CartDrawer = () => {
               ) : (
                 <>
                   <ul className="flex-1 overflow-y-auto px-5 pb-2">
-                    {[...items]
-                      .sort((a, b) =>
+                    {groupWarrantyLines(
+                      [...items].sort((a, b) =>
                         (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
                       )
-                      .map((item) => (
-                        <DrawerItem
-                          key={item.id}
-                          item={item}
-                          currencyCode={currencyCode}
-                          onNavigate={close}
-                        />
-                      ))}
+                    ).map((item) => (
+                      <DrawerItem
+                        key={item.id}
+                        item={item}
+                        currencyCode={currencyCode}
+                        onNavigate={close}
+                      />
+                    ))}
                   </ul>
 
                   <div
@@ -254,6 +258,8 @@ const DrawerItem = ({ item, currencyCode, onNavigate }: DrawerItemProps) => {
   const [updating, setUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const warrantyFor = warrantyTargetTitle(item)
+  // Opțiune a produsului de deasupra, nu produs: fără poză și fără link.
+  const isWarranty = isWarrantyLine(item)
 
   // Acțiunile de server nu mai re-randează layout-ul cu un coș nou, pentru că
   // acesta nu mai citește coșul. Fiecare modificare trebuie să ceară explicit
@@ -279,24 +285,37 @@ const DrawerItem = ({ item, currencyCode, onNavigate }: DrawerItemProps) => {
       className="grid grid-cols-[72px_1fr] items-start gap-4 border-b border-brand-dark/5 py-4 last:border-b-0"
       data-testid="cart-drawer-item"
     >
-      <LocalizedClientLink
-        href={`/products/${item.product_handle}`}
-        onClick={onNavigate}
-        className="block overflow-hidden rounded-xl bg-brand-light/60"
-      >
-        <Thumbnail thumbnail={lineItemThumbnail(item)} size="square" />
-      </LocalizedClientLink>
+      {isWarranty ? (
+        <div aria-hidden />
+      ) : (
+        <LocalizedClientLink
+          href={`/products/${item.product_handle}`}
+          onClick={onNavigate}
+          className="block overflow-hidden rounded-xl bg-brand-light/60"
+        >
+          <Thumbnail thumbnail={lineItemThumbnail(item)} size="square" />
+        </LocalizedClientLink>
+      )}
 
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex items-start gap-2">
-          <LocalizedClientLink
-            href={`/products/${item.product_handle}`}
-            onClick={onNavigate}
-            className="line-clamp-2 flex-1 text-sm font-bold leading-snug text-brand-dark transition-colors hover:text-brand-accent"
-            data-testid="cart-drawer-item-title"
-          >
-            {item.product_title}
-          </LocalizedClientLink>
+          {isWarranty ? (
+            <span
+              className="line-clamp-2 flex-1 text-sm font-bold leading-snug text-brand-dark"
+              data-testid="cart-drawer-item-title"
+            >
+              {item.product_title}
+            </span>
+          ) : (
+            <LocalizedClientLink
+              href={`/products/${item.product_handle}`}
+              onClick={onNavigate}
+              className="line-clamp-2 flex-1 text-sm font-bold leading-snug text-brand-dark transition-colors hover:text-brand-accent"
+              data-testid="cart-drawer-item-title"
+            >
+              {item.product_title}
+            </LocalizedClientLink>
+          )}
           <button
             type="button"
             onClick={handleDelete}
@@ -324,33 +343,40 @@ const DrawerItem = ({ item, currencyCode, onNavigate }: DrawerItemProps) => {
         )}
 
         <div className="mt-1.5 flex items-center justify-between gap-3">
-          <div className="flex items-center rounded-full bg-brand-light px-1 py-1">
-            <button
-              type="button"
-              onClick={() => changeQuantity(Math.max(1, item.quantity - 1))}
-              disabled={busy || item.quantity <= 1}
-              aria-label="Scade cantitatea"
-              className="flex h-7 w-7 items-center justify-center rounded-full text-brand-dark transition-colors hover:bg-white disabled:opacity-40 disabled:hover:bg-transparent"
-            >
-              <Minus size={12} weight="bold" />
-            </button>
-            <span className="min-w-[1.75rem] text-center text-sm font-bold tabular-nums text-brand-dark">
-              {updating ? (
-                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-brand-dark/20 border-t-brand-dark align-middle" />
-              ) : (
-                item.quantity
-              )}
+          {/* Garanția urmează cantitatea produsului acoperit — fără butoane. */}
+          {isWarranty ? (
+            <span className="text-sm font-bold tabular-nums text-brand-dark/60">
+              × {item.quantity}
             </span>
-            <button
-              type="button"
-              onClick={() => changeQuantity(item.quantity + 1)}
-              disabled={busy}
-              aria-label="Crește cantitatea"
-              className="flex h-7 w-7 items-center justify-center rounded-full text-brand-dark transition-colors hover:bg-white disabled:opacity-40 disabled:hover:bg-transparent"
-            >
-              <Plus size={12} weight="bold" />
-            </button>
-          </div>
+          ) : (
+            <div className="flex items-center rounded-full bg-brand-light px-1 py-1">
+              <button
+                type="button"
+                onClick={() => changeQuantity(Math.max(1, item.quantity - 1))}
+                disabled={busy || item.quantity <= 1}
+                aria-label="Scade cantitatea"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-brand-dark transition-colors hover:bg-white disabled:opacity-40 disabled:hover:bg-transparent"
+              >
+                <Minus size={12} weight="bold" />
+              </button>
+              <span className="min-w-[1.75rem] text-center text-sm font-bold tabular-nums text-brand-dark">
+                {updating ? (
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-brand-dark/20 border-t-brand-dark align-middle" />
+                ) : (
+                  item.quantity
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => changeQuantity(item.quantity + 1)}
+                disabled={busy}
+                aria-label="Crește cantitatea"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-brand-dark transition-colors hover:bg-white disabled:opacity-40 disabled:hover:bg-transparent"
+              >
+                <Plus size={12} weight="bold" />
+              </button>
+            </div>
+          )}
 
           <span
             className={clx(

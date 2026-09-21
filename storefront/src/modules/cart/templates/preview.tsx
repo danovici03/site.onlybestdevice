@@ -1,7 +1,11 @@
 "use client"
 
 import repeat from "@lib/util/repeat"
-import { isWarrantyLine, shouldOfferWarranty } from "@lib/util/warranty"
+import {
+  groupWarrantyLines,
+  isWarrantyLine,
+  shouldOfferWarranty,
+} from "@lib/util/warranty"
 import { HttpTypes } from "@medusajs/types"
 import { Table, clx } from "@medusajs/ui"
 
@@ -29,11 +33,11 @@ const ItemsPreviewTemplate = ({ cart, warranty }: ItemsTemplateProps) => {
       <Table>
         <Table.Body data-testid="items-table">
           {items
-            ? items
-                .sort((a, b) => {
+            ? groupWarrantyLines(
+                [...items].sort((a, b) => {
                   return (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
                 })
-                .map((item) => {
+              ).map((item) => {
                   return (
                     <Fragment key={item.id}>
                       <Item

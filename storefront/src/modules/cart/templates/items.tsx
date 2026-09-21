@@ -1,6 +1,6 @@
 import repeat from "@lib/util/repeat"
 import { getWarrantyProduct } from "@lib/data/warranty"
-import { shouldOfferWarranty } from "@lib/util/warranty"
+import { groupWarrantyLines, shouldOfferWarranty } from "@lib/util/warranty"
 import { HttpTypes } from "@medusajs/types"
 
 import Item from "@modules/cart/components/item"
@@ -31,11 +31,11 @@ const ItemsTemplate = async ({ cart }: ItemsTemplateProps) => {
 
       <ul className="flex flex-col divide-y divide-brand-dark/10">
         {items
-          ? items
-              .sort((a, b) =>
+          ? groupWarrantyLines(
+              [...items].sort((a, b) =>
                 (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
               )
-              .map((item) => (
+            ).map((item) => (
                 <Item
                   key={item.id}
                   item={item}

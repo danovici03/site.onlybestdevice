@@ -46,11 +46,10 @@ export const COURIER_TARIFF_FROM = `de la ${COURIER_TARIFF_STANDARD}`
 export const COURIER_INCLUDED_NOTE = "inclus în totalul comenzii"
 
 /**
- * Nota de la ramburs. Transportul apare în total ca la orice altă metodă, dar
- * banii ăia nu ajung la noi: îi oprește curierul, ca plată a livrării. Pentru
- * client diferența e zero — dă o singură sumă, la ușă — dar fără rândul ăsta
- * pare că plătește transportul de două ori.
+ * Nota de la ramburs. Livrarea face parte din comandă — e în total, ca la orice
+ * altă metodă de plată. La ușă clientul dă o singură sumă; fără nota asta pare
+ * că transportul se mai plătește o dată curierului.
  */
 export const COURIER_SETTLED_EXPLAINER =
-  `Plătești totalul de mai sus curierului, la primirea coletului. Taxa de ` +
-  `transport din el e decontată direct de ${COURIER_NAME}.`
+  `Plătești totalul de mai sus curierului, la primirea coletului — ` +
+  `produsele și livrarea, într-o singură sumă.`

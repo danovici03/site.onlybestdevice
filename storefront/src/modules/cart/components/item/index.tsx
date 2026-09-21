@@ -13,7 +13,7 @@ import Spinner from "@modules/common/icons/spinner"
 import Thumbnail from "@modules/products/components/thumbnail"
 import WarrantyOffer from "@modules/cart/components/warranty-offer"
 import { lineItemThumbnail } from "@lib/util/line-item-thumbnail"
-import { warrantyTargetTitle } from "@lib/util/warranty"
+import { isWarrantyLine, warrantyTargetTitle } from "@lib/util/warranty"
 import { Minus, Plus, Trash } from "@phosphor-icons/react/dist/ssr"
 import { useState } from "react"
 
@@ -45,6 +45,9 @@ const Item = ({
   // Pe liniile de garanție arătăm ce produs acoperă — cu două telefoane în coș,
   // altfel n-ai cum să știi la care se referă.
   const warrantyFor = warrantyTargetTitle(item)
+  // Garanția e o opțiune a produsului de deasupra, nu un produs: fără poză și
+  // fără link (pagina produsului de serviciu e ascunsă din catalog).
+  const isWarranty = isWarrantyLine(item)
 
   const maxQuantity = 10
 
@@ -70,12 +73,16 @@ const Item = ({
     return (
       <Table.Row className="w-full" data-testid="product-row">
         <Table.Cell className="!pl-0 p-4 w-24">
-          <LocalizedClientLink
-            href={`/products/${item.product_handle}`}
-            className="flex w-16"
-          >
-            <Thumbnail thumbnail={lineItemThumbnail(item)} size="square" />
-          </LocalizedClientLink>
+          {isWarranty ? (
+            <div className="w-16" aria-hidden />
+          ) : (
+            <LocalizedClientLink
+              href={`/products/${item.product_handle}`}
+              className="flex w-16"
+            >
+              <Thumbnail thumbnail={lineItemThumbnail(item)} size="square" />
+            </LocalizedClientLink>
+          )}
         </Table.Cell>
 
         <Table.Cell className="text-left">
@@ -137,21 +144,34 @@ const Item = ({
       className="grid grid-cols-[88px_1fr] sm:grid-cols-[112px_1fr_180px_140px] gap-4 sm:gap-6 items-center py-5"
       data-testid="product-row"
     >
-      <LocalizedClientLink
-        href={`/products/${item.product_handle}`}
-        className="block w-full overflow-hidden rounded-2xl bg-brand-light/60"
-      >
-        <Thumbnail thumbnail={lineItemThumbnail(item)} size="square" />
-      </LocalizedClientLink>
-
-      <div className="flex flex-col gap-1 min-w-0">
+      {isWarranty ? (
+        <div aria-hidden />
+      ) : (
         <LocalizedClientLink
           href={`/products/${item.product_handle}`}
-          className="font-serif text-lg sm:text-xl text-brand-dark leading-tight hover:text-brand-accent transition-colors line-clamp-2"
-          data-testid="product-title"
+          className="block w-full overflow-hidden rounded-2xl bg-brand-light/60"
         >
-          {item.product_title}
+          <Thumbnail thumbnail={lineItemThumbnail(item)} size="square" />
         </LocalizedClientLink>
+      )}
+
+      <div className="flex flex-col gap-1 min-w-0">
+        {isWarranty ? (
+          <span
+            className="font-serif text-lg sm:text-xl text-brand-dark leading-tight line-clamp-2"
+            data-testid="product-title"
+          >
+            {item.product_title}
+          </span>
+        ) : (
+          <LocalizedClientLink
+            href={`/products/${item.product_handle}`}
+            className="font-serif text-lg sm:text-xl text-brand-dark leading-tight hover:text-brand-accent transition-colors line-clamp-2"
+            data-testid="product-title"
+          >
+            {item.product_title}
+          </LocalizedClientLink>
+        )}
         {item.variant?.title && item.variant.title !== item.product_title && (
           <span
             className="text-sm text-brand-dark/55"
@@ -174,13 +194,19 @@ const Item = ({
         </div>
 
         <div className="flex sm:hidden items-center justify-between gap-3 mt-3">
-          <QuantityStepper
-            value={item.quantity}
-            max={maxQuantity}
-            onChange={changeQuantity}
-            updating={updating}
-            disabled={deleting}
-          />
+          {/* Cantitatea garanției urmează produsul acoperit (o garanție pe
+              bucată) — o sincronizează backend-ul, nu clientul. */}
+          {isWarranty ? (
+            <WarrantyQuantity value={item.quantity} />
+          ) : (
+            <QuantityStepper
+              value={item.quantity}
+              max={maxQuantity}
+              onChange={changeQuantity}
+              updating={updating}
+              disabled={deleting}
+            />
+          )}
           <button
             type="button"
             onClick={handleDelete}
@@ -199,13 +225,17 @@ const Item = ({
       </div>
 
       <div className="hidden sm:flex items-center justify-center">
-        <QuantityStepper
-          value={item.quantity}
-          max={maxQuantity}
-          onChange={changeQuantity}
-          updating={updating}
-          disabled={deleting}
-        />
+        {isWarranty ? (
+          <WarrantyQuantity value={item.quantity} />
+        ) : (
+          <QuantityStepper
+            value={item.quantity}
+            max={maxQuantity}
+            onChange={changeQuantity}
+            updating={updating}
+            disabled={deleting}
+          />
+        )}
       </div>
 
       <div className="hidden sm:flex items-center justify-end gap-3">
@@ -249,6 +279,16 @@ type StepperProps = {
   updating: boolean
   disabled?: boolean
 }
+
+/** Cantitatea fixă a unei garanții: câte bucăți din produs acoperă. */
+const WarrantyQuantity = ({ value }: { value: number }) => (
+  <span
+    className="inline-flex w-32 justify-center text-sm font-bold tabular-nums text-brand-dark/60"
+    title="Câte o garanție pentru fiecare bucată din produs"
+  >
+    × {value}
+  </span>
+)
 
 const QuantityStepper = ({
   value,

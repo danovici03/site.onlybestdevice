@@ -3,6 +3,12 @@ import { formatCui, readCompanyFiscal } from "@lib/util/cui"
 import { clx } from "@medusajs/ui"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import {
+  groupWarrantyLines,
+  isWarrantyLine,
+  warrantyTargetTitle,
+} from "@lib/util/warranty"
+import { paymentLabelFor } from "@lib/util/payment-label"
 import Thumbnail from "@modules/products/components/thumbnail"
 import AccountCard from "../account-card"
 import { OrderStatusBadge } from "../status-badge"
@@ -147,15 +153,20 @@ const OrderDetail = ({ order }: { order: HttpTypes.StoreOrder }) => {
           title={`${t.orders.items} (${order.items?.length ?? 0})`}
         >
           <ul className="divide-y divide-brand-dark/[0.06] -mx-2">
-            {order.items?.map((item) => (
+            {groupWarrantyLines(order.items ?? []).map((item) => (
               <li key={item.id} className="flex items-center gap-4 px-2 py-4">
-                <div className="w-16 h-16 rounded-xl overflow-hidden bg-brand-light shrink-0">
-                  <Thumbnail
-                    thumbnail={item.thumbnail}
-                    images={[]}
-                    size="full"
-                  />
-                </div>
+                {/* Garanția e o opțiune a produsului de deasupra: fără poză. */}
+                {isWarrantyLine(item) ? (
+                  <div className="w-16 shrink-0" aria-hidden />
+                ) : (
+                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-brand-light shrink-0">
+                    <Thumbnail
+                      thumbnail={item.thumbnail}
+                      images={[]}
+                      size="full"
+                    />
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-brand-dark truncate">
                     {item.product_title || item.title}
@@ -167,6 +178,11 @@ const OrderDetail = ({ order }: { order: HttpTypes.StoreOrder }) => {
                         {item.variant_title}
                       </p>
                     )}
+                  {warrantyTargetTitle(item) && (
+                    <p className="text-xs text-brand-dark/60">
+                      pentru {warrantyTargetTitle(item)}
+                    </p>
+                  )}
                   <p className="text-xs text-brand-dark/60 mt-1">
                     {t.orders.items}: {item.quantity}
                   </p>
@@ -220,12 +236,7 @@ const OrderDetail = ({ order }: { order: HttpTypes.StoreOrder }) => {
         </AccountCard>
         <AccountCard title={t.orders.paymentMethod}>
           <p className="text-sm text-brand-dark/80">
-            {paymentLabel
-              ? paymentLabel
-                  .replace(/^pp_/, "")
-                  .replace(/_/g, " ")
-                  .replace(/\b\w/g, (c: string) => c.toUpperCase())
-              : "—"}
+            {paymentLabel ? paymentLabelFor(paymentLabel) : "—"}
           </p>
         </AccountCard>
       </div>

@@ -71,11 +71,11 @@ describe("emailurile de comandă plasată", () => {
 
   // Transportul e în total la orice metodă, dar la ramburs banii îi oprește
   // curierul — fără nota asta pare că îl mai plătește o dată la ușă.
-  it("explică la ramburs cine decontează transportul", () => {
+  it("explică la ramburs că produsele și livrarea se plătesc într-o singură sumă", () => {
     const html = render("order-placed-customer", { order: codOrder })
 
     expect(html).toContain("Plătești acest total curierului")
-    expect(html).toContain("decontată direct de firma de curierat")
+    expect(html).toContain("produsele și livrarea, într-o singură sumă")
   })
 
   it("nu pomenește transportul separat când s-a plătit deja cu cardul", () => {

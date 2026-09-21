@@ -20,6 +20,10 @@ export const ORDER_EMAIL_FIELDS = [
   "email",
   "currency_code",
   "total",
+  // Pentru defalcarea din email: subtotal produse + livrare = total.
+  "item_subtotal",
+  "shipping_total",
+  "discount_total",
   "metadata",
   "items.*",
   "items.product_title",

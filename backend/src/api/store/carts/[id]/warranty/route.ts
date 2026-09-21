@@ -6,6 +6,7 @@ import {
 import { addToCartWorkflow } from "@medusajs/medusa/core-flows"
 import { z } from "zod"
 
+import { syncWarrantyLines } from "../../../../../lib/warranty-cart"
 import { resolveWarrantyUnitPrice } from "../../../../../lib/warranty-prices"
 
 /**
@@ -87,6 +88,11 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       ],
     },
   })
+
+  // Cantitatea trimisă e doar punctul de plecare: garanția urmează câte bucăți
+  // din produs sunt în coș, iar o garanție aleasă înainte pentru același
+  // produs („+1 an" peste care vine „+2 ani") iese.
+  await syncWarrantyLines(req.scope, req.params.id)
 
   res.status(200).json({ ok: true })
 }

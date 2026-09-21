@@ -20,6 +20,7 @@ import {
   COD_MAX_AMOUNT,
 } from "@lib/constants"
 import {
+  alignWarrantiesBeforePayment,
   initiatePaymentSession,
   placeFinancedOrder,
   placeNetopiaOrder,
@@ -910,6 +911,19 @@ const OnePageCheckout = ({
       // coșul pe client, deci comanda apare direct în „Comenzile mele".
       await maybeCreateAccount()
 
+      // Garanțiile extinse urmează cantitatea produselor. Dacă nu erau aliniate
+      // (coș vechi, sincronizare picată), totalul se schimbă acum — ne oprim
+      // înainte de sesiunea de plată, ca clientul să vadă suma pe care o plătește.
+      const { changed } = await alignWarrantiesBeforePayment()
+      if (changed) {
+        router.refresh()
+        setPlaceError(
+          "Am actualizat garanția extinsă ca să acopere fiecare bucată din produs. Verifică noul total și plasează din nou comanda."
+        )
+        setPlacing(false)
+        return
+      }
+
       if (isStripeLike(selectedPayment)) {
         if (!stripeConfirmRef.current) {
           throw new Error("Plata cu cardul nu e încă pregătită. Reîncearcă.")
@@ -1619,8 +1633,8 @@ const OnePageCheckout = ({
 
           <CartTotals totals={cart} />
 
-          {/* La ramburs transportul e în total ca la orice metodă, dar banii îi
-              oprește curierul — fără rândul ăsta pare că îl plătește de două ori. */}
+          {/* La ramburs livrarea e în total ca la orice metodă; nota spune că
+              la ușă se dă o singură sumă, nu produsele plus transportul separat. */}
           {isCod(selectedPayment) && (
             <p className="-mt-2 text-xs leading-relaxed text-brand-dark/55">
               {COURIER_SETTLED_EXPLAINER}
