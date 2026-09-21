@@ -9,7 +9,7 @@ import { COMPANY } from "@lib/util/company-info"
 import { COURIER_NAME, COURIER_PICKUP_URL } from "@lib/util/shipping-tariff"
 
 export const metadata: Metadata = {
-  title: "Formular de service | onlybestdevice",
+  title: "Formular de service",
   description:
     "Completează cererea de service pentru un produs defect. După confirmare, chemi curierul să ridice produsul de la tine.",
 }

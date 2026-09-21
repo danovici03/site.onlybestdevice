@@ -15,7 +15,7 @@ import InfoPageLayout from "@modules/suport/components/info-page-layout"
 import InfoCard from "@modules/suport/components/info-card"
 
 export const metadata: Metadata = {
-  title: "Suport clienți | onlybestdevice",
+  title: "Suport clienți",
   description:
     "FAQ, contact, livrare, retururi, garanție și documente legale. Echipa noastră de suport e aici să te ajute.",
 }

@@ -70,7 +70,7 @@ const Register = (_: Props) => {
           type="password"
           autoComplete="new-password"
           minLength={8}
-          title="Almeno 8 caratteri."
+          title="Cel puțin 8 caractere."
           data-testid="password-input"
         />
 

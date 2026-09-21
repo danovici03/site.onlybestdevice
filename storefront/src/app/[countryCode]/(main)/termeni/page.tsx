@@ -4,7 +4,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import { COMPANY } from "@lib/util/company-info"
 
 export const metadata: Metadata = {
-  title: "Termeni și condiții | onlybestdevice",
+  title: "Termeni și condiții",
   description:
     "Termenii și condițiile de vânzare ONLY BEST DEVICE S.R.L.: comandă, plată, livrare, garanție, retur și regimul special de TVA pe marjă (art. 312 Cod Fiscal).",
 }

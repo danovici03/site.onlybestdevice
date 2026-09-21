@@ -9,7 +9,7 @@ import {
 } from "@lib/util/shipping-tariff"
 
 export const metadata: Metadata = {
-  title: "Livrarea comenzilor | onlybestdevice",
+  title: "Livrarea comenzilor",
   description:
     "Termene, costuri și modalități de livrare prin curier. Ce faci în cazul unui colet deteriorat.",
 }

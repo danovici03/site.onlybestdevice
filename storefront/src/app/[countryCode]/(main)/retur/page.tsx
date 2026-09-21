@@ -21,7 +21,7 @@ import { COMPANY } from "@lib/util/company-info"
 import { COURIER_PICKUP_URL } from "@lib/util/shipping-tariff"
 
 export const metadata: Metadata = {
-  title: "Retur produse și drept de retragere | onlybestdevice",
+  title: "Retur produse și drept de retragere",
   description:
     "14 zile drept de retragere conform OUG 34/2014. Cerere de retur în doi pași, condiții, adresa de retur și termenul de rambursare.",
 }

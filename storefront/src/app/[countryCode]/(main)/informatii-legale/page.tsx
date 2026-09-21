@@ -9,7 +9,7 @@ import {
 } from "@lib/util/company-info"
 
 export const metadata: Metadata = {
-  title: "Informații legale | onlybestdevice",
+  title: "Informații legale",
   description:
     "Date de identificare obligatorii conform Legii 365/2002 privind comerțul electronic.",
 }

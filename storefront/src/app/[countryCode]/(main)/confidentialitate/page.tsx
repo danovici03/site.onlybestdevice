@@ -4,7 +4,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import { COMPANY, indirizzoLegale } from "@lib/util/company-info"
 
 export const metadata: Metadata = {
-  title: "Politica de confidențialitate | onlybestdevice",
+  title: "Politica de confidențialitate",
   description:
     "Informații privind prelucrarea datelor cu caracter personal conform Regulamentului (UE) 2016/679 (GDPR).",
 }

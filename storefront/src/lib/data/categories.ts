@@ -14,9 +14,12 @@ export const listCategories = async (query?: Record<string, any>) => {
     .fetch<{ product_categories: HttpTypes.StoreProductCategory[] }>(
       "/store/product-categories",
       {
+        // Fără `*products`: aducea toate produsele fiecărei categorii (~6 MB la
+        // rădăcini), peste limita de 2 MB a cache-ului Next — deci cererea
+        // pleca din nou la fiecare randare. Niciun apelant nu le folosește.
         query: {
           fields:
-            "*category_children, *products, *parent_category, *parent_category.parent_category",
+            "*category_children, *parent_category, *parent_category.parent_category",
           limit,
           ...query,
         },

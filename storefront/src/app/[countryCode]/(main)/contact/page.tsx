@@ -11,7 +11,7 @@ import ContattiForm from "@modules/suport/components/contact-form"
 import { COMPANY, indirizzoOperativo, indirizzoLegale } from "@lib/util/company-info"
 
 export const metadata: Metadata = {
-  title: "Contact | onlybestdevice",
+  title: "Contact",
   description:
     "Scrie-ne prin formular, email, telefon sau WhatsApp. Răspuns în 24–48 de ore lucrătoare.",
 }
