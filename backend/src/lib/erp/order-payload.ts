@@ -1,5 +1,6 @@
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
+import { WARRANTY_HANDLE } from "../warranty-prices"
 import {
   SHIPPED_STATUSES,
   effectiveOrderStatus,
@@ -55,6 +56,25 @@ export type ErpLineItem = {
   unit_price: number
   tax_total: number
   total: number
+  /**
+   * Linia e garanția extinsă (produsul de serviciu `garantie-extinsa`), nu
+   * marfă: gestiunea n-are ce stoc să scadă pentru ea, ci prelungește garanția
+   * unităților din linia acoperită.
+   */
+  is_extended_warranty: boolean
+  /** Lunile adăugate peste garanția standard: 12 („+1 an") sau 24 („+2 ani"). */
+  warranty_extra_months: number | null
+  /**
+   * Toate liniile acoperite, cu câte bucăți din fiecare. Un produs poate sta pe
+   * mai multe linii (aceeași garanție pe negru și pe alb) — câmpurile singulare
+   * de mai jos arată doar prima și rămân pentru compatibilitate.
+   */
+  warranty_covers: { line_id: string; variant_id: string | null; quantity: number }[]
+  /** Prima linie acoperită. */
+  warranty_for_line_id: string | null
+  warranty_for_product_id: string | null
+  warranty_for_variant_id: string | null
+  warranty_for_title: string | null
 }
 
 export type ErpCanonicalStatus =
@@ -82,15 +102,13 @@ const ORDER_FIELDS = [
   "discount_total",
   "shipping_total",
   "total",
-  "items.id",
-  "items.variant_id",
-  "items.product_id",
-  "items.variant_sku",
-  "items.title",
-  "items.product_title",
-  "items.variant_title",
-  "items.quantity",
-  "items.unit_price",
+  // `items.*`, NU câmpuri explicite: în Medusa 2 cantitatea nu e coloană a
+  // liniei de comandă, ci stă în `order_item`, iar `query.graph` o mapează pe
+  // `item.quantity` doar la `items.*`. Cu `items.quantity` cerut explicit venea
+  // `undefined` → 0, totalurile se calculau pe cantitate 0 (comanda de 4.336
+  // lei pleca cu total 38 = doar transportul), iar gestiunea nu scădea stocul.
+  // `*` aduce și `product_handle` + `metadata` (garanția extinsă) și `variant_sku`.
+  "items.*",
   "items.tax_total",
   "items.total",
   "billing_address.*",
@@ -197,6 +215,65 @@ const addressToObject = (addr: any): Record<string, unknown> => {
   return rest
 }
 
+const isWarrantyItem = (item: any) => item?.product_handle === WARRANTY_HANDLE
+
+/**
+ * „+1 an" → 12, „+2 ani" → 24. Citim numărul din titlul variantei, cu SKU-ul
+ * (`garantie-extinsa-2ani`) ca plasă, ca gestiunea să primească luni, nu text.
+ */
+const warrantyExtraMonths = (item: any): number | null => {
+  const source = `${item?.variant_title ?? ""} ${item?.variant_sku ?? ""}`
+  const years = source.match(/(\d+)\s*an/i)?.[1]
+  return years ? Number(years) * 12 : null
+}
+
+/** Câmpurile de garanție extinsă ale unei linii; nule pe liniile de marfă. */
+const warrantyFields = (item: any, items: any[]) => {
+  if (!isWarrantyItem(item)) {
+    return {
+      is_extended_warranty: false,
+      warranty_extra_months: null,
+      warranty_covers: [],
+      warranty_for_line_id: null,
+      warranty_for_product_id: null,
+      warranty_for_variant_id: null,
+      warranty_for_title: null,
+    }
+  }
+  const targetProductId =
+    typeof item.metadata?.warranty_for === "string"
+      ? item.metadata.warranty_for
+      : null
+  const coveredLines = targetProductId
+    ? items.filter((i) => !isWarrantyItem(i) && i.product_id === targetProductId)
+    : []
+  const covered = coveredLines[0]
+
+  // Garanția se vinde pe bucată: împărțim cantitatea ei pe liniile produsului,
+  // în ordinea lor, fără să acoperim mai mult decât s-a plătit.
+  let remaining = num(item.quantity)
+  const warranty_covers = coveredLines
+    .map((line) => {
+      const quantity = Math.min(num(line.quantity), remaining)
+      remaining -= quantity
+      return { line_id: line.id, variant_id: line.variant_id ?? null, quantity }
+    })
+    .filter((c) => c.quantity > 0)
+
+  return {
+    is_extended_warranty: true,
+    warranty_extra_months: warrantyExtraMonths(item),
+    warranty_covers,
+    warranty_for_line_id: covered?.id ?? null,
+    warranty_for_product_id: targetProductId,
+    warranty_for_variant_id: covered?.variant_id ?? null,
+    warranty_for_title:
+      typeof item.metadata?.warranty_for_title === "string"
+        ? item.metadata.warranty_for_title
+        : (covered?.product_title ?? null),
+  }
+}
+
 export const buildLineItems = (order: any): ErpLineItem[] =>
   (order?.items ?? []).map((item: any) => ({
     id: item.id,
@@ -212,6 +289,7 @@ export const buildLineItems = (order: any): ErpLineItem[] =>
     unit_price: num(item.unit_price),
     tax_total: num(item.tax_total),
     total: num(item.total),
+    ...warrantyFields(item, order?.items ?? []),
   }))
 
 export const toErpPayload = (order: any): ErpOrderPayload => ({

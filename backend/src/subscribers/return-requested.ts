@@ -29,7 +29,9 @@ export default async function returnRequestedHandler({
       "items.title",
       "items.variant_title",
       "items.thumbnail",
-      "items.quantity",
+      // `items.*`, nu `items.quantity`: cantitatea liniei de comandă stă în
+      // `order_item`, iar query.graph o mapează doar la `*` — altfel e undefined.
+      "items.*",
       "shipping_address.first_name",
       "shipping_address.last_name",
     ],

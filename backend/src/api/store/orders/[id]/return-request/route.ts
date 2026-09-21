@@ -66,7 +66,9 @@ export const POST = async (
       "fulfillment_status",
       "metadata",
       "items.id",
-      "items.quantity",
+      // `items.*`, nu `items.quantity`: cantitatea liniei de comandă stă în
+      // `order_item`, iar query.graph o mapează doar la `*` — altfel e undefined.
+      "items.*",
       "items.product_title",
       "items.variant_title",
     ],
