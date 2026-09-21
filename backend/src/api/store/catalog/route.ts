@@ -7,6 +7,13 @@ import {
 } from "@medusajs/framework/utils"
 import { z } from "zod"
 
+import {
+  attributesForCategories,
+  loadFilterConfig,
+  type FilterAttributeRow,
+} from "../../../lib/product-filters/config"
+import { matchKey, numericSortKey } from "../../../lib/product-filters/normalize"
+
 /**
  * Catalog filtrat, cu fațete numărate în SQL.
  *
@@ -17,8 +24,10 @@ import { z } from "zod"
  *
  * GET /store/catalog?region_id=…&category_id=…&brand=Apple&brand=Samsung&page=1
  *
- * Fațetele de marcă/stocare/RAM/culoare vin din `product.metadata`
- * (`filter_*`), scrise de scriptul `extract-product-filters.ts`.
+ * Fațetele de atribut (marcă, RAM, diagonală, …) vin din modulul
+ * `product_filter`: filtrele aplicabile se aleg după categoriile din scope și
+ * cele bifate, iar parametrul din URL e cheia filtrului (`?ram=8-gb`,
+ * `?diagonala=6-6.7`). Vezi `lib/product-filters/`.
  */
 
 /**
@@ -48,10 +57,11 @@ const QuerySchema = z.object({
   /** Categoria-părinte ale cărei fațete de sub-categorie le oferim; absent = nivelul de top. */
   facet_parent_id: z.string().optional(),
   category: multi,
-  brand: multi,
-  storage: multi,
-  ram: multi,
-  color: multi,
+  /** Doar produsele în stoc (aceeași regulă ca badge-ul din card). */
+  stock: z
+    .union([z.literal("true"), z.literal("1"), z.literal("false"), z.literal("0")])
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
   /** Interval de preț „min-max"; capetele sunt opționale („-500", „100-"). */
   price: z.string().optional(),
   /**
@@ -85,6 +95,9 @@ const QuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(12),
 })
+  // Cheile filtrelor sunt dinamice (le definește adminul) — se citesc separat
+  // din `req.query`, după ce știm ce filtre se aplică.
+  .passthrough()
 
 /**
  * Catalogul are categorii duplicate din două valuri de import („Console, Jocuri"
@@ -122,15 +135,21 @@ const CATEGORY_FACET_BLOCKLIST = new Set(["fara categorie", "oferte"])
  */
 const SALE_TAG = "oferta"
 
-/** Trebuie să rămână aliniat cu `FilterKey` din storefront. */
-type FilterKey = "category" | "brand" | "storage" | "ram" | "color"
-const FILTER_KEYS: FilterKey[] = [
-  "category",
-  "brand",
-  "storage",
-  "ram",
-  "color",
-]
+/** Cheia filtrului de marcă — numele lui se scot din fațeta „Categorie". */
+const BRAND_KEY = "brand"
+
+/** Valorile unui parametru repetat din `req.query`, curățate. */
+const queryValues = (v: unknown): string[] =>
+  (Array.isArray(v) ? v : v == null ? [] : [v])
+    .filter((x): x is string => typeof x === "string")
+    .map((x) => x.trim())
+    .filter(Boolean)
+
+/** Rotunjirea capetelor unui interval: zecimale doar la valori mici (inch). */
+const roundRange = (min: number, max: number) =>
+  max < 100
+    ? { min: Math.floor(min * 10) / 10, max: Math.ceil(max * 10) / 10 }
+    : { min: Math.floor(min), max: Math.ceil(max) }
 
 const asArray = (v: string | string[] | undefined): string[] =>
   v == null ? [] : Array.isArray(v) ? v : [v]
@@ -281,6 +300,46 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     .filter((c) => wantedNames.has(normName(c.name)))
     .map((c) => c.id)
 
+  /* ---------------- Filtrele aplicabile + selecția lor ---------------- */
+
+  // Filtrele categoriilor din scope și ale celor bifate în fațetă: pe /store,
+  // bifând „Telefoane mobile" apar și RAM-ul, stocarea, diagonala.
+  const filterConfig = await loadFilterConfig(knex)
+  const applicable = attributesForCategories(filterConfig, [
+    ...categoryScopeIds,
+    ...selectedCategoryIds,
+  ])
+  const brandAttr = filterConfig.attributes.find((a) => a.key === BRAND_KEY)
+
+  type SelectSel = { attr: FilterAttributeRow; valueIds: string[]; raw: string[] }
+  type RangeSel = { attr: FilterAttributeRow; min: number | null; max: number | null }
+  const selectSel = new Map<string, SelectSel>()
+  const rangeSel = new Map<string, RangeSel>()
+  const rawQuery = req.query as Record<string, unknown>
+
+  for (const attr of applicable) {
+    const raw = queryValues(rawQuery[attr.key])
+    if (!raw.length) continue
+    if (attr.type === "number") {
+      const r = parsePrice(raw[0])
+      if (r.min != null || r.max != null) rangeSel.set(attr.key, { attr, ...r })
+      continue
+    }
+    // Slug-ul e forma canonică; numele și alias-urile se acceptă pentru
+    // URL-urile vechi (`?brand=Apple`, `?storage=256GB`, `?color=Black`).
+    const byKey = new Map<string, string>()
+    for (const v of attr.values) {
+      for (const k of [v.slug, v.value, ...v.aliases]) {
+        const mk = matchKey(k)
+        if (mk && !byKey.has(mk)) byKey.set(mk, v.id)
+      }
+    }
+    const valueIds = [
+      ...new Set(raw.map((r) => byKey.get(matchKey(r))).filter(Boolean) as string[]),
+    ]
+    selectSel.set(attr.key, { attr, valueIds, raw })
+  }
+
   /* ---------------- CTE-ul de scope ---------------- */
 
   // Bindings NUMITE, nu poziționale. Cu `?` ordinea din array trebuie să
@@ -360,7 +419,14 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       ${foldSql("p.title")} LIKE ${t}
       OR ${foldSql("p.subtitle")} LIKE ${t}
       OR ${foldSql("p.handle")} LIKE ${t}
-      OR ${foldSql("p.metadata->>'filter_brand'")} LIKE ${t}
+      OR EXISTS (
+        SELECT 1
+        FROM product_filter_value pfv
+        JOIN filter_value fv ON fv.id = pfv.value_id AND fv.deleted_at IS NULL
+        WHERE pfv.product_id = p.id AND pfv.deleted_at IS NULL
+          AND pfv.attribute_id = ${bind(brandAttr?.id ?? "", "qbrand")}
+          AND ${foldSql("fv.value")} LIKE ${t}
+      )
       OR EXISTS (
         SELECT 1 FROM product_variant pv
         WHERE pv.product_id = p.id AND pv.deleted_at IS NULL
@@ -421,11 +487,6 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       SELECT p.id,
              p.title,
              p.created_at,
-             p.metadata->>'filter_brand'     AS brand,
-             p.metadata->>'filter_storage'   AS storage,
-             p.metadata->>'filter_ram'       AS ram,
-             p.metadata->>'filter_color'     AS color,
-             p.metadata->>'filter_color_hex' AS color_hex,
              MIN(ep.amount) AS price,
              ${inStockSql} AS in_stock
       FROM product p
@@ -461,25 +522,38 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
    * propria selecție: altfel, bifând „Apple", restul mărcilor ar arăta 0 și
    * selecția multiplă în interiorul unei fațete ar deveni imposibilă.
    * În interiorul unei fațete valorile sunt SAU, între fațete ȘI.
+   *
+   * `exclude` e cheia unui filtru de atribut, sau una dintre fațetele fixe.
    */
-  type Excludable = FilterKey | "price"
-  const filterClauses = (exclude?: Excludable): string[] => {
+  const filterClauses = (exclude?: string): string[] => {
     const out: string[] = []
-    const inList = (col: string, values: string[], key: FilterKey) => {
-      if (exclude === key || !values.length) return
-      out.push(`${col} IN (${bindList(values, key)})`)
-    }
-    inList("brand", q.brand, "brand")
-    inList("storage", q.storage, "storage")
-    inList("ram", q.ram, "ram")
-    if (exclude !== "color" && q.color.length) {
+    for (const [key, sel] of selectSel) {
+      if (exclude === `attr:${key}`) continue
+      // Valori necunoscute (link vechi, valoare ștearsă) se ignoră: n-ar
+      // apărea ca chip în panou, deci clientul n-ar avea ce debifa ca să iasă
+      // dintr-o listă goală.
+      if (!sel.valueIds.length) continue
       out.push(
-        `LOWER(color) IN (${bindList(
-          q.color.map((c) => c.toLowerCase()),
-          "color"
-        )})`
+        `id IN (SELECT product_id FROM product_filter_value WHERE deleted_at IS NULL AND attribute_id = ${bind(
+          sel.attr.id,
+          "fa"
+        )} AND value_id IN (${bindList(sel.valueIds, "fv")}))`
       )
     }
+    for (const [key, sel] of rangeSel) {
+      if (exclude === `attr:${key}`) continue
+      const conds = [
+        "deleted_at IS NULL",
+        `attribute_id = ${bind(sel.attr.id, "ra")}`,
+        "value_number IS NOT NULL",
+      ]
+      // `value_number` e `real` (float pe 4 octeți): 6.1 stă ca 6.0999999. Fără
+      // rotunjire, „de la 6.1" ar exclude exact telefoanele de 6.1 inch.
+      if (sel.min != null) conds.push(`ROUND(value_number::numeric, 2) >= ${bind(sel.min, "rmin")}`)
+      if (sel.max != null) conds.push(`ROUND(value_number::numeric, 2) <= ${bind(sel.max, "rmax")}`)
+      out.push(`id IN (SELECT product_id FROM product_filter_value WHERE ${conds.join(" AND ")})`)
+    }
+    if (exclude !== "stock" && q.stock) out.push("in_stock")
     if (exclude !== "category") {
       if (selectedCategoryIds.length) {
         out.push(
@@ -503,7 +577,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   }
 
   /** `SELECT * FROM scoped` filtrat cu tot, mai puțin cheia exclusă. */
-  const facetCte = (name: string, exclude: Excludable) => {
+  const facetCte = (name: string, exclude: string) => {
     const clauses = filterClauses(exclude)
     return `${name} AS (SELECT * FROM scoped${
       clauses.length ? ` WHERE ${clauses.join(" AND ")}` : ""
@@ -517,24 +591,48 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   /* ---------------- Fațetele, fiecare peste setul îngustat de celelalte ---------------- */
 
-  const facetSql = `
+  const selectAttrs = applicable.filter((a) => a.type === "select")
+  const numberAttrs = applicable.filter((a) => a.type === "number")
+
+  // Un singur SQL pentru toate filtrele select: câte un CTE per filtru (setul
+  // filtrat fără propria selecție), numărat pe valori și lipit cu UNION ALL.
+  const selectFacetSql = selectAttrs.length
+    ? `
     WITH ${scopedCte},
-      ${facetCte("f_brand", "brand")},
-      ${facetCte("f_storage", "storage")},
-      ${facetCte("f_ram", "ram")},
-      ${facetCte("f_color", "color")}
-    SELECT 'brand'   AS facet, brand   AS value, NULL AS hex, COUNT(*)::int AS count FROM f_brand   WHERE brand   IS NOT NULL GROUP BY brand
-    UNION ALL
-    SELECT 'storage', storage, NULL, COUNT(*)::int FROM f_storage WHERE storage IS NOT NULL GROUP BY storage
-    UNION ALL
-    SELECT 'ram',     ram,     NULL, COUNT(*)::int FROM f_ram     WHERE ram     IS NOT NULL GROUP BY ram
-    UNION ALL
-    SELECT 'color',   color,   MIN(color_hex), COUNT(*)::int FROM f_color WHERE color IS NOT NULL GROUP BY color
-    UNION ALL
-    -- Toate mărcile din scope, neîngustate: regula care scoate din fațeta
-    -- „Categorie" numele care coincid cu mărci trebuie să fie stabilă. Altfel
-    -- „Apple" ar reapărea ca sub-categorie exact când filtrezi pe Samsung.
-    SELECT 'brand_all', brand, NULL, COUNT(*)::int FROM scoped WHERE brand IS NOT NULL GROUP BY brand`
+      ${selectAttrs.map((a, i) => facetCte(`fs_${i}`, `attr:${a.key}`)).join(",\n      ")}
+    ${selectAttrs
+      .map(
+        (a, i) => `SELECT ${bind(a.key, "fk")}::text AS key, pfv.value_id, COUNT(DISTINCT s.id)::int AS count
+      FROM fs_${i} s
+      JOIN product_filter_value pfv ON pfv.product_id = s.id AND pfv.deleted_at IS NULL
+      WHERE pfv.attribute_id = ${bind(a.id, "fa")} AND pfv.value_id IS NOT NULL
+      GROUP BY pfv.value_id`
+      )
+      .join("\n    UNION ALL\n    ")}`
+    : null
+
+  const numberFacetSql = numberAttrs.length
+    ? `
+    WITH ${scopedCte},
+      ${numberAttrs.map((a, i) => facetCte(`fn_${i}`, `attr:${a.key}`)).join(",\n      ")}
+    ${numberAttrs
+      .map(
+        (a, i) => `SELECT ${bind(a.key, "fk")}::text AS key,
+             ROUND(MIN(pfv.value_number)::numeric, 2)::float AS min,
+             ROUND(MAX(pfv.value_number)::numeric, 2)::float AS max,
+             COUNT(DISTINCT s.id)::int AS count
+      FROM fn_${i} s
+      JOIN product_filter_value pfv ON pfv.product_id = s.id AND pfv.deleted_at IS NULL
+      WHERE pfv.attribute_id = ${bind(a.id, "fa")} AND pfv.value_number IS NOT NULL`
+      )
+      .join("\n    UNION ALL\n    ")}`
+    : null
+
+  // Totalul filtrat și câte produse din el sunt în stoc (fără filtrul de stoc).
+  const totalsSql = `
+    WITH ${scopedCte}, ${filteredCte}, ${facetCte("f_stock", "stock")}
+    SELECT (SELECT COUNT(*)::int FROM filtered) AS total,
+           (SELECT COUNT(*)::int FROM f_stock WHERE in_stock) AS in_stock`
 
   const priceSql = `
     WITH ${scopedCte}, ${facetCte("f_price", "price")}
@@ -598,15 +696,21 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   // Toate interogările primesc același obiect de bindings; knex ignoră cheile
   // care nu apar în textul SQL respectiv.
-  let facetRows: any[], priceRow: any, categoryRowsFacet: any[], pageRows: any[]
+  let selectRows: any[], numberRows: any[], totalsRow: any
+  let priceRow: any, categoryRowsFacet: any[], pageRows: any[]
   try {
-    const [f, pr, cf, pg] = await Promise.all([
-      knex.raw(facetSql, b),
+    const empty = Promise.resolve({ rows: [] as any[] })
+    const [sf, nf, tt, pr, cf, pg] = await Promise.all([
+      selectFacetSql ? knex.raw(selectFacetSql, b) : empty,
+      numberFacetSql ? knex.raw(numberFacetSql, b) : empty,
+      knex.raw(totalsSql, b),
       knex.raw(priceSql, b),
       knex.raw(categoryFacetSql, b),
       knex.raw(pageSql, b),
     ])
-    facetRows = f.rows
+    selectRows = sf.rows
+    numberRows = nf.rows
+    totalsRow = tt.rows[0]
     priceRow = pr.rows[0]
     categoryRowsFacet = cf.rows
     pageRows = pg.rows
@@ -615,7 +719,9 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     return res.status(500).json({ message: "Catalogul nu a putut fi filtrat." })
   }
 
-  const count = pageRows[0]?.total ?? 0
+  // Din totaluri, nu din pagină: o pagină dincolo de capăt n-are rânduri, dar
+  // numărul de rezultate rămâne același.
+  const count: number = totalsRow?.total ?? 0
   const pageIds: string[] = pageRows.map((r) => r.id)
 
   /* ---------------- Hidratarea paginii cu prețuri calculate ---------------- */
@@ -663,24 +769,15 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   /* ---------------- Formatarea fațetelor ---------------- */
 
-  const pick = (name: string) =>
-    facetRows
-      .filter((r) => r.facet === name)
-      .map((r) => ({ value: r.value as string, count: r.count as number }))
-
-  const storageGb = (label: string): number => {
-    const n = parseFloat(label)
-    if (!Number.isFinite(n)) return 0
-    return /tb/i.test(label) ? n * 1024 : n
-  }
   const byCountThenName = (a: any, b: any) =>
     b.count - a.count || a.value.localeCompare(b.value)
 
-  const brand = pick("brand").sort(byCountThenName)
-  const brandNames = new Set(pick("brand_all").map((v) => normName(v.value)))
+  // Mărcile se scot din fațeta „Categorie" (subcategoriile-marcă ar dubla
+  // fațeta „Marcă"). Lista vine din valorile filtrului de marcă, nu din ce e
+  // în scope — regula trebuie să fie stabilă când filtrezi pe altă marcă.
+  const brandNames = new Set((brandAttr?.values ?? []).map((v) => normName(v.value)))
 
-  // Categoriile duplicate din import se unesc după numele normalizat; cele
-  // care coincid cu o marcă se scot, ca să nu dubleze fațeta „Marcă".
+  // Categoriile duplicate din import se unesc după numele normalizat.
   const categoryMerged = new Map<string, { value: string; count: number }>()
   for (const r of categoryRowsFacet) {
     const key = normName(r.value)
@@ -689,36 +786,82 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     e.count += r.count
     categoryMerged.set(key, e)
   }
+  const category = Array.from(categoryMerged.values()).sort(byCountThenName)
+  // O valoare bifată poate să nu mai apară deloc dacă altă fațetă o exclude
+  // complet — și atunci n-ar mai putea fi debifată din panou. O readăugăm cu 0.
+  for (const value of q.category) {
+    if (!category.some((v) => normName(v.value) === normName(value))) {
+      category.push({ value, count: 0 })
+    }
+  }
 
-  const color = facetRows
-    .filter((r) => r.facet === "color")
-    .map((r) => ({ value: r.value as string, count: r.count as number, hex: r.hex }))
-    .sort(byCountThenName)
+  const attributes: any[] = []
+  for (const attr of applicable) {
+    const base = {
+      key: attr.key,
+      label: attr.label,
+      type: attr.type,
+      display: attr.display,
+      unit: attr.unit,
+    }
 
-  const facets: Record<string, any> = {
-    category: Array.from(categoryMerged.values()).sort(byCountThenName),
-    brand,
-    storage: pick("storage").sort(
-      (a, b) => storageGb(a.value) - storageGb(b.value)
-    ),
-    ram: pick("ram").sort((a, b) => parseFloat(a.value) - parseFloat(b.value)),
-    color,
+    if (attr.type === "number") {
+      const row = numberRows.find((r) => r.key === attr.key)
+      const sel = rangeSel.get(attr.key)
+      const hasRange = row && row.min != null && row.max != null && row.max > row.min
+      if (!hasRange && !sel) continue
+      attributes.push({
+        ...base,
+        range: hasRange ? roundRange(row.min, row.max) : null,
+        selected: sel ? { min: sel.min, max: sel.max } : null,
+      })
+      continue
+    }
+
+    const sel = selectSel.get(attr.key)
+    const counts = new Map<string, number>(
+      selectRows.filter((r) => r.key === attr.key).map((r) => [r.value_id, r.count])
+    )
+    const selectedIds = new Set(sel?.valueIds ?? [])
+    const values = attr.values
+      .filter((v) => counts.has(v.id) || selectedIds.has(v.id))
+      .map((v) => ({
+        value: v.value,
+        slug: v.slug,
+        hex: v.hex,
+        count: counts.get(v.id) ?? 0,
+        rank: v.rank,
+      }))
+    if (!values.length && !sel) continue
+
+    // Un filtru cu o singură valoare care acoperă tot rezultatul nu filtrează
+    // nimic. Unul cu o valoare pe o parte din rezultate („5G") e un comutator
+    // util, deci rămâne.
+    if (!sel && values.length === 1 && values[0].count >= count) continue
+
+    if (values.some((v) => v.rank > 0)) {
+      values.sort((a, b) => a.rank - b.rank || byCountThenName(a, b))
+    } else if (values.every((v) => numericSortKey(v.value) != null)) {
+      values.sort((a, b) => numericSortKey(a.value)! - numericSortKey(b.value)!)
+    } else {
+      values.sort(byCountThenName)
+    }
+
+    attributes.push({
+      ...base,
+      values: values.map(({ rank: _rank, ...v }) => v),
+      selected: attr.values.filter((v) => selectedIds.has(v.id)).map((v) => v.slug),
+    })
+  }
+
+  const facets = {
+    category,
     priceRange:
       priceRow?.min != null && priceRow?.max != null && priceRow.max > priceRow.min
         ? { min: Math.floor(priceRow.min), max: Math.ceil(priceRow.max) }
         : null,
-  }
-
-  // O valoare bifată poate să nu mai apară deloc dacă altă fațetă o exclude
-  // complet — și atunci n-ar mai putea fi debifată din panou. O readăugăm cu 0,
-  // ca să rămână vizibilă și clicabilă.
-  for (const key of FILTER_KEYS) {
-    for (const value of q[key]) {
-      const exists = facets[key].some(
-        (v: any) => normName(v.value) === normName(value)
-      )
-      if (!exists) facets[key].push({ value, count: 0 })
-    }
+    stock: { count: totalsRow?.in_stock ?? 0 },
+    attributes,
   }
 
   return res.json({ products, count, facets })

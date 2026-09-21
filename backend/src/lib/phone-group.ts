@@ -90,7 +90,7 @@ const COLOR_HEX: [string, string][] = [
   ["galben", "#e8cf6a"], ["portocaliu", "#e07b3c"], ["gri", "#9aa0a6"],
 ]
 
-function colorHex(label: string): string | null {
+export function colorHex(label: string): string | null {
   const l = label.toLowerCase()
   for (const [k, hex] of COLOR_HEX) if (l.includes(k)) return hex
   return null
