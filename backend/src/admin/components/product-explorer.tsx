@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { filtersApi, formatNumber, type FilterMeta } from "../lib/product-filters"
+import ProductBulkActions from "./product-bulk-actions"
 
 /**
  * Lista de produse din admin, cu filtrele din magazin. O randează widgetul
@@ -138,9 +139,26 @@ const ProductExplorer = () => {
   const [loading, setLoading] = useState(true)
   const [meta, setMeta] = useState<FilterMeta | null>(null)
   const [search, setSearch] = useState(params.get("q") ?? "")
+  /** Produsele bifate — pot fi și pe alte pagini ale listei. */
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [selectingAll, setSelectingAll] = useState(false)
+  /** Crește după o acțiune în masă, ca lista să se reîncarce cu aceiași parametri. */
+  const [refresh, setRefresh] = useState(0)
 
   const page = Math.max(1, Number(params.get("page")) || 1)
   const queryString = params.toString()
+  const filterString = useMemo(() => {
+    const p = new URLSearchParams(queryString)
+    p.delete("page")
+    p.delete("sort")
+    return p.toString()
+  }, [queryString])
+
+  // Bifele țin de setul filtrat: cu alte filtre, o selecție veche ar lovi
+  // produse care nici nu se mai văd în listă. Paginarea și sortarea le păstrează.
+  useEffect(() => {
+    setSelected(new Set())
+  }, [filterString])
 
   /** Schimbă un parametru și întoarce lista la prima pagină. */
   const update = (mutate: (p: URLSearchParams) => void) => {
@@ -170,7 +188,7 @@ const ProductExplorer = () => {
     return () => {
       cancelled = true
     }
-  }, [queryString])
+  }, [queryString, refresh])
 
   // Căutarea ajunge în URL după o scurtă pauză, nu la fiecare tastă.
   useEffect(() => {
@@ -260,6 +278,39 @@ const ProductExplorer = () => {
   }
 
   const count = data?.count ?? 0
+  const pageIds = (data?.products ?? []).map((p) => p.id)
+  const pageSelected = pageIds.filter((id) => selected.has(id)).length
+
+  const togglePage = () =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (pageSelected === pageIds.length) pageIds.forEach((id) => next.delete(id))
+      else pageIds.forEach((id) => next.add(id))
+      return next
+    })
+
+  const toggleOne = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+
+  /** Toate produsele filtrate, de pe toate paginile — id-urile vin de la server. */
+  const selectAllFiltered = async () => {
+    setSelectingAll(true)
+    try {
+      const qs = new URLSearchParams(queryString)
+      qs.delete("page")
+      qs.set("ids_only", "true")
+      const { ids } = await filtersApi<{ ids: string[] }>(`/explore?${qs}`)
+      setSelected(new Set(ids))
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setSelectingAll(false)
+    }
+  }
   const pageCount = Math.max(1, Math.ceil(count / PAGE_SIZE))
   const goToPage = (n: number) => {
     const next = new URLSearchParams(params)
@@ -429,10 +480,21 @@ const ProductExplorer = () => {
         </div>
       )}
 
-      <div className="flex items-center justify-between px-6 py-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-6 py-3">
         <Text size="small" className="text-ui-fg-subtle">
           {loading && !data ? "Se încarcă…" : `${count} ${count === 1 ? "produs" : "produse"}`}
+          {selected.size > 0 && ` · ${selected.size} selectate`}
         </Text>
+        {count > 0 && selected.size < count && (
+          <Button variant="secondary" size="small" onClick={selectAllFiltered} isLoading={selectingAll}>
+            Selectează toate cele {count} filtrate
+          </Button>
+        )}
+        {selected.size > 0 && (
+          <Button variant="transparent" size="small" onClick={() => setSelected(new Set())}>
+            Deselectează
+          </Button>
+        )}
       </div>
 
       {data && data.products.length === 0 ? (
@@ -445,6 +507,19 @@ const ProductExplorer = () => {
           <Table>
             <Table.Header>
               <Table.Row>
+                <Table.HeaderCell className="w-10">
+                  <Checkbox
+                    aria-label="Selectează pagina"
+                    checked={
+                      pageSelected === 0
+                        ? false
+                        : pageSelected === pageIds.length
+                          ? true
+                          : "indeterminate"
+                    }
+                    onCheckedChange={togglePage}
+                  />
+                </Table.HeaderCell>
                 <Table.HeaderCell>Produs</Table.HeaderCell>
                 <Table.HeaderCell>Marcă</Table.HeaderCell>
                 <Table.HeaderCell>Stare</Table.HeaderCell>
@@ -456,9 +531,16 @@ const ProductExplorer = () => {
               {(data?.products ?? []).map((p) => (
                 <Table.Row
                   key={p.id}
-                  className="cursor-pointer"
+                  className={clx("cursor-pointer", selected.has(p.id) && "bg-ui-bg-highlight")}
                   onClick={() => navigate(`/products/${p.id}`)}
                 >
+                  <Table.Cell className="w-10" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      aria-label={`Selectează ${p.title}`}
+                      checked={selected.has(p.id)}
+                      onCheckedChange={() => toggleOne(p.id)}
+                    />
+                  </Table.Cell>
                   <Table.Cell className="max-w-[520px]">
                     <div className="flex items-center gap-3 py-1">
                       <div className="bg-ui-bg-component border-ui-border-base flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded border">
@@ -517,6 +599,15 @@ const ProductExplorer = () => {
           />
         </div>
       )}
+      <ProductBulkActions
+        ids={[...selected]}
+        categories={categories}
+        onClear={() => setSelected(new Set())}
+        onDone={() => {
+          setSelected(new Set())
+          setRefresh((n) => n + 1)
+        }}
+      />
     </Container>
   )
 }

@@ -54,6 +54,14 @@ const QuerySchema = z
       .default("newest"),
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(50),
+    /**
+     * Doar id-urile TUTUROR produselor filtrate, fără pagină și fațete — pentru
+     * „Selectează toate cele filtrate" din listă, înaintea unei acțiuni în masă.
+     */
+    ids_only: z
+      .enum(["true", "false"])
+      .optional()
+      .transform((v) => v === "true"),
   })
   .passthrough()
 
@@ -355,6 +363,19 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     stock_asc: "COALESCE(stock_qty, 0) ASC, id DESC",
     stock_desc: "COALESCE(stock_qty, 0) DESC, id DESC",
   }[q.sort]
+
+  if (q.ids_only) {
+    try {
+      const { rows } = await knex.raw(
+        `WITH ${scopedCte}, ${facetCte("filtered")} SELECT id FROM filtered ORDER BY ${orderBy}`,
+        b
+      )
+      return res.json({ ids: rows.map((r: any) => r.id) })
+    } catch (e: any) {
+      logger.error(`/admin/product-filters/explore (ids): interogare eșuată — ${e?.message}`)
+      return res.status(500).json({ message: "Produsele nu au putut fi filtrate." })
+    }
+  }
 
   const pageSql = `
     WITH ${scopedCte}, ${facetCte("filtered")},
