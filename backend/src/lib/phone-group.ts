@@ -64,7 +64,7 @@ const TITLE_PREFIX_RE = /^\s*(telefon(\s+mobil)?|smartphone)\s+/i
 // Cuvânt-cheie de culoare → hex. Cele mai specifice (multi-cuvânt) primele,
 // fiindcă potrivirea e prin „includes". Acoperă engleză + română.
 const COLOR_HEX: [string, string][] = [
-  ["cosmic orange", "#d4502e"], ["cloud white", "#eef0f1"], ["light gold", "#e8d6a8"],
+  ["cosmic orange", "#d4502e"], ["burgundy", "#6b1f2e"], ["glacier", "#d6e3ea"], ["cloud white", "#eef0f1"], ["light gold", "#e8d6a8"],
   ["space black", "#2a2a2c"], ["space grey", "#5b5c60"], ["sky blue", "#a9c8e0"],
   ["mist blue", "#aebfd0"], ["deep blue", "#2f3b54"], ["midnight blue", "#1e2a44"],
   ["forest green", "#2e4d3a"], ["ice blue", "#cfe3ee"], ["clover green", "#4f7a52"],
@@ -87,6 +87,7 @@ const COLOR_HEX: [string, string][] = [
   ["negru", "#1c1c1e"], ["alba", "#eef0f1"], ["alb", "#eef0f1"], ["rosu", "#b23b3b"],
   ["roșu", "#b23b3b"], ["albastru", "#3b5b8c"], ["verde", "#5b8c6e"],
   ["argintiu", "#d9dada"], ["auriu", "#e8d6a8"], ["roz", "#f3c5cf"],
+  ["bordo", "#6b1f2e"], ["vișiniu", "#6b1f2e"], ["visiniu", "#6b1f2e"],
   ["galben", "#e8cf6a"], ["portocaliu", "#e07b3c"], ["gri", "#9aa0a6"],
 ]
 
