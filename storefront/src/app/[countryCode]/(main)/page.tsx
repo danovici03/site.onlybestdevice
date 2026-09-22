@@ -10,7 +10,7 @@ import { getRegion } from "@lib/data/regions"
 export const metadata: Metadata = {
   title: { absolute: "onlybestdevice | Cele mai noi device-uri" },
   description:
-    "Cele mai noi device-uri, cu garanție 24 de luni, plata cu cardul sau în rate și retur gratuit în 14 zile.",
+    "Upgrade-ul tău începe aici. Device-uri premium, garanție și servicii complete.",
 }
 
 export default async function Home(props: {
