@@ -64,7 +64,8 @@ const TITLE_PREFIX_RE = /^\s*(telefon(\s+mobil)?|smartphone)\s+/i
 // Cuvânt-cheie de culoare → hex. Cele mai specifice (multi-cuvânt) primele,
 // fiindcă potrivirea e prin „includes". Acoperă engleză + română.
 const COLOR_HEX: [string, string][] = [
-  ["cosmic orange", "#d4502e"], ["burgundy", "#6b1f2e"], ["glacier", "#d6e3ea"], ["cloud white", "#eef0f1"], ["light gold", "#e8d6a8"],
+  ["cosmic orange", "#d4502e"], ["burgundy", "#6b1f2e"], ["glacier", "#d6e3ea"],
+  ["pistachio", "#bccb9c"], ["cloud white", "#eef0f1"], ["light gold", "#e8d6a8"],
   ["space black", "#2a2a2c"], ["space grey", "#5b5c60"], ["sky blue", "#a9c8e0"],
   ["mist blue", "#aebfd0"], ["deep blue", "#2f3b54"], ["midnight blue", "#1e2a44"],
   ["forest green", "#2e4d3a"], ["ice blue", "#cfe3ee"], ["clover green", "#4f7a52"],
