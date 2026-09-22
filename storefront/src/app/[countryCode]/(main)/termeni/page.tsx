@@ -33,8 +33,7 @@ export default function TermeniPage() {
       <p>Ne poți contacta oricând la:</p>
       <p>
         Adresă: {COMPANY.sedeOperativa.via}, {COMPANY.sedeOperativa.citta},{" "}
-        {COMPANY.sedeOperativa.cap}, jud. {COMPANY.adresaRetur.judet} · telefon{" "}
-        {COMPANY.telefono}
+        {COMPANY.sedeOperativa.cap}, jud. {COMPANY.adresaRetur.judet}
         <br />
         E-mail: <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>
       </p>

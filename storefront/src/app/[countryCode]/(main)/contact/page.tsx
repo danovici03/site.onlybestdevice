@@ -1,7 +1,6 @@
 import { Metadata } from "next"
 import {
   Envelope,
-  Phone,
   WhatsappLogo,
   MapPin,
   Clock,
@@ -24,15 +23,9 @@ const CHANNELS = [
     href: `mailto:${COMPANY.email}`,
   },
   {
-    icon: <Phone size={22} weight="duotone" />,
-    label: "Telefon",
-    value: COMPANY.telefono,
-    href: `tel:${COMPANY.telefono.replace(/\s+/g, "")}`,
-  },
-  {
     icon: <WhatsappLogo size={22} weight="duotone" />,
     label: "WhatsApp",
-    value: COMPANY.whatsapp,
+    value: "Scrie-ne pe WhatsApp",
     href: `https://wa.me/${COMPANY.whatsapp.replace(/[^\d]/g, "")}`,
   },
 ]

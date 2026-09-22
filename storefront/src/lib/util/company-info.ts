@@ -58,7 +58,6 @@ export const COMPANY = {
   // Contacte
   email: "office@onlybestdevice.ro",
   emailPec: "",
-  telefono: "0785 866 866",
   // Format internațional: linkurile wa.me se construiesc din cifrele acestui
   // câmp, iar wa.me nu acceptă prefixul național „0".
   whatsapp: "+40 785 866 866",
