@@ -1,6 +1,5 @@
 /**
- * Marca din titlu. Mutată aici din `scripts/extract-product-filters.ts`, ca
- * extractorul `brand` al filtrelor să folosească exact aceeași listă.
+ * Marca din titlu, pentru extractorul `brand` al filtrelor.
  *
  * [cuvânt-cheie, Etichetă] — sub-mărcile întâi (iPhone→Apple, Galaxy→Samsung,
  * Redmi/Poco→Xiaomi, Pixel→Google), apoi mărcile de accesorii.

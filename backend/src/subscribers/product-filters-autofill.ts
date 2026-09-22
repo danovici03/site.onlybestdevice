@@ -2,14 +2,16 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 
 import { syncProductFilters } from "../lib/product-filters/autofill"
+import { revalidateStorefront } from "../lib/storefront-revalidate"
 
 /**
  * Completează filtrele produsului la fiecare salvare: produs nou din ERP,
  * fișă tehnică actualizată, produs mutat în altă categorie.
  *
  * Scrie doar în tabelele modulului `product_filter`, nu în produs — deci nu
- * emite alt `product.updated` și nu intră în buclă. Revalidarea storefront-ului
- * vine din `revalidate-storefront.ts`, pe același eveniment.
+ * emite alt `product.updated` și nu intră în buclă. `revalidate-storefront.ts`
+ * ascultă același eveniment, dar rulează în paralel și poate goli cache-ul
+ * înainte să terminăm aici; de aceea revalidăm și noi, după scriere.
  *
  * Oprire de urgență: `PRODUCT_FILTER_AUTOFILL=0` în `.env`.
  */
@@ -39,6 +41,7 @@ export default async function productFiltersAutofill({
   try {
     const r = await syncProductFilters(container, ids)
     if (r.rowsCreated || r.rowsDeleted) {
+      await revalidateStorefront(logger, `product-filters.${event.name}`, ["products"])
       logger.info(
         `[product-filters] ${event.name}: ${r.rowsCreated} valori scrise, ${r.rowsDeleted} scoase` +
           (r.valuesCreated ? `, ${r.valuesCreated} valori noi` : "")
