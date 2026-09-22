@@ -1,4 +1,4 @@
-import { Funnel, MagnifyingGlass, Photo, XMarkMini } from "@medusajs/icons"
+import { MagnifyingGlass, Photo, Plus, XMarkMini } from "@medusajs/icons"
 import {
   Badge,
   Button,
@@ -15,7 +15,7 @@ import {
   clx,
   toast,
 } from "@medusajs/ui"
-import { useEffect, useMemo, useState } from "react"
+import { Fragment, useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { filtersApi, formatNumber, type FilterMeta } from "../lib/product-filters"
@@ -144,6 +144,10 @@ const ProductExplorer = () => {
   const [selectingAll, setSelectingAll] = useState(false)
   /** Crește după o acțiune în masă, ca lista să se reîncarce cu aceiași parametri. */
   const [refresh, setRefresh] = useState(0)
+  /** Filtrele puse pe rând din „+ Filtru" care încă n-au valoare aleasă. */
+  const [added, setAdded] = useState<string[]>([])
+  /** Filtrul abia adăugat — se deschide singur, ca să nu mai trebuiască un click. */
+  const [justAdded, setJustAdded] = useState<string | null>(null)
 
   const page = Math.max(1, Number(params.get("page")) || 1)
   const queryString = params.toString()
@@ -199,19 +203,8 @@ const ProductExplorer = () => {
   }, [search])
 
   const categories = useMemo(() => categoryTree(meta?.categories ?? []), [meta])
-  const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? id
 
   const attributes = data?.facets.attributes ?? []
-  const visibleAttributes = attributes.filter(
-    (a) =>
-      a.values.length > 0 ||
-      a.range != null ||
-      a.none > 0 ||
-      a.selected.none ||
-      a.selected.values.length > 0 ||
-      a.selected.min != null ||
-      a.selected.max != null
-  )
 
   const toggleValue = (attr: ExploreAttribute, slug: string) =>
     update((p) => {
@@ -230,51 +223,147 @@ const ProductExplorer = () => {
       if (none) p.append(key, NONE)
     })
 
-  /* ---------------- Filtrele active, ca etichete de scos ---------------- */
+  /* ---------------- Filtrele, ca butoane adăugate din meniul „Filtru" ---------------- */
 
-  const chips: { label: string; onRemove: () => void }[] = []
   const categoryId = params.get("category_id")
-  if (categoryId) {
-    // Filtrele de categorie nu mai au sens fără categorie — pleacă odată cu ea.
-    chips.push({
-      label: `Categorie: ${categoryName(categoryId)}`,
-      onRemove: () => setOne("category_id", null),
-    })
-  }
   const status = params.get("status")
-  if (status) chips.push({ label: `Stare: ${STATUS_LABEL[status] ?? status}`, onRemove: () => setOne("status", null) })
   const stock = params.get("stock")
-  if (stock) chips.push({ label: stock === "in" ? "În stoc" : "Stoc epuizat", onRemove: () => setOne("stock", null) })
   const hidden = params.get("hidden")
-  if (hidden) chips.push({ label: hidden === "true" ? "Ascunse" : "Vizibile", onRemove: () => setOne("hidden", null) })
   const tag = params.get("tag")
-  if (tag) chips.push({ label: TAGS.find(([v]) => v === tag)?.[1] ?? `Etichetă: ${tag}`, onRemove: () => setOne("tag", null) })
   const price = params.get("price")
-  if (price) {
-    const [a, b] = price.split("-").map((s) => (s ? Number(s) : null))
-    chips.push({ label: `Preț: ${describeRange(a, b, "lei")}`, onRemove: () => setOne("price", null) })
+  const priceSel = price
+    ? {
+        min: price.split("-")[0] ? Number(price.split("-")[0]) : null,
+        max: price.split("-")[1] ? Number(price.split("-")[1]) : null,
+        none: false,
+      }
+    : null
+
+  /** O singură valoare: bifa aleasă înlocuiește, bifa curentă golește. */
+  const single = (key: string, current: string | null) => (v: string) =>
+    setOne(key, v === current ? null : v)
+
+  const defs: FilterDef[] = [
+    {
+      kind: "choice",
+      id: "status",
+      group: "general",
+      label: "Stare",
+      selected: status ? [status] : [],
+      options: Object.entries(STATUS_LABEL)
+        .filter(([k]) => data?.facets.status[k] || k === status)
+        .map(([k, label]) => ({ value: k, label, count: data?.facets.status[k] ?? 0 })),
+      onToggle: single("status", status),
+      onClear: () => setOne("status", null),
+    },
+    {
+      kind: "choice",
+      id: "stock",
+      group: "general",
+      label: "Stoc",
+      selected: stock ? [stock] : [],
+      options: [
+        { value: "in", label: "În stoc", count: data?.facets.stock.in ?? 0 },
+        { value: "out", label: "Stoc epuizat", count: data?.facets.stock.out ?? 0 },
+      ],
+      onToggle: single("stock", stock),
+      onClear: () => setOne("stock", null),
+    },
+    {
+      kind: "range",
+      id: "price",
+      group: "general",
+      label: "Preț",
+      unit: "lei",
+      range: data?.facets.price ?? null,
+      selected: priceSel,
+      onApply: (min, max) => setOne("price", min || max ? `${min}-${max}` : null),
+      onClear: () => setOne("price", null),
+    },
+    {
+      kind: "choice",
+      id: "tag",
+      group: "general",
+      label: "Selecție",
+      selected: tag ? [tag] : [],
+      options: TAGS.map(([value, label]) => ({ value, label })),
+      onToggle: single("tag", tag),
+      onClear: () => setOne("tag", null),
+    },
+    {
+      kind: "choice",
+      id: "hidden",
+      group: "general",
+      label: "Vizibilitate",
+      selected: hidden ? [hidden] : [],
+      options: [
+        { value: "false", label: "Vizibile în magazin" },
+        { value: "true", label: "Ascunse din liste" },
+      ],
+      onToggle: single("hidden", hidden),
+      onClear: () => setOne("hidden", null),
+    },
+    ...attributes
+      .filter(
+        (a) =>
+          a.values.length > 0 ||
+          a.range != null ||
+          a.none > 0 ||
+          a.selected.none ||
+          a.selected.values.length > 0 ||
+          a.selected.min != null ||
+          a.selected.max != null
+      )
+      .map((attr): FilterDef => {
+        const id = `attr:${attr.key}`
+        const clear = () => update((p) => p.delete(PREFIX + attr.key))
+        if (attr.type === "number") {
+          const s = attr.selected
+          return {
+            kind: "range",
+            id,
+            group: "specs",
+            label: attr.label,
+            unit: attr.unit,
+            range: attr.range,
+            none: attr.none,
+            selected: s.min != null || s.max != null || s.none ? s : null,
+            onApply: (min, max, none) => setRange(attr, min, max, none),
+            onClear: clear,
+          }
+        }
+        return {
+          kind: "choice",
+          id,
+          group: "specs",
+          label: attr.label,
+          multi: true,
+          selected: [...(attr.selected.none ? [NONE] : []), ...attr.selected.values],
+          options: [
+            { value: NONE, label: "Fără valoare", count: attr.none, muted: true },
+            ...attr.values.map((v) => ({ value: v.slug, label: v.value, count: v.count, hex: v.hex })),
+          ],
+          onToggle: (v) => toggleValue(attr, v),
+          onClear: clear,
+        }
+      }),
+  ]
+
+  const isActive = (d: FilterDef) => (d.kind === "choice" ? d.selected.length > 0 : !!d.selected)
+  // Pe rând: filtrele cu valoare și cele abia adăugate (încă fără valoare).
+  const shown = defs.filter((d) => isActive(d) || added.includes(d.id))
+  const addable = defs.filter((d) => !shown.includes(d))
+  const anyActive = !!(categoryId || params.get("q") || defs.some(isActive))
+
+  const addFilter = (id: string) => {
+    setJustAdded(id)
+    // După ce meniul „+ Filtru" s-a închis — altfel închiderea lui ar prinde
+    // și meniul filtrului nou, deschis în același moment.
+    window.setTimeout(() => setAdded((prev) => (prev.includes(id) ? prev : [...prev, id])), 0)
   }
-  for (const attr of attributes) {
-    const { selected } = attr
-    for (const slug of selected.values) {
-      const value = attr.values.find((v) => v.slug === slug)?.value ?? slug
-      chips.push({ label: `${attr.label}: ${value}`, onRemove: () => toggleValue(attr, slug) })
-    }
-    if (attr.type === "number" && (selected.min != null || selected.max != null)) {
-      chips.push({
-        label: `${attr.label}: ${describeRange(selected.min, selected.max, attr.unit)}`,
-        onRemove: () => setRange(attr, "", "", selected.none),
-      })
-    }
-    if (selected.none) {
-      chips.push({
-        label: `${attr.label}: fără valoare`,
-        onRemove: () =>
-          attr.type === "number"
-            ? setRange(attr, selected.min?.toString() ?? "", selected.max?.toString() ?? "", false)
-            : toggleValue(attr, NONE),
-      })
-    }
+  const removeFilter = (d: FilterDef) => {
+    setAdded((prev) => prev.filter((x) => x !== d.id))
+    if (isActive(d)) d.onClear()
   }
 
   const count = data?.count ?? 0
@@ -337,9 +426,9 @@ const ProductExplorer = () => {
         </div>
       </div>
 
-      {/* Criteriile generale */}
+      {/* Un singur rând: căutare, categorie, filtrele alese, „+ Filtru". */}
       <div className="flex flex-wrap items-center gap-2 px-6 py-4">
-        <div className="relative w-full sm:w-72">
+        <div className="w-full sm:w-64">
           <Input
             type="search"
             size="small"
@@ -352,133 +441,92 @@ const ProductExplorer = () => {
         <FilterSelect
           value={categoryId}
           placeholder="Categorie"
-          width="w-60"
-          onChange={(v) =>
+          width="w-56"
+          onChange={(v) => {
             // Filtrele de atribut depind de categorie: la schimbare se golesc.
+            setAdded((prev) => prev.filter((id) => !id.startsWith("attr:")))
             update((p) => {
               for (const k of [...p.keys()]) if (k.startsWith(PREFIX)) p.delete(k)
               v ? p.set("category_id", v) : p.delete("category_id")
             })
-          }
+          }}
           options={categories.map((c) => ({
             value: c.id,
             label: `${"   ".repeat(c.depth)}${c.name} (${c.count})`,
           }))}
         />
-        <FilterSelect
-          value={status}
-          placeholder="Stare"
-          onChange={(v) => setOne("status", v)}
-          options={Object.entries(STATUS_LABEL)
-            .filter(([k]) => data?.facets.status[k] || k === status)
-            .map(([k, label]) => ({ value: k, label: `${label} (${data?.facets.status[k] ?? 0})` }))}
-        />
-        <FilterSelect
-          value={stock}
-          placeholder="Stoc"
-          onChange={(v) => setOne("stock", v)}
-          options={[
-            { value: "in", label: `În stoc (${data?.facets.stock.in ?? 0})` },
-            { value: "out", label: `Stoc epuizat (${data?.facets.stock.out ?? 0})` },
-          ]}
-        />
-        <FilterSelect
-          value={tag}
-          placeholder="Selecție"
-          onChange={(v) => setOne("tag", v)}
-          options={TAGS.map(([value, label]) => ({ value, label }))}
-        />
-        <FilterSelect
-          value={hidden}
-          placeholder="Vizibilitate"
-          onChange={(v) => setOne("hidden", v)}
-          options={[
-            { value: "false", label: "Vizibile în magazin" },
-            { value: "true", label: "Ascunse" },
-          ]}
-        />
-        <RangeButton
-          label="Preț"
-          unit="lei"
-          range={data?.facets.price ?? null}
-          selected={
-            price
-              ? {
-                  min: price.split("-")[0] ? Number(price.split("-")[0]) : null,
-                  max: price.split("-")[1] ? Number(price.split("-")[1]) : null,
-                  none: false,
-                }
-              : null
-          }
-          onApply={(min, max) => setOne("price", min || max ? `${min}-${max}` : null)}
-        />
 
-        <div className="ml-auto">
-          <FilterSelect
-            value={params.get("sort") ?? "newest"}
-            placeholder="Sortare"
-            clearable={false}
-            onChange={(v) => setOne("sort", v === "newest" ? null : v)}
-            options={SORTS.map(([value, label]) => ({ value, label }))}
-          />
-        </div>
-      </div>
+        {shown.map((d) =>
+          d.kind === "choice" ? (
+            <ChoiceFilter
+              key={d.id}
+              def={d}
+              defaultOpen={d.id === justAdded}
+              onRemove={() => removeFilter(d)}
+            />
+          ) : (
+            <RangeFilter
+              key={d.id}
+              def={d}
+              defaultOpen={d.id === justAdded}
+              onRemove={() => removeFilter(d)}
+            />
+          )
+        )}
 
-      {/* Filtrele de atribut, din modulul product_filter */}
-      {visibleAttributes.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 px-6 py-3">
-          <Funnel className="text-ui-fg-muted" />
-          {visibleAttributes.map((attr) =>
-            attr.type === "number" ? (
-              <RangeButton
-                key={attr.key}
-                label={attr.label}
-                unit={attr.unit}
-                range={attr.range}
-                none={attr.none}
-                selected={
-                  attr.selected.min != null || attr.selected.max != null || attr.selected.none
-                    ? attr.selected
-                    : null
-                }
-                onApply={(min, max, none) => setRange(attr, min, max, none)}
-              />
-            ) : (
-              <SelectAttributeButton
-                key={attr.key}
-                attr={attr}
-                onToggle={(slug) => toggleValue(attr, slug)}
-              />
-            )
-          )}
-        </div>
-      )}
-
-      {chips.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 px-6 py-3">
-          {chips.map((c) => (
-            <button
-              key={c.label}
-              type="button"
-              onClick={c.onRemove}
-              className="bg-ui-bg-subtle hover:bg-ui-bg-subtle-hover border-ui-border-base txt-compact-small-plus flex items-center gap-1 rounded-md border py-0.5 pl-2 pr-1"
+        {addable.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenu.Trigger asChild>
+              <Button variant="secondary" size="small">
+                <Plus />
+                Filtru
+              </Button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content
+              align="start"
+              className="max-h-[420px] min-w-[200px] overflow-y-auto"
+              // La închidere, meniul își readuce focusul pe „+ Filtru" — asta ar
+              // închide imediat filtrul abia adăugat, care se deschide singur.
+              onCloseAutoFocus={(e) => e.preventDefault()}
             >
-              {c.label}
-              <XMarkMini className="text-ui-fg-muted" />
-            </button>
-          ))}
+              {(["general", "specs"] as const).map((group) => {
+                const items = addable.filter((d) => d.group === group)
+                if (!items.length) return null
+                return (
+                  <DropdownMenu.Group key={group}>
+                    {group === "specs" && addable.some((d) => d.group === "general") && (
+                      <DropdownMenu.Separator />
+                    )}
+                    <DropdownMenu.Label>
+                      {group === "general" ? "General" : categoryId ? "Filtrele categoriei" : "Specificații"}
+                    </DropdownMenu.Label>
+                    {items.map((d) => (
+                      <DropdownMenu.Item key={d.id} onClick={() => addFilter(d.id)}>
+                        {d.label}
+                      </DropdownMenu.Item>
+                    ))}
+                  </DropdownMenu.Group>
+                )
+              })}
+            </DropdownMenu.Content>
+          </DropdownMenu>
+        )}
+
+        {anyActive && (
           <Button
             variant="transparent"
             size="small"
             onClick={() => {
               setSearch("")
+              setAdded([])
               setParams(new URLSearchParams(params.get("sort") ? { sort: params.get("sort")! } : {}))
             }}
           >
             Șterge filtrele
           </Button>
-        </div>
-      )}
+        )}
+
+      </div>
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-6 py-3">
         <Text size="small" className="text-ui-fg-subtle">
@@ -495,6 +543,15 @@ const ProductExplorer = () => {
             Deselectează
           </Button>
         )}
+        <div className="ml-auto">
+          <FilterSelect
+            value={params.get("sort") ?? "newest"}
+            placeholder="Sortare"
+            clearable={false}
+            onChange={(v) => setOne("sort", v === "newest" ? null : v)}
+            options={SORTS.map(([value, label]) => ({ value, label }))}
+          />
+        </div>
       </div>
 
       {data && data.products.length === 0 ? (
@@ -649,72 +706,23 @@ const FilterSelect = ({
   </div>
 )
 
-/** Filtru cu valori (marcă, RAM, culoare…): meniu cu bife, rămâne deschis între bife. */
-const SelectAttributeButton = ({
-  attr,
-  onToggle,
-}: {
-  attr: ExploreAttribute
-  onToggle: (slug: string) => void
-}) => {
-  const active = attr.selected.values.length + (attr.selected.none ? 1 : 0)
-  return (
-    <DropdownMenu>
-      <DropdownMenu.Trigger asChild>
-        <Button variant="secondary" size="small" className={clx(active && "border-ui-fg-interactive")}>
-          {attr.label}
-          {active > 0 && (
-            <Badge size="2xsmall" color="blue">
-              {active}
-            </Badge>
-          )}
-        </Button>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content align="start" className="max-h-[380px] min-w-[220px] overflow-y-auto">
-        <DropdownMenu.CheckboxItem
-          checked={attr.selected.none}
-          onSelect={(e) => e.preventDefault()}
-          onCheckedChange={() => onToggle(NONE)}
-          className="justify-between gap-4"
-        >
-          <span className="italic">Fără valoare</span>
-          <span className="text-ui-fg-muted">{attr.none}</span>
-        </DropdownMenu.CheckboxItem>
-        {attr.values.length > 0 && <DropdownMenu.Separator />}
-        {attr.values.map((v) => (
-          <DropdownMenu.CheckboxItem
-            key={v.slug}
-            checked={attr.selected.values.includes(v.slug)}
-            onSelect={(e) => e.preventDefault()}
-            onCheckedChange={() => onToggle(v.slug)}
-            className="justify-between gap-4"
-          >
-            <span className="flex items-center gap-2">
-              {v.hex && (
-                <span
-                  className="border-ui-border-base inline-block h-3 w-3 rounded-full border"
-                  style={{ background: v.hex }}
-                />
-              )}
-              {v.value}
-            </span>
-            <span className="text-ui-fg-muted">{v.count}</span>
-          </DropdownMenu.CheckboxItem>
-        ))}
-      </DropdownMenu.Content>
-    </DropdownMenu>
-  )
+type ChoiceDef = {
+  kind: "choice"
+  id: string
+  group: "general" | "specs"
+  label: string
+  /** Mai multe valori deodată (atributele); altfel o bifă o înlocuiește pe cealaltă. */
+  multi?: boolean
+  options: { value: string; label: string; count?: number; hex?: string | null; muted?: boolean }[]
+  selected: string[]
+  onToggle: (value: string) => void
+  onClear: () => void
 }
 
-/** Filtru numeric (preț, diagonală, baterie): interval de la–până la, plus „fără valoare". */
-const RangeButton = ({
-  label,
-  unit,
-  range,
-  none,
-  selected,
-  onApply,
-}: {
+type RangeDef = {
+  kind: "range"
+  id: string
+  group: "general" | "specs"
   label: string
   unit: string | null
   range: { min: number; max: number } | null
@@ -722,8 +730,115 @@ const RangeButton = ({
   none?: number
   selected: { min: number | null; max: number | null; none: boolean } | null
   onApply: (min: string, max: string, none: boolean) => void
+  onClear: () => void
+}
+
+type FilterDef = ChoiceDef | RangeDef
+
+/**
+ * Butonul unui filtru de pe rând: „Marcă: Apple, Samsung" + ×. Deschide
+ * opțiunile la click; filtrul abia adăugat din „+ Filtru" se deschide singur.
+ */
+const FilterPill = ({
+  label,
+  summary,
+  onRemove,
+  children,
+}: {
+  label: string
+  summary: string | null
+  onRemove: () => void
+  /** Trigger-ul meniului/popover-ului, primit ca funcție ca să-l putem îmbrăca. */
+  children: (trigger: JSX.Element) => JSX.Element
+}) => (
+  <div className="bg-ui-button-neutral shadow-buttons-neutral txt-compact-small-plus flex h-7 items-center overflow-hidden rounded-md">
+    {children(
+      <button
+        type="button"
+        className="hover:bg-ui-button-neutral-hover flex h-full max-w-[260px] items-center gap-1 pl-2 pr-1.5 outline-none"
+      >
+        <span className={summary ? "text-ui-fg-subtle" : "text-ui-fg-base"}>{label}</span>
+        {summary && <span className="text-ui-fg-base truncate">{summary}</span>}
+      </button>
+    )}
+    <button
+      type="button"
+      aria-label={`Scoate filtrul ${label}`}
+      onClick={onRemove}
+      className="border-ui-border-base hover:bg-ui-button-neutral-hover text-ui-fg-muted flex h-full items-center border-l px-1"
+    >
+      <XMarkMini />
+    </button>
+  </div>
+)
+
+/** Filtru cu valori (stare, marcă, RAM, culoare…): meniu cu bife. */
+const ChoiceFilter = ({
+  def,
+  defaultOpen,
+  onRemove,
+}: {
+  def: ChoiceDef
+  defaultOpen: boolean
+  onRemove: () => void
 }) => {
-  const [open, setOpen] = useState(false)
+  const labels = def.selected.map(
+    (v) => def.options.find((o) => o.value === v)?.label ?? v
+  )
+  const summary = labels.length
+    ? labels.length > 2
+      ? `${labels.slice(0, 2).join(", ")} +${labels.length - 2}`
+      : labels.join(", ")
+    : null
+
+  return (
+    <FilterPill label={def.label} summary={summary} onRemove={onRemove}>
+      {(trigger) => (
+        <DropdownMenu defaultOpen={defaultOpen}>
+          <DropdownMenu.Trigger asChild>{trigger}</DropdownMenu.Trigger>
+          <DropdownMenu.Content align="start" className="max-h-[380px] min-w-[220px] overflow-y-auto">
+            {def.options.map((o, i) => (
+              <Fragment key={o.value}>
+                <DropdownMenu.CheckboxItem
+                  checked={def.selected.includes(o.value)}
+                  // Selecția multiplă ține meniul deschis între bife.
+                  onSelect={(e) => def.multi && e.preventDefault()}
+                  onCheckedChange={() => def.onToggle(o.value)}
+                  className="justify-between gap-4"
+                >
+                  <span className={clx("flex items-center gap-2", o.muted && "italic")}>
+                    {o.hex && (
+                      <span
+                        className="border-ui-border-base inline-block h-3 w-3 rounded-full border"
+                        style={{ background: o.hex }}
+                      />
+                    )}
+                    {o.label}
+                  </span>
+                  {o.count != null && <span className="text-ui-fg-muted">{o.count}</span>}
+                </DropdownMenu.CheckboxItem>
+                {o.muted && i < def.options.length - 1 && <DropdownMenu.Separator />}
+              </Fragment>
+            ))}
+          </DropdownMenu.Content>
+        </DropdownMenu>
+      )}
+    </FilterPill>
+  )
+}
+
+/** Filtru numeric (preț, diagonală, baterie): interval de la–până la, plus „fără valoare". */
+const RangeFilter = ({
+  def,
+  defaultOpen,
+  onRemove,
+}: {
+  def: RangeDef
+  defaultOpen: boolean
+  onRemove: () => void
+}) => {
+  const { label, unit, range, none, selected, onApply } = def
+  const [open, setOpen] = useState(defaultOpen)
   const [min, setMin] = useState("")
   const [max, setMax] = useState("")
   const [withoutValue, setWithoutValue] = useState(false)
@@ -741,84 +856,75 @@ const RangeButton = ({
     setOpen(false)
   }
 
+  const parts: string[] = []
+  if (selected && (selected.min != null || selected.max != null)) {
+    parts.push(describeRange(selected.min, selected.max, unit))
+  }
+  if (selected?.none) parts.push("fără valoare")
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <Popover.Trigger asChild>
-        <Button variant="secondary" size="small" className={clx(selected && "border-ui-fg-interactive")}>
-          {label}
-          {selected && (
-            <Badge size="2xsmall" color="blue">
-              1
-            </Badge>
-          )}
-        </Button>
-      </Popover.Trigger>
-      <Popover.Content className="flex w-64 flex-col gap-3 p-3">
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={(e) => {
-            e.preventDefault()
-            apply()
-          }}
-        >
-          <div className="flex items-end gap-2">
-            <div className="flex flex-1 flex-col gap-1">
-              <Label size="xsmall">De la</Label>
-              <Input
-                size="small"
-                inputMode="decimal"
-                placeholder={range ? String(range.min) : ""}
-                value={min}
-                onChange={(e) => setMin(e.target.value.replace(",", "."))}
-              />
-            </div>
-            <div className="flex flex-1 flex-col gap-1">
-              <Label size="xsmall">Până la</Label>
-              <Input
-                size="small"
-                inputMode="decimal"
-                placeholder={range ? String(range.max) : ""}
-                value={max}
-                onChange={(e) => setMax(e.target.value.replace(",", "."))}
-              />
-            </div>
-          </div>
-          {range && (
-            <Text size="xsmall" className="text-ui-fg-subtle">
-              În listă: {describeRange(range.min, range.max, unit)}
-            </Text>
-          )}
-          {none != null && (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id={`none-${label}`}
-                checked={withoutValue}
-                onCheckedChange={(c) => setWithoutValue(c === true)}
-              />
-              <Label size="small" htmlFor={`none-${label}`}>
-                Fără valoare ({none})
-              </Label>
-            </div>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="small"
-              onClick={() => {
-                onApply("", "", false)
-                setOpen(false)
+    <FilterPill label={label} summary={parts.length ? parts.join(" sau ") : null} onRemove={onRemove}>
+      {(trigger) => (
+        <Popover open={open} onOpenChange={setOpen}>
+          <Popover.Trigger asChild>{trigger}</Popover.Trigger>
+          <Popover.Content align="start" className="w-64 p-3">
+            <form
+              className="flex flex-col gap-3"
+              onSubmit={(e) => {
+                e.preventDefault()
+                apply()
               }}
             >
-              Golește
-            </Button>
-            <Button type="submit" size="small">
-              Aplică
-            </Button>
-          </div>
-        </form>
-      </Popover.Content>
-    </Popover>
+              <div className="flex items-end gap-2">
+                <div className="flex flex-1 flex-col gap-1">
+                  <Label size="xsmall">De la</Label>
+                  <Input
+                    size="small"
+                    inputMode="decimal"
+                    autoFocus
+                    placeholder={range ? String(range.min) : ""}
+                    value={min}
+                    onChange={(e) => setMin(e.target.value.replace(",", "."))}
+                  />
+                </div>
+                <div className="flex flex-1 flex-col gap-1">
+                  <Label size="xsmall">Până la</Label>
+                  <Input
+                    size="small"
+                    inputMode="decimal"
+                    placeholder={range ? String(range.max) : ""}
+                    value={max}
+                    onChange={(e) => setMax(e.target.value.replace(",", "."))}
+                  />
+                </div>
+              </div>
+              {range && (
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  În listă: {describeRange(range.min, range.max, unit)}
+                </Text>
+              )}
+              {none != null && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`none-${def.id}`}
+                    checked={withoutValue}
+                    onCheckedChange={(c) => setWithoutValue(c === true)}
+                  />
+                  <Label size="small" htmlFor={`none-${def.id}`}>
+                    Fără valoare ({none})
+                  </Label>
+                </div>
+              )}
+              <div className="flex justify-end">
+                <Button type="submit" size="small">
+                  Aplică
+                </Button>
+              </div>
+            </form>
+          </Popover.Content>
+        </Popover>
+      )}
+    </FilterPill>
   )
 }
 
