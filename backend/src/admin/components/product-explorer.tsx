@@ -410,6 +410,7 @@ const ProductExplorer = () => {
 
   return (
     <Container className="divide-y p-0">
+      <style>{SELECT_SCROLLBAR_CSS}</style>
       {/* Antetul listei native, cu aceleași acțiuni (rutele-copil ale /products). */}
       <div className="flex items-center justify-between px-6 py-4">
         <Heading level="h1">Produse</Heading>
@@ -670,6 +671,29 @@ const ProductExplorer = () => {
 }
 
 /** Select cu opțiunea „oricare" (golește parametrul). */
+/**
+ * Radix ascunde bara de scroll din Select (își injectează `scrollbar-width: none`
+ * pe viewport), deci o listă lungă pare terminată la ultimul rând vizibil.
+ * Selectorul cu clasă bate atributul simplu al lor și o readuce, mereu vizibilă.
+ */
+const SELECT_SCROLLBAR_CSS = `
+.obd-select-scroll [data-radix-select-viewport] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.obd-select-scroll [data-radix-select-viewport]::-webkit-scrollbar {
+  display: block;
+  width: 8px;
+}
+.obd-select-scroll [data-radix-select-viewport]::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+.obd-select-scroll [data-radix-select-viewport]::-webkit-scrollbar-track {
+  background: transparent;
+}
+`
+
 const FilterSelect = ({
   value,
   placeholder,
@@ -694,7 +718,8 @@ const FilterSelect = ({
       <Select.Trigger>
         <Select.Value placeholder={placeholder} />
       </Select.Trigger>
-      <Select.Content>
+      {/* Implicit @medusajs/ui taie lista la 200px (~5 rânduri), fără scroll vizibil. */}
+      <Select.Content className="obd-select-scroll max-h-[420px]">
         {clearable && <Select.Item value={ANY}>{placeholder}: oricare</Select.Item>}
         {options.map((o) => (
           <Select.Item key={o.value} value={o.value}>
