@@ -34,7 +34,7 @@ const ReviewSortControl = ({ current }: { current: ReviewSort }) => {
         htmlFor="review-sort"
         className="text-xs uppercase tracking-[0.2em] font-bold text-brand-dark/60"
       >
-        Ordina
+        Sortează
       </label>
       <select
         id="review-sort"
