@@ -1,4 +1,5 @@
 import { sdk } from "@lib/config"
+import { KNOWN_BRAND_SLUGS } from "@lib/util/brand-category-redirects"
 import { categorySlug } from "@lib/util/category-slug"
 import { HttpTypes } from "@medusajs/types"
 import { getCacheOptions } from "./cookies"
@@ -212,6 +213,55 @@ export const getCategoryByHandle = async (categoryHandle: string[]) => {
       }
     )
     .then(({ product_categories }) => product_categories[0])
+}
+
+/**
+ * Regula generică pentru subcategoriile-marcă desființate după generarea hărții
+ * din `lib/util/brand-category-redirects` (sau desființate direct din admin):
+ * o categorie care nu mai există, dar al cărei ultim segment e o marcă sub un
+ * părinte care există, duce la părinte filtrat pe marcă.
+ *
+ *   /categories/tablete/lenovo-tablete → /categories/tablete?brand=lenovo  (sufixul părintelui)
+ *   /categories/tablete/apple          → /categories/tablete?brand=apple   (marcă cunoscută)
+ *   /categories/lenovo-tablete         → /categories/tablete?brand=lenovo  (forma plată)
+ *
+ * Se cheamă doar după ce segmentele nu s-au rezolvat — o categorie reală
+ * câștigă mereu. Întoarce calea canonică a părintelui și marca, sau `null`.
+ */
+export const brandCategoryFallback = async (
+  segments: string[]
+): Promise<{ path: string; brand: string } | null> => {
+  const segs = segments.map((s) => s.toLowerCase()).filter(Boolean)
+  const leaf = segs[segs.length - 1]
+  if (!leaf) return null
+
+  let parent: CategoryNode | undefined
+  let brand: string | null = null
+
+  if (segs.length > 1) {
+    parent = await resolveSegments(segs.slice(0, -1))
+    if (!parent) return null
+    const suffix = `-${parent.handle}`
+    if (leaf.endsWith(suffix) && leaf.length > suffix.length) {
+      brand = leaf.slice(0, -suffix.length)
+    } else if (KNOWN_BRAND_SLUGS.has(leaf)) {
+      brand = leaf
+    }
+  } else {
+    // Forma plată: părintele se ghicește din sufix (`lenovo-tablete`).
+    const nodes = (await listCategoryNodes()) ?? []
+    parent = nodes
+      .filter((n) => leaf.endsWith(`-${n.handle}`) && leaf.length > n.handle.length + 1)
+      .sort((a, b) => b.handle.length - a.handle.length)[0]
+    if (parent) brand = leaf.slice(0, -(parent.handle.length + 1))
+  }
+
+  if (!parent || !brand) return null
+  const path = categoryPathSegments(await getCategoryPath(parent.id))
+  return {
+    path: `/categories/${(path.length ? path : [parent.handle]).join("/")}`,
+    brand,
+  }
 }
 
 /**
