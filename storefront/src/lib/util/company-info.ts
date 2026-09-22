@@ -68,9 +68,9 @@ export const COMPANY = {
 
   // Social
   social: {
-    facebook: "https://www.facebook.com/onlybestdevice",
-    instagram: "https://www.instagram.com/onlybestdevice",
-    tiktok: "https://www.tiktok.com/@onlybestdevice",
+    facebook: "https://www.facebook.com/onlybestdevicebistrita",
+    instagram: "https://www.instagram.com/onlybestdevice.ro",
+    tiktok: "https://www.tiktok.com/@onlybestdevice.ro",
   },
 
   // Web
