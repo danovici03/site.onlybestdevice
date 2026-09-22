@@ -8,9 +8,9 @@ import Rooms from "@modules/home/components/rooms"
 import { getRegion } from "@lib/data/regions"
 
 export const metadata: Metadata = {
-  title: { absolute: "onlybestdevice | Cele mai noi device-uri" },
+  title: { absolute: "onlybestdevice – Telefoane, laptopuri și tablete, în rate" },
   description:
-    "Upgrade-ul tău începe aici. Device-uri premium, garanție și servicii complete.",
+    "Telefoane, laptopuri, tablete și accesorii noi de la Apple, Samsung și alții. Garanție 24 de luni, plată cu cardul sau în rate, retur gratuit în 14 zile.",
 }
 
 export default async function Home(props: {
