@@ -869,6 +869,87 @@ const orderPaymentLink: Renderer = ({ order, pay_url, note, storefront_url }) =>
   }
 }
 
+/**
+ * Alertă internă: cererea de credit TBI a unei comenzi n-a putut fi trimisă
+ * (`failed` — reîncercăm automat, `gave_up` — nu mai reîncercăm), nu știm dacă
+ * a ajuns (`uncertain` — de verificat în platforma TBI) sau a plecat la o
+ * reîncercare (`recovered`). La recuperare clientul nu mai e în checkout,
+ * deci emailul poartă linkul TBI pe care cineva trebuie să i-l trimită.
+ */
+const tbiSubmitAlertAdmin: Renderer = ({
+  kind,
+  order,
+  error,
+  retriable,
+  attempts,
+  redirect_url,
+  admin_url,
+  storefront_url,
+}) => {
+  const display = order?.display_id ?? order?.id ?? ""
+  const adminLink = admin_url ? `${admin_url}/app/orders/${order.id}` : null
+  const customer = [
+    order?.shipping_address?.first_name,
+    order?.shipping_address?.last_name,
+  ]
+    .filter(Boolean)
+    .join(" ")
+  const facts = `
+    <ul style="font-size:14px;line-height:1.8;padding-left:20px;margin:0 0 16px;">
+      <li>Client: ${escape(customer || "—")} · ${escape(order?.email ?? "")} · ${escape(order?.shipping_address?.phone ?? "")}</li>
+      <li>Total finanțat: <strong>${money(order?.total, order?.currency_code)}</strong></li>
+      <li>Încercări: ${escape(attempts)}</li>
+      ${error ? `<li>Eroare: <code style="font-size:13px;">${escape(error)}</code></li>` : ""}
+    </ul>`
+
+  const variants: Record<string, { subject: string; heading: string; intro: string; outro: string }> = {
+    failed: {
+      subject: `[${BRAND}] TBI: cererea pentru comanda #${display} nu a plecat`,
+      heading: `Cerere TBI netrimisă — #${display}`,
+      intro: `Comanda <strong>#${escape(display)}</strong> e plasată cu plata în rate TBI, dar cererea de credit nu a putut fi creată la TBI. Clientul a ajuns pe pagina de confirmare, fără să fie trimis la TBI.`,
+      outro: retriable
+        ? "Cererea sigur n-a ajuns la TBI (conexiune refuzată sau TBI indisponibil), deci reîncercăm automat la 10 minute. Primiți un email cu linkul pentru client când reușește, sau unul final dacă renunțăm."
+        : "Eroarea nu se repară prin reîncercare (credențiale, configurare sau date respinse de TBI), deci NU reîncercăm. Verificați eroarea și contactați clientul.",
+    },
+    uncertain: {
+      subject: `[${BRAND}] TBI: verificați cererea pentru comanda #${display}`,
+      heading: `Cerere TBI incertă — #${display}`,
+      intro: `Trimiterea cererii de credit pentru comanda <strong>#${escape(display)}</strong> s-a întrerupt după ce a plecat spre TBI (timeout sau conexiune ruptă), deci nu știm dacă TBI a înregistrat-o.`,
+      outro: `NU o retrimitem automat, ca să nu deschidem un al doilea dosar de credit. Căutați comanda #${escape(display)} în platforma TBI: dacă există, trimiteți clientului linkul de acolo; dacă nu, contactați clientul pentru altă metodă de plată.`,
+    },
+    gave_up: {
+      subject: `[${BRAND}] TBI: am renunțat la cererea pentru comanda #${display}`,
+      heading: `Cerere TBI abandonată — #${display}`,
+      intro: `Nu am reușit să creăm cererea de credit TBI pentru comanda <strong>#${escape(display)}</strong> și nu mai reîncercăm automat.`,
+      outro: "Contactați clientul: poate relua comanda cu altă metodă de plată, sau cererea se face direct cu TBI.",
+    },
+    recovered: {
+      subject: `[${BRAND}] TBI: cererea pentru comanda #${display} a plecat — trimiteți linkul clientului`,
+      heading: `Cerere TBI creată — #${display}`,
+      intro: `Cererea de credit pentru comanda <strong>#${escape(display)}</strong> a fost creată la TBI la o reîncercare. Clientul nu a fost redirecționat la TBI, deci are nevoie de linkul de mai jos ca să finalizeze cererea.`,
+      outro: "",
+    },
+  }
+  const v = variants[kind] ?? variants.failed
+
+  const body = `
+    <p style="margin:0 0 12px;">${v.intro}</p>
+    ${facts}
+    ${redirect_url ? `<p style="margin:0 0 4px;">Link cerere TBI pentru client:</p><p style="margin:0 0 12px;font-size:13px;word-break:break-all;"><a href="${escape(redirect_url)}" style="color:${COLOR.accent};">${escape(redirect_url)}</a></p>` : ""}
+    ${v.outro ? `<p style="margin:0 0 12px;">${v.outro}</p>` : ""}
+    ${adminLink ? button(adminLink, "Deschide comanda în admin") : ""}`
+
+  return {
+    subject: v.subject,
+    html: layout({
+      heading: v.heading,
+      preheader: v.subject,
+      bodyHtml: body,
+      storefrontUrl: storefront_url,
+    }),
+  }
+}
+
 export const TEMPLATES = {
   "order-placed-customer": orderPlacedCustomer,
   "order-ready-for-pickup": orderReadyForPickup,
@@ -884,6 +965,7 @@ export const TEMPLATES = {
   "order-payment-link": orderPaymentLink,
   "payment-failed-customer": paymentFailedCustomer,
   "customer-welcome": customerWelcome,
+  "tbi-submit-alert-admin": tbiSubmitAlertAdmin,
 } as const
 
 export type TemplateName = keyof typeof TEMPLATES
