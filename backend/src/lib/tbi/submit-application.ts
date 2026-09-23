@@ -220,6 +220,12 @@ export const classifyError = (err: unknown): ErrorKind => {
     const status = err.status
     if (status === undefined || status === 401) return "fatal"
     if ([408, 429, 502, 503].includes(status)) return "retriable"
+    // Azure răspunde 403 „Web App - Unavailable" („This web app is stopped")
+    // când aplicația TBI e oprită sau repornește: cererea nu a fost procesată.
+    // Văzut pe 23.09.2026 — un minut mai târziu, aceeași cerere a trecut.
+    if (status === 403 && /Web App - Unavailable|web app is stopped/i.test(String(err.body ?? ""))) {
+      return "retriable"
+    }
     if (status >= 500) return "uncertain"
     return "fatal"
   }

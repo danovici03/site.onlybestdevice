@@ -122,6 +122,11 @@ describe("classifyError", () => {
     expect(classifyError(connRefused())).toBe("retriable")
     expect(classifyError(new TbiError("x", 503))).toBe("retriable")
     expect(classifyError(new TbiError("x", 429))).toBe("retriable")
+    // Aplicația TBI oprită pe Azure: cererea n-a fost procesată.
+    expect(
+      classifyError(new TbiError("x", 403, "<html><head><title>Web App - Unavailable</title>"))
+    ).toBe("retriable")
+    expect(classifyError(new TbiError("x", 403, "Forbidden"))).toBe("fatal")
   })
   it("timeout, conexiune ruptă, 500/504 → incert (poate a creat cererea)", () => {
     expect(classifyError(timeout())).toBe("uncertain")
