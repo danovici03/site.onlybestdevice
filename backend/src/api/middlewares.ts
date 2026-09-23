@@ -1,3 +1,4 @@
+import { snapshotBeforeDelete } from '../lib/products/restore'
 import {
   defineMiddlewares,
   type MedusaNextFunction,
@@ -44,6 +45,31 @@ const defaultNewestFirst = (
 }
 
 /**
+ * Fotografia produsului chiar înainte de ștergerea din Admin, pentru pagina
+ * „Produse șterse”. Fără ea restaurarea nu poate deosebi ce era activ de istoric
+ * (promoții scoase, canale renunțate): cascada de ștergere le rescrie ora la
+ * toate. Detaliile în `lib/products/restore.ts`.
+ *
+ * Două rute ale miezului șterg produse: cea pentru unul singur și `batch`, care
+ * primește `delete: [id…]`. A treia cale, `/admin/product-bulk`, e a noastră și
+ * face fotografia singură.
+ */
+const snapshotProductsBeforeDelete = async (
+  req: MedusaRequest,
+  _res: MedusaResponse,
+  next: MedusaNextFunction
+) => {
+  const ids =
+    req.method === 'DELETE'
+      ? [req.params?.id ?? req.path.split('/').filter(Boolean).pop()]
+      : (req.body as { delete?: unknown })?.delete
+  if (Array.isArray(ids) && ids.length) {
+    await snapshotBeforeDelete(req.scope, ids.filter((id): id is string => typeof id === 'string'))
+  }
+  next()
+}
+
+/**
  * IPN-ul Netopia v2 semnează hash-ul (sha512) al body-ului exact așa cum a
  * plecat de la ei. Dacă am recalcula hash-ul dintr-un `JSON.stringify` peste
  * body-ul parsat, spațiile și ordinea cheilor ar diferi și orice IPN ar fi
@@ -76,6 +102,16 @@ export default defineMiddlewares({
       // handler.
       matcher: '/admin/products',
       middlewares: [defaultNewestFirst],
+    },
+    {
+      matcher: '/admin/products/:id',
+      methods: ['DELETE'],
+      middlewares: [snapshotProductsBeforeDelete],
+    },
+    {
+      matcher: '/admin/products/batch',
+      methods: ['POST'],
+      middlewares: [snapshotProductsBeforeDelete],
     },
   ],
 })

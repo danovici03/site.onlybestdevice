@@ -6,6 +6,7 @@ import {
 } from "@medusajs/medusa/core-flows"
 import { z } from "zod"
 
+import { snapshotBeforeDelete } from "../../../lib/products/restore"
 import { WARRANTY_HANDLE } from "../../../lib/warranty-prices"
 
 /**
@@ -140,6 +141,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         }
 
         case "delete":
+          await snapshotBeforeDelete(req.scope, batch)
           await deleteProductsWorkflow(req.scope).run({ input: { ids: batch } })
           done += batch.length
           break
