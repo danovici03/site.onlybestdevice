@@ -24,6 +24,38 @@ import type { Logger } from "@medusajs/framework/types"
  */
 let warnedMissingConfig = false
 
+/** Același site, cu sau fără `www.` — singurul redirect pe care îl urmăm. */
+const sameSite = (a: string, b: string) =>
+  a.replace(/^www\./, "") === b.replace(/^www\./, "")
+
+/**
+ * POST cu secretul, urmând manual un redirect apex ↔ www.
+ *
+ * `fetch` din Node aruncă antetul `Authorization` la orice redirect către alt
+ * host. Pe producție `STOREFRONT_REVALIDATE_URL` arăta spre
+ * `onlybestdevice.ro`, care face 308 spre `www.` — cererea ajungea fără secret,
+ * fiecare revalidare lua 401, iar site-ul a rămas pe date vechi (un iPhone nou
+ * de 512GB nu apărea în selectorul fraților de 256GB).
+ */
+async function postWithAuth(url: string, secret: string, body: string) {
+  const init: RequestInit = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${secret}`,
+    },
+    body,
+    redirect: "manual",
+  }
+  const res = await fetch(url, init)
+  const location = res.headers.get("location")
+  if (![301, 302, 307, 308].includes(res.status) || !location) return res
+
+  const next = new URL(location, url)
+  if (!sameSite(new URL(url).hostname, next.hostname)) return res
+  return fetch(next, init)
+}
+
 export const revalidateStorefront = async (
   logger: Logger,
   eventName: string,
@@ -54,14 +86,7 @@ export const revalidateStorefront = async (
   if (!tags.length) return
 
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${secret}`,
-      },
-      body: JSON.stringify({ tags }),
-    })
+    const res = await postWithAuth(url, secret, JSON.stringify({ tags }))
     if (!res.ok) {
       const text = await res.text().catch(() => "")
       logger.warn(

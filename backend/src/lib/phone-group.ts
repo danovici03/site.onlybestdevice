@@ -169,7 +169,10 @@ export function parsePhone(title: string): ParsedPhone | null {
     .trim()
   if (!model) return null
   const brand = model.split(/\s+/)[0]
-  const group = slugify(model)
+  // „+" e parte din numele modelului: slugify l-ar șterge și „Galaxy S26+" ar
+  // cădea în grupul „Galaxy S26" (un S26+ 512GB apărea ca a doua capacitate a
+  // lui S26). „plus" unifică și cu listările care scriu „S26 Plus".
+  const group = slugify(model.replace(/\+/g, " plus "))
   if (!group) return null
 
   // Culoare = ultimul segment care nu e „spec"; curăță prefixul 5G/4G lipit.
