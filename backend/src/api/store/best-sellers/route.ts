@@ -23,6 +23,12 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     .from("order_line_item AS oli")
     .innerJoin("order_item AS oi", "oi.item_id", "oli.id")
     .innerJoin("order AS o", "o.id", "oi.order_id")
+    // Produsele de serviciu (garanția extinsă) se vând ca linii de comandă, deci
+    // urcă în clasament; `metadata.hidden` le ține afară din vitrină, ca în
+    // `/store/catalog`.
+    .innerJoin("product AS p", "p.id", "oli.product_id")
+    .whereNull("p.deleted_at")
+    .whereRaw("COALESCE(p.metadata->>'hidden','') <> 'true'")
     .whereNotNull("oli.product_id")
     .whereNull("oi.deleted_at")
     .whereNull("oli.deleted_at")
