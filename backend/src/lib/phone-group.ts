@@ -104,6 +104,13 @@ export function colorHex(label: string): string | null {
  * ultimul segment în titluri care se termină în fișa tehnică.
  */
 const SPEC_RE = /^(5g|4g|3g|2g|lte|dual\s*sim|nfc|wi-?fi|esim)$/i
+
+/**
+ * Listarea „doar eSIM" (fără slot fizic): segment dedicat în titlu, ex.
+ * „…, Black, E-SIM ONLY". Doar segmentul întreg contează — nota
+ * „(… nu suporta E-SIM )" din alte titluri spune exact opusul.
+ */
+const ESIM_ONLY_RE = /^(e-?sim\s*only|doar\s*e-?sim)$/i
 const UNIT_RE = /^\d+(?:[.,]\d+)?\s*(gb|tb|mb|w|mp|mah|hz|nm|inch|")$/i
 const CHIPSET_RE = /^(unisoc|mediatek|snapdragon|dimensity|helio|exynos|kirin|tensor)\b|^[a-z]\d{3,4}$/i
 const DISPLAY_RE =
@@ -113,6 +120,7 @@ const SPEC_WORD_RE =
 
 const isSpecSeg = (s: string): boolean =>
   SPEC_RE.test(s) ||
+  ESIM_ONLY_RE.test(s) ||
   UNIT_RE.test(s) ||
   CHIPSET_RE.test(s) ||
   SPEC_WORD_RE.test(s) ||
@@ -123,6 +131,25 @@ const isSpecSeg = (s: string): boolean =>
 
 /** Culorile reale sunt scurte; un segment lung e o frază de marketing. */
 const MAX_COLOR_LEN = 28
+
+/**
+ * Numele modelului (grup + breadcrumb). Gestiunea mai trimite titluri fără
+ * marcă („iPhone 18 Pro Max, 1 TB, …"), care altfel ar forma un grup separat
+ * de „Apple iPhone 18 Pro Max".
+ */
+function groupModel(model: string): string {
+  return /^iphone\b/i.test(model) ? `Apple ${model}` : model
+}
+
+/**
+ * Termenul pentru căutarea `$ilike` a membrilor unui grup: modelul fără marcă,
+ * ca să prindă și titlurile care o omit. Căutarea mai largă e inofensivă —
+ * membrii se filtrează apoi exact pe grup.
+ */
+function searchTerm(model: string): string {
+  const words = model.trim().split(/\s+/)
+  return words.length > 1 ? words.slice(1).join(" ") : model
+}
 
 export type ParsedPhone = {
   group: string
@@ -163,16 +190,24 @@ export function parsePhone(title: string): ParsedPhone | null {
 
   // Model = primul segment, fără tokeni de rețea (5G/4G/LTE/Dual SIM) ca să nu
   // fragmenteze grupul (ex. „iPhone 16 Plus 5G" și „iPhone 16 Plus").
-  const model = segs[0]
-    .replace(/\s+(5g|4g|lte|dual\s*sim)\b/gi, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim()
+  const model = groupModel(
+    segs[0]
+      .replace(/\s+(5g|4g|lte|dual\s*sim)\b/gi, " ")
+      .replace(/\s{2,}/g, " ")
+      .trim()
+  )
   if (!model) return null
   const brand = model.split(/\s+/)[0]
+  const esimOnly = segs.some((s) => ESIM_ONLY_RE.test(s))
   // „+" e parte din numele modelului: slugify l-ar șterge și „Galaxy S26+" ar
   // cădea în grupul „Galaxy S26" (un S26+ 512GB apărea ca a doua capacitate a
   // lui S26). „plus" unifică și cu listările care scriu „S26 Plus".
-  const group = slugify(model.replace(/\+/g, " plus "))
+  //
+  // Varianta eSIM are alt preț în gestiune, deci e o familie separată: se
+  // leagă doar cu celelalte eSIM ale modelului, nu apare lângă SIM-ul fizic.
+  const group = slugify(
+    model.replace(/\+/g, " plus ") + (esimOnly ? " esim" : "")
+  )
   if (!group) return null
 
   // Culoare = ultimul segment care nu e „spec"; curăță prefixul 5G/4G lipit.
@@ -217,7 +252,12 @@ export function parsePhone(title: string): ParsedPhone | null {
   if (ramToks.length) ram = ramToks[0].disp
 
   const has5g = /\b5g\b/i.test(title)
-  const spec = [storage, ram ? `${ram} RAM` : null, has5g ? "5G" : null]
+  const spec = [
+    storage,
+    ram ? `${ram} RAM` : null,
+    has5g ? "5G" : null,
+    esimOnly ? "eSIM" : null,
+  ]
     .filter(Boolean)
     .join(" · ")
 
@@ -606,7 +646,7 @@ export async function syncPhoneGroupsForProducts(
 
     if (parsed) {
       affectedGroups.add(parsed.group)
-      searchTerms.add(parsed.model)
+      searchTerms.add(searchTerm(parsed.model))
     } else if (await stripPhoneMetadata(container, p, !!opts.dryRun)) {
       // Nu mai e telefon, dar a fost: grupul vechi rămâne cu un frate în minus.
       cleaned++
@@ -617,7 +657,7 @@ export async function syncPhoneGroupsForProducts(
     const prevGroup = (p.metadata ?? {})["phone_group"]
     const prevModel = (p.metadata ?? {})["phone_model"]
     if (typeof prevGroup === "string" && prevGroup) affectedGroups.add(prevGroup)
-    if (typeof prevModel === "string" && prevModel) searchTerms.add(prevModel)
+    if (typeof prevModel === "string" && prevModel) searchTerms.add(searchTerm(prevModel))
   }
 
   if (!affectedGroups.size) {
