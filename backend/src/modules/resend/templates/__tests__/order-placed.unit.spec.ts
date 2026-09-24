@@ -51,6 +51,64 @@ const cardOrder = {
 }
 
 describe("emailurile de comandă plasată", () => {
+  // Proprietarul vedea în email livrarea, dar nu și cum a plătit clientul.
+  it.each([
+    [codOrder, "Plată ramburs", "numerar la curier", "— Ramburs"],
+    [cardOrder, "Plată cu cardul", "Netopia", "— Card"],
+    [
+      {
+        ...baseOrder,
+        payment_collections: [
+          { payment_sessions: [{ provider_id: "pp_tbi_tbi" }] },
+        ],
+      },
+      "Plată prin partener",
+      "TBI Bank, credit în rate",
+      "— Rate TBI",
+    ],
+    [
+      {
+        ...baseOrder,
+        payment_collections: [
+          { payments: [{ provider_id: "pp_unicredit_unicredit" }] },
+        ],
+      },
+      "Plată prin partener",
+      "UniCredit Consumer Financing",
+      "— Rate UniCredit",
+    ],
+  ])(
+    "spune operatorului metoda de plată (%#)",
+    (order, label, detail, subjectSuffix) => {
+      const { html, subject } = (TEMPLATES as any)["order-placed-admin"]({
+        order,
+      })
+
+      expect(html).toContain("Metodă de plată:")
+      expect(html).toContain(label)
+      expect(html).toContain(detail)
+      expect(subject).toContain(subjectSuffix)
+    }
+  )
+
+  // Linkul de plată schimbă doar sesiunea; plata capturată rămâne pe
+  // providerul vechi. Contează metoda aleasă ultima dată.
+  it("ia metoda de pe sesiune când linkul de plată a mutat comanda pe card", () => {
+    const { subject } = (TEMPLATES as any)["order-placed-admin"]({
+      order: {
+        ...baseOrder,
+        payment_collections: [
+          {
+            payments: [{ provider_id: "pp_system_default" }],
+            payment_sessions: [{ provider_id: "pp_netopia_netopia" }],
+          },
+        ],
+      },
+    })
+
+    expect(subject).toContain("— Card")
+  })
+
   it("dă operatorului adresa completă, ca s-o poată pune pe AWB", () => {
     const html = render("order-placed-admin", { order: baseOrder })
 
