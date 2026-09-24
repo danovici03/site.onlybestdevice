@@ -1,6 +1,10 @@
 import { WARRANTY_HANDLE } from "../../../lib/warranty-prices"
 import { bankAccount } from "../../../lib/company/bank-account"
 import {
+  describeOrderPayment,
+  paymentMethodText,
+} from "../../../lib/orders/payment-method"
+import {
   formatCui as formatBuyerCui,
   readBuyerFiscal,
 } from "../../../lib/company/buyer-fiscal"
@@ -224,21 +228,9 @@ const renderOrderItems = (
     </table>`
 }
 
-/**
- * Ramburs: singura metodă la care banii trec prin curier, nu prin noi. Citim
- * întâi plata efectivă, apoi sesiunea — ca în `resolvePaymentProvider` din ERP.
- */
-const isCodOrder = (order: Record<string, any>) => {
-  const collections = order.payment_collections ?? []
-  const provider =
-    collections
-      .flatMap((pc: any) => pc?.payments ?? [])
-      .find((p: any) => p?.provider_id)?.provider_id ??
-    collections
-      .flatMap((pc: any) => pc?.payment_sessions ?? [])
-      .find((sn: any) => sn?.provider_id)?.provider_id
-  return typeof provider === "string" && provider.includes("cod")
-}
+/** Ramburs: singura metodă la care banii trec prin curier, nu prin noi. */
+const isCodOrder = (order: Record<string, any>) =>
+  describeOrderPayment(order)?.group === "cod"
 
 /** Ridicarea din magazin e singura opțiune fără taxă de curier. */
 const isPickupOrder = (order: Record<string, any>) =>
@@ -272,6 +264,23 @@ const renderOrderTotals = (order: Record<string, any>): string => {
       ${row("Livrare", Number(shipping) > 0 ? money(Number(shipping), currency) : "Gratuit")}
       ${row("Total", money(order.total, currency), true)}
     </table>`
+}
+
+/**
+ * Primul rând din emailul intern: cine plătește și prin cine. La partener
+ * adăugăm ce urmează, ca să nu se trimită coletul înainte de aprobarea
+ * creditului; la ramburs, suma de încasat de curier.
+ */
+const paymentMethodLine = (order: Record<string, any>): string => {
+  const method = describeOrderPayment(order)
+  if (!method) return `<li><strong>Metodă de plată:</strong> necunoscută</li>`
+  const note =
+    method.group === "partner"
+      ? `<br><span style="color:${COLOR.muted};font-size:13px;">Se livrează doar după aprobarea creditului de către bancă.</span>`
+      : method.group === "cod"
+        ? `<br><span style="color:${COLOR.muted};font-size:13px;">Curierul încasează ${money(order.total, order.currency_code)} la livrare.</span>`
+        : ""
+  return `<li><strong>Metodă de plată:</strong> <strong>${escape(method.label)}</strong> — ${escape(method.detail)}${note}</li>`
 }
 
 /** Metoda (sau metodele) de livrare alese, cu preț doar când chiar costă. */
@@ -424,10 +433,12 @@ const orderPlacedCustomer: Renderer = ({ order, storefront_url }) => {
 
 const orderPlacedAdmin: Renderer = ({ order, admin_url, storefront_url }) => {
   const display = order.display_id ?? order.id
+  const method = describeOrderPayment(order)
   const adminLink = admin_url ? `${admin_url}/app/orders/${order.id}` : null
   const body = `
     <p style="margin:0 0 12px;">Comandă nouă primită: <strong>#${escape(display)}</strong></p>
     <ul style="font-size:14px;line-height:1.8;padding-left:20px;margin:0 0 16px;">
+      ${paymentMethodLine(order)}
       <li>Client: ${escape(order.email)}</li>
       <li>Total: <strong>${money(order.total, order.currency_code)}</strong></li>
       <li>Produse: ${order.items?.length ?? 0}</li>
@@ -438,10 +449,10 @@ const orderPlacedAdmin: Renderer = ({ order, admin_url, storefront_url }) => {
     ${renderOrderItems(order.items, storefront_url)}
     ${adminLink ? button(adminLink, "Deschide comanda în admin") : ""}`
   return {
-    subject: `[${BRAND}] Comandă nouă #${display} — ${money(order.total, order.currency_code)}`,
+    subject: `[${BRAND}] Comandă nouă #${display} — ${money(order.total, order.currency_code)}${method ? ` — ${method.short}` : ""}`,
     html: layout({
       heading: `Comandă nouă #${display}`,
-      preheader: `${money(order.total, order.currency_code)} — ${order.items?.length ?? 0} produse`,
+      preheader: `${method ? `${paymentMethodText(method)} · ` : ""}${money(order.total, order.currency_code)} — ${order.items?.length ?? 0} produse`,
       bodyHtml: body,
       storefrontUrl: storefront_url,
     }),
