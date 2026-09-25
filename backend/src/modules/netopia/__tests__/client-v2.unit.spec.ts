@@ -1,4 +1,4 @@
-import { createHash, createSign } from 'crypto'
+import { createHash, createPublicKey, createSign } from 'crypto'
 import { execFileSync } from 'child_process'
 import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
@@ -122,6 +122,38 @@ describe('NetopiaV2Client.verifyIpn', () => {
     expect(() => client().verifyIpn(fake, Buffer.from(BODY))).toThrow(
       /nu se verifică/
     )
+  })
+
+  it('verifică și cu cheia de IPN din env, când certificatul POS e altul', () => {
+    // Pe live, IPN-ul e semnat cu cheia Netopia de IPN, nu cu cheia din
+    // certificatul POS-ului — exact cazul care a lăsat plățile „pending”.
+    const dir = mkdtempSync(path.join(tmpdir(), 'netopia-pos-'))
+    const otherCer = path.join(dir, 'pos.cer')
+    execFileSync('openssl', [
+      'req', '-x509', '-newkey', 'rsa:1024', '-nodes',
+      '-keyout', path.join(dir, 'pos.key'), '-out', otherCer,
+      '-days', '2', '-subj', '/CN=netopia-pos',
+    ])
+    const posOnly = new NetopiaV2Client({
+      env: 'live',
+      apiKey: 'irrelevant',
+      signature: POS,
+      publicCerPath: otherCer,
+    })
+    expect(() => posOnly.verifyIpn(sign(BODY), Buffer.from(BODY))).toThrow(
+      /nu se verifică/
+    )
+
+    const ipnPem = createPublicKey(keyPem)
+      .export({ type: 'spki', format: 'pem' })
+      .toString()
+    process.env.NETOPIA_IPN_PUBLIC_KEY = ipnPem.replace(/\n/g, '\\n')
+    try {
+      const ipn = posOnly.verifyIpn(sign(BODY), Buffer.from(BODY))
+      expect(ipn.order?.orderID).toBe('order_01ABC')
+    } finally {
+      delete process.env.NETOPIA_IPN_PUBLIC_KEY
+    }
   })
 
   it('respinge un token malformat', () => {

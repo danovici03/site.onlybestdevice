@@ -62,10 +62,11 @@ export const POST = async (
       'payment_status',
       'fulfillment_status',
       'customer_id',
-      'items.title',
-      'items.quantity',
-      'items.unit_price',
-      'items.variant_sku',
+      // `items.*`, NU `items.quantity`: pe `order` cantitatea sta in
+      // `order_item`, iar cu campuri explicite vine `undefined` — `total` iese
+      // atunci doar transportul si clientul plateste 38 de lei in loc de
+      // comanda intreaga (comanda #41, 25.09.2026).
+      'items.*',
       'shipping_address.first_name',
       'shipping_address.last_name',
       'shipping_address.phone',
@@ -84,6 +85,7 @@ export const POST = async (
       'billing_address.country_code',
       'payment_collections.id',
       'payment_collections.status',
+      'payment_collections.amount',
       'payment_collections.payments.provider_id',
       'payment_collections.payment_sessions.provider_id',
     ],
@@ -165,6 +167,28 @@ export const POST = async (
   const details = `Plată comanda #${order.display_id} onlybestdevice.ro`
   const amount = Number(order.total ?? 0)
   const currency = (order.currency_code ?? 'ron').toUpperCase()
+
+  /**
+   * Suma trimisa la banca trebuie sa fie exact cea asteptata de colectia de
+   * plata (fixata la plasarea comenzii). Daca `order.total` e calculat din
+   * campuri incomplete, iese mai mic si clientul plateste doar o parte — deci
+   * refuzam deschiderea platii in loc sa incasam o suma gresita.
+   */
+  const expected = (order.payment_collections ?? [])
+    .filter((pc: any) => pc?.status !== 'canceled')
+    .map((pc: any) => Number(pc?.amount ?? 0))
+    .find((a: number) => a > 0)
+  if (!(amount > 0) || (expected != null && Math.abs(amount - expected) > 0.01)) {
+    req.scope
+      .resolve(ContainerRegistrationKeys.LOGGER)
+      .error(
+        `[netopia] Suma pentru comanda ${order.id} nu corespunde: total=${amount}, colectie=${expected}`
+      )
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      'Suma comenzii nu a putut fi calculata corect. Te rugam sa ne contactezi.'
+    )
+  }
 
   const orderModule = req.scope.resolve(Modules.ORDER)
   /**
