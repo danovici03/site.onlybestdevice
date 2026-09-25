@@ -54,11 +54,13 @@ export const FINANCIER_LABEL: Record<Financier, string> = {
   tbi: "TBI Bank",
 }
 
-/** Numele scurt, pentru taburi și etichete. */
-export const FINANCIER_SHORT: Record<Financier, string> = {
-  ucfin: "UniCredit",
-  tbi: "TBI Bank",
-}
+/**
+ * Numele metodei de plată UCFin, cu formularea cerută de ei (sept. 2026). E
+ * același în checkout, pe pagina comenzii și în textele calculatorului — o
+ * revizie nouă de la UCFin se schimbă doar aici.
+ */
+export const UCFIN_METHOD_LABEL =
+  "Credit 100% Online de la UniCredit Consumer Financing"
 
 export type FinancingPlan = {
   financier: Financier
@@ -248,11 +250,14 @@ export const FINANCER_NAME = FINANCIER_LABEL.ucfin
 
 /** Nota GDPR UCFin — obligatoriu bifată la checkout pentru plata în rate. */
 export const UCFIN_GDPR_URL =
-  "https://www.ucfin.ro/pdf/protectia-datelor/UCFIN-Informare-privind-prelucrarea-datelor-personale-in-contextul-creditarii-la-distanta.pdf"
+  "https://www.ucfin.ro/pdf/protectia-datelor/UCFIN-Informare-privind-prelucrarea-datelor-personale-in-contextul-creditarii-la-distanta.pdf?v=1_27.10.2025"
 
-/** Ghidul UCFin pentru semnarea la distanță (dreptul de retragere etc.). */
-export const UCFIN_GUIDE_URL =
-  "https://www.ucfin.ro/pdf/fise_produs/GhidSemnareLaDistanta.pdf"
+/** Dreptul de retragere din contract (înlocuiește ghidul PDF din iulie). */
+export const UCFIN_WITHDRAWAL_URL = "https://www.ucfin.ro/retragere-din-contract"
+
+/** Unde și cum se plătesc ratele. */
+export const UCFIN_PAYMENT_METHODS_URL =
+  "https://www.ucfin.ro/modalitati-de-plata"
 
 /** Moneda pentru care afișăm rate; în afara ei calculatorul se ascunde. */
 export const INSTALLMENT_CURRENCY = "ron"

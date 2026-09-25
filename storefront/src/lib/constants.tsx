@@ -4,6 +4,7 @@ import { CreditCard } from "@medusajs/icons"
 import Ideal from "@modules/common/icons/ideal"
 import Bancontact from "@modules/common/icons/bancontact"
 import PayPal from "@modules/common/icons/paypal"
+import { UCFIN_METHOD_LABEL } from "@lib/util/installments"
 
 /* Map of payment provider_id to their title and icon. Add in any payment providers you want to use. */
 export const paymentInfoMap: Record<
@@ -15,7 +16,7 @@ export const paymentInfoMap: Record<
     icon: <CreditCard />,
   },
   pp_unicredit_unicredit: {
-    title: "Rate prin UniCredit Consumer Financing",
+    title: UCFIN_METHOD_LABEL,
     icon: <CreditCard />,
   },
   "pp_medusa-payments_default": {

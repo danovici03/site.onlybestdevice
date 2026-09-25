@@ -10,9 +10,9 @@
 
 import {
   FINANCIER_LABEL,
-  FINANCIER_SHORT,
   Financier,
-  UCFIN_GUIDE_URL,
+  UCFIN_METHOD_LABEL,
+  UCFIN_WITHDRAWAL_URL,
   availableTerms,
   financiersFor,
   formatLei,
@@ -195,13 +195,13 @@ const Installments = ({
                   setMonths(null)
                 }}
                 className={clx(
-                  "flex-1 rounded-lg py-2 text-xs font-bold transition-colors",
+                  "flex-1 rounded-lg px-2 py-2 text-xs font-bold leading-tight transition-colors",
                   activeTab
                     ? "bg-white text-brand-dark shadow-sm"
                     : "text-brand-dark/55 hover:text-brand-dark"
                 )}
               >
-                {FINANCIER_SHORT[f]}
+                {FINANCIER_LABEL[f]}
               </button>
             )
           })}
@@ -254,12 +254,19 @@ const Installments = ({
 
       <div className="px-4 pt-2 pb-4">
         <p className="text-xs text-brand-dark/45">
-          <span className="mr-1.5 inline-flex items-center rounded bg-black px-1.5 py-0.5 text-[9px] font-bold lowercase text-white">
-            {isTbi ? "tbi bank" : "ucfin"}
-          </span>
-          {isTbi
-            ? "Alegi TBI Bank la finalizarea comenzii; graficul final de rambursare se confirmă pe pagina lor, înainte de semnare."
-            : "Alegi ratele UniCredit la finalizarea comenzii; creditarea e 100% online, cu răspuns în maximum 15 minute."}
+          {/* Fără pastilă la UCFin: au cerut explicit să dispară „ucfin” pe
+              negru, iar textul e formularea lor, cuvânt cu cuvânt. */}
+          {isTbi ? (
+            <>
+              <span className="mr-1.5 inline-flex items-center rounded bg-black px-1.5 py-0.5 text-[9px] font-bold lowercase text-white">
+                tbi bank
+              </span>
+              Alegi TBI Bank la finalizarea comenzii; graficul final de
+              rambursare se confirmă pe pagina lor, înainte de semnare.
+            </>
+          ) : (
+            `Alegi ${UCFIN_METHOD_LABEL} și ai răspuns în maximum 15 minute!`
+          )}
         </p>
         {embedded && <div className="pt-2">{detailsToggle}</div>}
       </div>
@@ -325,20 +332,20 @@ const Installments = ({
                   stabilite de finanțator la aprobarea dosarului.
                 </li>
                 <li>
-                  Alegi ratele ca metodă de plată la finalizarea comenzii,
-                  parcurgi creditarea 100% online (identificare video +
-                  semnătură electronică) și primești răspunsul în maximum 15
-                  minute.
+                  Alegi „{UCFIN_METHOD_LABEL}” ca metodă de plată la
+                  finalizarea comenzii, parcurgi creditarea 100% online
+                  (identificare video + semnătură electronică) și primești
+                  răspunsul în maximum 15 minute.
                 </li>
                 <li>
                   Finanțarea este supusă aprobării UCFin.{" "}
                   <a
-                    href={UCFIN_GUIDE_URL}
+                    href={UCFIN_WITHDRAWAL_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-bold text-brand-dark underline underline-offset-2 hover:text-brand-accent"
                   >
-                    Ghidul creditării la distanță
+                    Dreptul de retragere din contract
                   </a>{" "}
                   ·{" "}
                   <LocalizedClientLink
