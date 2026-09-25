@@ -7,21 +7,40 @@ import type {
   SubscriberConfig,
 } from "@medusajs/framework"
 import { getTbiClient } from "../modules/tbi-pay/client"
+import { isTbiOrder, withTbiOrderLock } from "../lib/tbi/submit-application"
+
+/** Stări în care cererea există (sau poate exista) la TBI și n-a fost aprobată. */
+const WITHDRAWABLE = new Set(["pending", "submitting", "submit_uncertain"])
 
 /**
  * Când o comandă finanțată prin TBI e anulată (din admin sau de client),
  * retragem și cererea de credit — altfel rămâne activă la ei și clientul poate
  * primi aprobare pentru o comandă care nu mai există.
  *
- * TBI acceptă retragerea doar înainte de aprobare, deci ieșim dacă statusul nu
- * mai e `pending`. Anularea declanșată chiar de un status „respins” intră tot
- * pe aici: hook-ul scrie statusul înainte de `cancelOrderWorkflow`, tocmai ca
- * verificarea de mai jos să o oprească.
+ * Rulează sub lacătul de trimitere (`withTbiOrderLock`): o anulare venită cât
+ * cererea e încă în drum spre TBI așteaptă să se salveze rezultatul, altfel ar
+ * vedea „nicio cerere" și ar pleca fără s-o retragă. La `submit_uncertain`
+ * încercăm oricum — dacă cererea nu există, TBI refuză și rămâne logul.
+ *
+ * TBI acceptă retragerea doar înainte de aprobare. Anularea declanșată chiar
+ * de un status „respins" intră tot pe aici: hook-ul scrie statusul înainte de
+ * `cancelOrderWorkflow`, tocmai ca verificarea de mai jos să o oprească.
  */
 export default async function tbiCancelApplicationHandler({
   event,
   container,
 }: SubscriberArgs<{ id: string }>) {
+  const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+  try {
+    await withTbiOrderLock(container, event.data.id, () =>
+      withdraw(container, event.data.id)
+    )
+  } catch (e: any) {
+    logger.error(`[tbi] order.canceled ${event.data.id}: ${e?.message}`)
+  }
+}
+
+async function withdraw(container: any, orderId: string) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
 
@@ -33,27 +52,19 @@ export default async function tbiCancelApplicationHandler({
       "metadata",
       "payment_collections.payment_sessions.provider_id",
     ],
-    filters: { id: event.data.id },
+    filters: { id: orderId },
   })
 
   const order = orders?.[0]
-  if (!order) {
+  if (!order || !isTbiOrder(order)) {
     return
   }
 
-  const isTbi = (order.payment_collections ?? [])
-    .flatMap((pc: any) => pc?.payment_sessions ?? [])
-    .some((ps: any) => ps?.provider_id?.includes("_tbi_"))
-  if (!isTbi) {
-    return
-  }
+  const tbi = (order.metadata as any)?.tbi as Record<string, any> | undefined
 
-  const meta = (order.metadata ?? {}) as Record<string, any>
-  const tbi = meta.tbi as Record<string, any> | undefined
-
-  // Fără `tbi` nu s-a creat nicio cerere (sesiunea a eșuat), deci n-avem ce
-  // retrage. `cancel_sent_at` ne apără de anulări repetate.
-  if (!tbi || tbi.status !== "pending" || tbi.cancel_sent_at) {
+  // Fără `tbi` nu s-a creat nicio cerere. `cancel_sent_at` ne apără de
+  // anulări repetate.
+  if (!tbi || !WITHDRAWABLE.has(tbi.status) || tbi.cancel_sent_at) {
     return
   }
 
@@ -70,10 +81,10 @@ export default async function tbiCancelApplicationHandler({
     return
   }
 
+  // Doar cheia `tbi`: Medusa face merge pe primul nivel al metadata.
   const orderModule = container.resolve(Modules.ORDER)
   await orderModule.updateOrders(order.id, {
     metadata: {
-      ...meta,
       tbi: {
         ...tbi,
         status: "cancelled",

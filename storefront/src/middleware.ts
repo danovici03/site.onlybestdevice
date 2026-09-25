@@ -1,6 +1,10 @@
 import { HttpTypes } from "@medusajs/types"
 import { NextRequest, NextResponse } from "next/server"
 
+import {
+  brandCategoryRedirect,
+  withBrandParam,
+} from "@lib/util/brand-category-redirects"
 import { RETIRED_CATEGORY_HANDLES } from "@lib/util/retired-categories"
 
 const BACKEND_URL = process.env.MEDUSA_BACKEND_URL
@@ -193,6 +197,31 @@ function legacyRedirect(request: NextRequest): NextResponse | null {
   const retired = pathname.match(
     /^(?:\/([a-z]{2}))?\/categories\/(?:.*\/)?([^/]+)$/
   )
+  // Subcategoriile-marcă desființate (`/categories/tablete/apple`) → părintele
+  // filtrat pe marcă. Înaintea hărții de mai jos, care se uită doar la ultimul
+  // segment: `apple` e marcă sub patru părinți diferiți.
+  const catPath = pathname.match(/^(?:\/([a-z]{2}))?\/categories\/(.+)$/)
+  if (catPath) {
+    let segs = catPath[2].split("/")
+    try {
+      segs = segs.map((s) => decodeURIComponent(s))
+    } catch {
+      // Percent-encoding rupt — mergem pe forma brută.
+    }
+    const brandTarget = brandCategoryRedirect(segs)
+    if (brandTarget) {
+      const qs = new URLSearchParams(request.nextUrl.search)
+      qs.delete("page")
+      return NextResponse.redirect(
+        new URL(
+          `/${catPath[1] ?? DEFAULT_REGION}${brandTarget.path}${withBrandParam(qs, brandTarget.brand)}`,
+          request.url
+        ),
+        308
+      )
+    }
+  }
+
   if (retired) {
     let leaf = retired[2]
     try {

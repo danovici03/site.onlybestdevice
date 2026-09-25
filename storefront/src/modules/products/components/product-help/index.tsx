@@ -1,6 +1,5 @@
 import {
   WhatsappLogo,
-  Phone,
   Clock,
   ArrowUpRight,
 } from "@phosphor-icons/react/dist/ssr"
@@ -17,7 +16,6 @@ export default function ProductHelp({ productTitle }: ProductHelpProps) {
     `Bună! Aș dori informații despre produsul "${productTitle}". Mă puteți ajuta?`
   )
   const waUrl = `https://wa.me/${WA_NUMBER}?text=${waMessage}`
-  const telUrl = `tel:${COMPANY.telefono.replace(/\s/g, "")}`
 
   return (
     <section className="content-container my-16 lg:my-24">
@@ -57,26 +55,6 @@ export default function ProductHelp({ productTitle }: ProductHelpProps) {
                 size={20}
                 weight="bold"
                 className="shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
-              />
-            </a>
-
-            <a
-              href={telUrl}
-              className="group flex items-center gap-4 rounded-2xl border border-brand-dark/10 bg-white p-5 hover:border-brand-dark/30 transition-colors"
-            >
-              <Phone size={24} className="shrink-0 text-brand-dark" />
-              <div className="flex-1 min-w-0">
-                <span className="block font-bold text-brand-dark">
-                  Sună-ne
-                </span>
-                <span className="block text-sm text-brand-dark/60">
-                  {COMPANY.telefono}
-                </span>
-              </div>
-              <ArrowUpRight
-                size={20}
-                weight="bold"
-                className="shrink-0 text-brand-dark/30 group-hover:text-brand-dark/60 transition-colors"
               />
             </a>
 

@@ -78,6 +78,47 @@ describe("deriveOrderStatus", () => {
     ).toBe("processing")
   })
 
+  // Medusa pune `authorized` la cart.complete, înainte să intre vreun ban —
+  // așa arată ORICE comandă abia plasată, nu doar cele din testele de mai sus.
+  it("cardul autorizat dar neîncasat e în așteptare, nu în procesare", () => {
+    const card = order({ payment_status: "authorized" })
+    expect(deriveOrderStatus(card)).toBe("pending")
+    expect(
+      deriveOrderStatus({
+        ...card,
+        metadata: { netopia: { status: "error" } },
+      })
+    ).toBe("payment_failed")
+    expect(
+      deriveOrderStatus({
+        ...card,
+        metadata: { netopia: { status: "confirmed" } },
+      })
+    ).toBe("processing")
+    expect(deriveOrderStatus({ ...card, payment_status: "captured" })).toBe(
+      "processing"
+    )
+  })
+
+  it("viramentul autorizat dar neîncasat așteaptă viramentul", () => {
+    const transfer = order({
+      payment_collections: [session("pp_system_default")],
+      payment_status: "authorized",
+    })
+    expect(deriveOrderStatus(transfer)).toBe("awaiting_bank_transfer")
+  })
+
+  it("ratele neaprobate sunt în așteptare, nu în procesare", () => {
+    const tbi = order({
+      payment_collections: [session("pp_tbi_tbi")],
+      payment_status: "authorized",
+    })
+    expect(deriveOrderStatus(tbi)).toBe("pending")
+    expect(deriveOrderStatus({ ...tbi, payment_status: "captured" })).toBe(
+      "processing"
+    )
+  })
+
   it("rambursul autorizat e in procesare, nu in asteptare", () => {
     const cod = order({
       payment_collections: [session("pp_cod_cod")],
@@ -157,6 +198,46 @@ describe("canSendPaymentLink", () => {
         canSendPaymentLink(order({ payment_collections: [session(p)] }))
       ).toBe(false)
     }
+  })
+
+  it("da pentru comanda abia plasată — `authorized` nu înseamnă bani luați", () => {
+    // Providerii răspund `authorized` la cart.complete, înainte de bancă.
+    expect(canSendPaymentLink(order({ payment_status: "authorized" }))).toBe(
+      true
+    )
+    expect(
+      canSendPaymentLink(
+        order({
+          payment_status: "authorized",
+          metadata: { netopia: { status: "error" } },
+        })
+      )
+    ).toBe(true)
+  })
+
+  it("nu după confirmarea IPN, chiar dacă plata nu e încă capturată", () => {
+    expect(
+      canSendPaymentLink(
+        order({
+          payment_status: "authorized",
+          metadata: { netopia: { status: "confirmed" } },
+        })
+      )
+    ).toBe(false)
+  })
+
+  it("nu cât timp plata e în curs la Netopia — ar fi plată dublă", () => {
+    for (const status of ["paid_pending", "fraud", "credit"]) {
+      expect(
+        canSendPaymentLink(
+          order({ payment_status: "authorized", metadata: { netopia: { status } } })
+        )
+      ).toBe(false)
+    }
+  })
+
+  it("nu pentru comenzi rambursate integral", () => {
+    expect(canSendPaymentLink(order({ payment_status: "refunded" }))).toBe(false)
   })
 
   it("nu pentru comenzi încasate, anulate sau livrate", () => {

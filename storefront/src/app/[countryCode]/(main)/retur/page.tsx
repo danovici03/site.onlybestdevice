@@ -185,14 +185,6 @@ export default function ReturPage() {
           <br />
           {COMPANY.adresaRetur.cap} {COMPANY.adresaRetur.citta}, jud.{" "}
           {COMPANY.adresaRetur.judet}
-          <br />
-          Telefon:{" "}
-          <a
-            href={`tel:${COMPANY.telefono.replace(/\s+/g, "")}`}
-            className="text-brand-accent hover:underline"
-          >
-            {COMPANY.telefono}
-          </a>
         </p>
       </Callout>
 

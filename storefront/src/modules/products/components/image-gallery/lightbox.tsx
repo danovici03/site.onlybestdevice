@@ -149,7 +149,9 @@ const ImageLightbox = ({
                             src={image.url}
                             alt={`${title} — ${index + 1}`}
                             fill
-                            sizes="100vw"
+                            // Sursele au ~720px; peste 640px CSS ar cere
+                            // treptele de 1920/2560, făcute doar pentru hero.
+                            sizes="(min-width: 640px) 640px, 100vw"
                             draggable={false}
                             priority={index === startIndex}
                             className="object-contain p-4 sm:p-8"
