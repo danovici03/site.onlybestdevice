@@ -81,6 +81,27 @@ export const PAID_STATUSES = new Set([
   "partially_refunded",
 ])
 
+/**
+ * Statusurile în care banii chiar au intrat — gardul contra plății duble.
+ *
+ * `authorized` NU e aici, deși pare: toți providerii noștri (Netopia, virament,
+ * ramburs, rate) răspund `authorized` la `cart.complete` doar ca Medusa să
+ * accepte comanda, iar Stripe e configurat cu `capture: true`. Deci orice
+ * comandă nou plasată e `authorized` ÎNAINTE ca clientul să fi ajuns la bancă.
+ * Cu `PAID_STATUSES` aici, pagina `/pay` socotea comanda plătită și sărea
+ * direct la „mulțumim", fără redirect spre Netopia.
+ */
+export const COLLECTED_STATUSES = new Set([
+  "captured",
+  "partially_captured",
+  "partially_refunded",
+])
+
+/** Banii au intrat: IPN-ul Netopia a confirmat sau plata e capturată. */
+export const isPaymentCollected = (order: any): boolean =>
+  (order?.metadata as any)?.netopia?.status === "confirmed" ||
+  COLLECTED_STATUSES.has((order?.payment_status ?? "") as string)
+
 /** Toți providerii cu care s-a atins comanda: plăți efective + sesiuni. */
 export const orderPaymentProviders = (order: any): string[] => {
   const collections = order?.payment_collections ?? []
@@ -111,13 +132,44 @@ export const isFinancedOrder = (order: any) =>
 export const isCardOrder = (order: any) => hasProvider(order, "netopia")
 
 /**
+ * Stări IPN Netopia în care banii sunt pe drum sau deja luați, deși plata nu
+ * e încă capturată: `paid_pending` (autorizare/3DS în curs — și orice status
+ * necunoscut, vezi `statusToAction`), `fraud` (bani blocați la verificare),
+ * `credit` (refund făcut la Netopia). O sesiune nouă peste ele = plată dublă.
+ */
+const NETOPIA_IN_FLIGHT = new Set(["paid_pending", "fraud", "credit"])
+
+/**
+ * Gardul contra plății duble: nu se mai deschide o plată nouă (link din admin,
+ * pagina `/pay`, ruta de sesiune). Pe lângă încasare, blochează și plățile în
+ * curs la Netopia și comenzile rambursate integral.
+ */
+export const isPaymentLocked = (order: any): boolean =>
+  isPaymentCollected(order) ||
+  NETOPIA_IN_FLIGHT.has((order?.metadata as any)?.netopia?.status) ||
+  order?.payment_status === "refunded"
+
+/**
+ * Comanda poate intra în lucru: banii au intrat, sau e ramburs — singura
+ * plată la care marfa pleacă înainte de bani.
+ *
+ * Toate celelalte sunt `authorized` din clipa plasării, înainte să intre vreun
+ * ban: cardul, viramentul, dar și ratele — TBI/UniCredit capturează plata abia
+ * la aprobarea creditului (`/hooks/tbi`, `/hooks/unicredit`). Regula e aceeași
+ * pentru admin (`deriveOrderStatus`) și gestiune (`toCanonicalStatus`).
+ */
+export const isPaymentCommitted = (order: any): boolean =>
+  isPaymentCollected(order) ||
+  (PAID_STATUSES.has((order?.payment_status ?? "") as string) &&
+    isCodOrder(order))
+
+/**
  * Statusul dedus din starea reală a comenzii. Ordinea contează: stările
  * terminale au prioritate.
  */
 export const deriveOrderStatus = (order: any): OrderStatusCode => {
-  const paymentStatus = (order?.payment_status ?? "") as string
   const fulfillmentStatus = (order?.fulfillment_status ?? "") as string
-  const isPaid = PAID_STATUSES.has(paymentStatus)
+  const isPaid = isPaymentCommitted(order)
 
   if (order?.status === "canceled" || order?.canceled_at) {
     return "canceled"
@@ -221,7 +273,7 @@ export const effectiveOrderStatus = (order: any): EffectiveOrderStatus => {
 export const canSendPaymentLink = (order: any): boolean => {
   const status = deriveOrderStatus(order)
   if (status === "canceled" || status === "completed") return false
-  if (PAID_STATUSES.has((order?.payment_status ?? "") as string)) return false
+  if (isPaymentLocked(order)) return false
   if (isCodOrder(order) || isFinancedOrder(order)) return false
   return true
 }

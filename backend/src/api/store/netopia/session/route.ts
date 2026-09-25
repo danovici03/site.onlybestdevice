@@ -10,10 +10,10 @@ import {
 } from '@medusajs/core-flows'
 import { getNetopiaClient } from '../../../../modules/netopia/client'
 import {
-  PAID_STATUSES,
   canSendPaymentLink,
   isCodOrder,
   isFinancedOrder,
+  isPaymentLocked,
 } from '../../../../lib/orders/order-status'
 import {
   countryNumeric,
@@ -105,17 +105,14 @@ export const POST = async (
    * asincron, iar clientul se poate intoarce cu butonul „inapoi" din pagina de
    * confirmare inainte sa fi ajuns. Pana atunci metadata inca zice „pending",
    * dar banii sunt luati — de aceea ne uitam si la `payment_status`, care e
-   * calculat din platile reale, si la anulare.
+   * calculat din platile reale, si la anulare. `authorized` NU conteaza — apare
+   * la orice comanda abia plasata — dar o plata in curs la Netopia
+   * (`paid_pending`) da: vezi `isPaymentLocked`.
    */
-  const netopiaMeta = ((order.metadata ?? {}) as Record<string, any>).netopia ?? {}
-  const alreadyPaid =
-    netopiaMeta.status === 'confirmed' ||
-    PAID_STATUSES.has(((order as any).payment_status ?? '') as string)
-
-  if (alreadyPaid) {
+  if (isPaymentLocked(order)) {
     throw new MedusaError(
       MedusaError.Types.NOT_ALLOWED,
-      'Comanda este deja platita'
+      'Comanda este deja platita sau plata e in curs de procesare'
     )
   }
   if (order.status === 'canceled' || (order as any).canceled_at) {
@@ -200,7 +197,7 @@ export const POST = async (
     const freshMeta = (fresh?.[0]?.metadata ?? {}) as Record<string, any>
     const freshNetopia = freshMeta.netopia ?? {}
 
-    if (freshNetopia.status === 'confirmed') {
+    if (isPaymentLocked({ metadata: freshMeta })) {
       throw new MedusaError(
         MedusaError.Types.NOT_ALLOWED,
         'Comanda a fost platita intre timp'

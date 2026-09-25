@@ -22,7 +22,8 @@ export const retrieveOrderForPayment = async (id: string) => {
   return sdk.client
     .fetch<HttpTypes.StoreOrderResponse>(`/store/orders/${id}`, {
       method: "GET",
-      query: { fields: "+metadata" },
+      // Plățile aduc providerul: rambursul și ratele nu au ce căuta pe /pay.
+      query: { fields: "+metadata,*payment_collections.payments" },
       headers,
       cache: "no-store",
     })
