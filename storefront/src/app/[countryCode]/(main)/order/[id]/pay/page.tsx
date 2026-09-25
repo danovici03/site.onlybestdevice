@@ -40,15 +40,24 @@ export default async function OrderPayPage(props: Props) {
 
   const confirmedHref = `/${params.countryCode}/order/${order.id}/confirmed`
 
-  // Plata a intrat deja: îl ducem direct la confirmare, în loc să-l punem pe
-  // drumul spre bancă pentru o comandă achitată. Ne uităm la ambele semnale —
-  // IPN-ul e asincron, deci metadata poate fi în urma plăților reale.
-  const netopia = (order.metadata ?? {}) as { netopia?: { status?: string } }
+  // Plata a intrat deja sau e pe drum: îl ducem direct la confirmare, în loc
+  // să-l punem pe drumul spre bancă. Aceeași regulă ca `isPaymentLocked` din
+  // backend — ruta de sesiune ar refuza oricum, dar cu un ecran de eroare.
+  // Fără `authorized`: orice comandă abia plasată e `authorized` (providerul
+  // Netopia răspunde așa la cart.complete), deci am sări peste bancă mereu.
+  // `paid_pending` / `fraud` / `credit` = bani autorizați sau refund la Netopia.
+  const netopiaStatus = (order.metadata as any)?.netopia?.status
+  const paymentStatus = (order as any).payment_status ?? ""
+  const providers: string[] = ((order as any).payment_collections ?? [])
+    .flatMap((pc: any) => pc?.payments ?? [])
+    .map((p: any) => p?.provider_id ?? "")
   const paid =
-    netopia.netopia?.status === "confirmed" ||
-    ["captured", "partially_captured", "authorized"].includes(
-      (order as any).payment_status ?? ""
-    )
+    ["confirmed", "paid_pending", "fraud", "credit"].includes(netopiaStatus) ||
+    ["captured", "partially_captured", "partially_refunded", "refunded"].includes(
+      paymentStatus
+    ) ||
+    // Rambursul și ratele nu se plătesc aici (curierul, respectiv banca).
+    providers.some((id) => /cod|tbi|unicredit/.test(id))
   if (paid) {
     redirect(confirmedHref)
   }
