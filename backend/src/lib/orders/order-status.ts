@@ -178,8 +178,10 @@ export const deriveOrderStatus = (order: any): OrderStatusCode => {
     return "completed"
   }
 
-  // Netopia a raportat eroare prin IPN și de atunci nu a intrat nimic.
-  if (!isPaid && (order?.metadata as any)?.netopia?.status === "error") {
+  // Netopia a raportat eroare prin IPN și de atunci nu a intrat nimic — sau a
+  // încasat mai puțin decât comanda (`underpaid`), care nu se capturează.
+  const netopiaStatus = (order?.metadata as any)?.netopia?.status
+  if (!isPaid && (netopiaStatus === "error" || netopiaStatus === "underpaid")) {
     return "payment_failed"
   }
 

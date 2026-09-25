@@ -18,7 +18,13 @@
  * https://secure.sandbox.netopia-payments.com/spec
  */
 
-import { X509Certificate, createHash, createVerify } from 'crypto'
+import {
+  KeyObject,
+  X509Certificate,
+  createHash,
+  createPublicKey,
+  createVerify,
+} from 'crypto'
 import { readFileSync } from 'fs'
 import path from 'path'
 import { NetopiaError } from './client'
@@ -150,6 +156,29 @@ const ALG_TO_DIGEST: Record<string, string> = {
 
 const b64url = (s: string): Buffer => Buffer.from(s, 'base64url')
 
+/**
+ * Cheia cu care Netopia semneaza IPN-urile v2 pe live. NU e certificatul
+ * POS-ului (`live.<POS>.public.cer`): acela e cheia RSA de 1024 de biti din v1,
+ * identica pe sandbox si live, si nu verifica niciun IPN live — pe 25.09.2026
+ * toate IPN-urile au picat cu „Semnatura IPN-ului nu se verifica”, iar
+ * comenzile platite au ramas „pending”.
+ *
+ * Sursa: pluginul oficial WooCommerce v2
+ * (github.com/netopiapayments/WooCommerce,
+ * `netopia-payments-payment-gateway/v2/wc-netopiapayments-gateway.php`), care o
+ * are hardcodata. Se poate inlocui fara deploy prin `NETOPIA_IPN_PUBLIC_KEY`.
+ */
+const NETOPIA_IPN_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy6pUDAFLVul4y499gz1P
+gGSvTSc82U3/ih3e5FDUs/F0Jvfzc4cew8TrBDrw7Y+AYZS37D2i+Xi5nYpzQpu7
+ryS4W+qvgAA1SEjiU1Sk2a4+A1HeH+vfZo0gDrIYTh2NSAQnDSDxk5T475ukSSwX
+L9tYwO6CpdAv3BtpMT5YhyS3ipgPEnGIQKXjh8GMgLSmRFbgoCTRWlCvu7XOg94N
+fS8l4it2qrEldU8VEdfPDfFLlxl3lUoLEmCncCjmF1wRVtk4cNu+WtWQ4mBgxpt0
+tX2aJkqp4PV3o5kI4bqHq/MS7HVJ7yxtj/p8kawlVYipGsQj3ypgltQ3bnYV/LRq
+8QIDAQAB
+-----END PUBLIC KEY-----
+`
+
 export class NetopiaV2Client {
   constructor(private readonly options: NetopiaV2Options) {}
 
@@ -157,12 +186,31 @@ export class NetopiaV2Client {
     return this.options.env === 'live' ? BASE_URLS.live : BASE_URLS.sandbox
   }
 
-  private cert(): X509Certificate {
-    const pem = readFileSync(
-      path.resolve(process.cwd(), this.options.publicCerPath),
-      'utf8'
-    )
-    return new X509Certificate(pem)
+  /**
+   * Cheile incercate la verificarea IPN-ului: intai cheia Netopia de IPN
+   * (env sau cea din pluginul oficial), apoi certificatul POS-ului — ramas ca
+   * rezerva pentru sandbox, unde SDK-urile lor il folosesc pe el.
+   */
+  private ipnKeys(): KeyObject[] {
+    const keys: KeyObject[] = []
+    const ipnPem = (
+      process.env.NETOPIA_IPN_PUBLIC_KEY || NETOPIA_IPN_PUBLIC_KEY
+    ).replace(/\\n/g, '\n')
+    try {
+      keys.push(createPublicKey(ipnPem))
+    } catch {
+      // cheie din env stricata — ramane certificatul POS-ului
+    }
+    try {
+      const pem = readFileSync(
+        path.resolve(process.cwd(), this.options.publicCerPath),
+        'utf8'
+      )
+      keys.push(new X509Certificate(pem).publicKey)
+    } catch {
+      // fara certificat POS — ramane cheia de IPN
+    }
+    return keys
   }
 
   /**
@@ -282,9 +330,12 @@ export class NetopiaV2Client {
       throw new NetopiaError(`Algoritm JWT nesuportat: ${header?.alg}`)
     }
 
-    const ok = createVerify(digest)
-      .update(`${headerB64}.${payloadB64}`)
-      .verify(this.cert().publicKey, b64url(signatureB64))
+    const signature = b64url(signatureB64)
+    const ok = this.ipnKeys().some((key) =>
+      createVerify(digest)
+        .update(`${headerB64}.${payloadB64}`)
+        .verify(key, signature)
+    )
     if (!ok) {
       throw new NetopiaError('Semnătura IPN-ului nu se verifică')
     }
