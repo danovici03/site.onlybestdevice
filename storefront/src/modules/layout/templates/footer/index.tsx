@@ -20,6 +20,7 @@ const SUPPORT_LINKS = [
   { label: "Contact", href: "/contact" },
   { label: "Întrebări frecvente", href: "/faq" },
   { label: "Livrarea comenzilor", href: "/livrare" },
+  { label: "Cumpără în rate", href: "/credit-online" },
   { label: "Retur produse", href: "/retur" },
   { label: "Garanție și service", href: "/garantie" },
   { label: "Formular de service", href: "/service" },

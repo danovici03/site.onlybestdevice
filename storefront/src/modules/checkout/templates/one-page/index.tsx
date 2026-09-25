@@ -36,6 +36,7 @@ import {
   TBI_MAX,
   TBI_MIN,
   UCFIN_GDPR_URL,
+  UCFIN_METHOD_LABEL,
   availableTerms,
   lowestOfferFrom,
   supportsInstallments,
@@ -106,7 +107,11 @@ const METHOD_ORDER = [
 /** Ce scrie pe ecranul de așteptare, în funcție de unde pleacă clientul. */
 const placingMessage = (id?: string): string => {
   if (isNetopia(id) || isStripeLike(id)) return "Te ducem la plata securizată…"
-  if (isUnicredit(id) || isTbi(id)) return "Trimitem cererea de finanțare…"
+  // Descrierea metodei UCFin din listă a fost scoasă la cererea lor, deci
+  // anunțul că plecăm de pe site stă aici, pe ecranul de după click.
+  if (isUnicredit(id))
+    return "Te ducem la UniCredit Consumer Financing pentru creditarea online…"
+  if (isTbi(id)) return "Trimitem cererea de finanțare…"
   return "Se procesează comanda…"
 }
 
@@ -141,9 +146,8 @@ const methodMeta = (
   }
   if (isUnicredit(id)) {
     return {
-      title: "Rate prin UniCredit Consumer Financing",
-      description:
-        "Credit online 100%, cu răspuns în maximum 15 minute. Vei fi redirecționat către UCFin pentru creditarea la distanță.",
+      // Titlul e formularea cerută de UCFin; descrierea a scos-o tot ei.
+      title: UCFIN_METHOD_LABEL,
       badges: <UniCreditBadge />,
     }
   }

@@ -1,15 +1,18 @@
 import { Metadata } from "next"
+import Image from "next/image"
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
 import {
   FINANCING_PRODUCTS,
   UCFIN_GDPR_URL,
-  UCFIN_GUIDE_URL,
+  UCFIN_PAYMENT_METHODS_URL,
+  UCFIN_WITHDRAWAL_URL,
 } from "@lib/util/installments"
+import bannerImg from "../../../../assets/ucfin/banner-credit-online.png"
 
-// Conținutul acestei pagini reproduce documentul „Informatii Credit
-// UCFin_ONLY BEST DEVICE SRL_23.07.26" primit de la departamentul juridic
-// UniCredit Consumer Financing. NU modifica cifrele/formularea fără o revizie
-// nouă de la UCFin.
+// Conținutul acestei pagini reproduce documentul „Informatii Credit UCFin"
+// (revizia din septembrie 2026, cu bannerul inclus) primit de la UniCredit
+// Consumer Financing. NU modifica cifrele/formularea fără o revizie nouă de la
+// UCFin.
 
 export const metadata: Metadata = {
   title: "Credit Online UniCredit Consumer Financing",
@@ -25,6 +28,14 @@ export default function CreditOnlinePage() {
       description="Finanțare 100% online, cu identificare video, semnătură electronică și răspuns în maximum 15 minute."
       breadcrumbs={[{ label: "Acasă", href: "/" }, { label: "Credit Online" }]}
     >
+      <Image
+        src={bannerImg}
+        alt="Credit 100% Online de la UniCredit Consumer Financing — finanțare pentru achiziții online. Simplu. Rapid. Online."
+        sizes="(min-width: 900px) 836px, 100vw"
+        className="not-prose mb-10 h-auto w-full rounded-xl"
+        priority
+      />
+
       <h2>Cum funcționează</h2>
       <ol>
         <li>Intri pe pagina noastră online și adaugi produsele dorite în coș.</li>
@@ -54,7 +65,7 @@ export default function CreditOnlinePage() {
           video; ulterior aprobării primești documentația semnată electronic
           prin link în SMS.
         </li>
-        <li>Carte de identitate, în original, valabilă.</li>
+        <li>Cartea de identitate, în original, valabilă.</li>
         <li>
           Adresă de email, unde primești statusul actualizat privind decizia de
           creditare.
@@ -74,8 +85,8 @@ export default function CreditOnlinePage() {
           provizorii);
         </li>
         <li>
-          ai vârsta cuprinsă între 18 și 75 de ani (vârsta până la care
-          creditul trebuie rambursat în întregime);
+          ai vârsta cuprinsă între 18 și 75 de ani (la finalizarea
+          creditului);
         </li>
         <li>
           ai venituri înregistrate în baza de date a Agenției Naționale de
@@ -173,10 +184,21 @@ export default function CreditOnlinePage() {
 
       <h2>Unde și cum plătești ratele?</h2>
       <p>
-        Achiți ratele aferente creditului în orice sucursală UniCredit Bank
-        S.A., online prin Online Banking sau Mobile Banking (dacă ai
-        contractate aceste servicii de la UniCredit Bank S.A.), precum și în
-        locațiile semnalizate cu sigla SelfPay.
+        Achiți ratele aferente Creditului Partener 100% Online numerar în orice
+        sucursală UniCredit Bank S.A., online prin Online Banking sau Mobile
+        Banking (dacă ai contractate aceste servicii de la UniCredit Bank
+        S.A.), precum și în locațiile semnalizate cu sigla SelfPay.
+      </p>
+      <p>
+        Mai multe detalii regăsești{" "}
+        <a
+          href={UCFIN_PAYMENT_METHODS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          aici
+        </a>
+        .
       </p>
 
       <h2>Dreptul de retragere din contractul de credit încheiat la distanță</h2>
@@ -186,11 +208,15 @@ export default function CreditOnlinePage() {
         calendaristice de la data încheierii contractului de credit, precum și
         în situațiile prevăzute la articolele 63–65 din Ordonanța de Urgență
         nr. 50/2010 privind contractele de credit pentru consumatori. Mai multe
-        detalii în{" "}
-        <a href={UCFIN_GUIDE_URL} target="_blank" rel="noopener noreferrer">
-          Ghidul semnării la distanță
-        </a>
-        .
+        detalii în secțiunea{" "}
+        <a
+          href={UCFIN_WITHDRAWAL_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Retragere din contract
+        </a>{" "}
+        de pe site-ul UCFin.
       </p>
 
       <h2>Contact UniCredit Consumer Financing</h2>
@@ -203,7 +229,7 @@ export default function CreditOnlinePage() {
         </li>
         <li>
           Telefon: 021.200.97.11 (apel tarif normal în rețeaua fixă Orange
-          Romania Communications)
+          România Communications)
         </li>
         <li>Program: luni–vineri, 09:00–21:00</li>
       </ul>
