@@ -9,7 +9,7 @@ type ProductRatingProps = {
 const ProductRating = ({
   rating,
   reviewCount,
-  reviewLabel = "recensioni",
+  reviewLabel = "recenzii",
 }: ProductRatingProps) => {
   const clamped = Math.max(0, Math.min(5, rating))
   const stars = Array.from({ length: 5 }, (_, i) => {

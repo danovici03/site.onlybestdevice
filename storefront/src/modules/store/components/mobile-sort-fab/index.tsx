@@ -30,7 +30,7 @@ export default function MobileSortFab({ sortBy }: Props) {
   const visible = scrolled && decided
 
   const activeLabel =
-    SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? "Ordina"
+    SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? "Sortează"
 
   const setSort = useCallback(
     (value: SortOptions) => {
@@ -63,7 +63,7 @@ export default function MobileSortFab({ sortBy }: Props) {
       >
         <ArrowsDownUp size={18} weight="bold" />
         <span className="text-xs font-bold uppercase tracking-wider">
-          Ordina
+          Sortează
         </span>
       </button>
 
@@ -98,7 +98,7 @@ export default function MobileSortFab({ sortBy }: Props) {
                   <span className="block w-10 h-1 rounded-full bg-brand-dark/15" />
                 </div>
                 <Dialog.Title className="font-serif text-2xl text-brand-dark px-6 pb-4">
-                  Ordina
+                  Sortează
                 </Dialog.Title>
                 <ul className="px-2 pb-2">
                   {SORT_OPTIONS.map((opt) => {

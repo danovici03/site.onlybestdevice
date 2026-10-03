@@ -46,7 +46,7 @@ const RefinementBar = ({ sortBy, className }: RefinementBarProps) => {
       data-testid="sort-by-container"
     >
       <span className="text-xs uppercase tracking-[0.18em] font-bold text-brand-dark/50 shrink-0 mr-1">
-        Ordina
+        Sortează
       </span>
       {SORT_OPTIONS.map((opt) => {
         const isActive = opt.value === sortBy

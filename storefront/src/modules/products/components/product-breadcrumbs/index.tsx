@@ -26,7 +26,7 @@ export const buildProductCrumbs = ({
   brand,
 }: {
   path: CategoryCrumb[]
-  brand?: string | null
+  brand?: { name: string; slug: string } | null
 }): ProductCrumb[] => {
   const crumbs: ProductCrumb[] = path.map((crumb, i) => ({
     name: crumb.name,
@@ -37,14 +37,14 @@ export const buildProductCrumbs = ({
   }))
 
   const already = path.some(
-    (c) => c.name.toLowerCase() === (brand ?? "").toLowerCase()
+    (c) => c.name.toLowerCase() === (brand?.name ?? "").toLowerCase()
   )
 
   if (brand && !already) {
     const base = crumbs.length ? crumbs[crumbs.length - 1].href : "/store"
     crumbs.push({
-      name: brand,
-      href: `${base}?brand=${encodeURIComponent(brand)}`,
+      name: brand.name,
+      href: `${base}?brand=${encodeURIComponent(brand.slug)}`,
       filtered: true,
     })
   }

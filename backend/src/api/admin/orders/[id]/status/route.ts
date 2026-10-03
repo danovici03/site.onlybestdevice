@@ -5,6 +5,7 @@ import { z } from "zod"
 
 import { hasBankAccount } from "../../../../../lib/company/bank-account"
 import { ORDER_EMAIL_FIELDS } from "../../../../../lib/orders/order-emails"
+import { describeOrderPayment } from "../../../../../lib/orders/payment-method"
 import {
   ORDER_STATUS_CODES,
   ORDER_STATUS_FIELDS,
@@ -79,6 +80,9 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       payment_status: (order as any).payment_status ?? null,
       fulfillment_status: (order as any).fulfillment_status ?? null,
     },
+    // Pagina comenzii nu încarcă sesiunile de plată, deci widget-ul n-ar
+    // vedea providerul la un card neachitat; îl dăm gata descris de aici.
+    payment_method: describeOrderPayment(order),
     can_send_payment_link: canSendPaymentLink(order),
     payment_link_blocked_reason: linkBlockedReason,
     payment_link: metadata.payment_link ?? null,

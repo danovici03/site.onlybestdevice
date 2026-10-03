@@ -33,6 +33,7 @@ import {
  * Acțiuni (aceleași în ambele cazuri, ca metadata comenzilor să fie unitară):
  *   - confirmed → banii încasați → capturăm plata
  *   - canceled  → anulăm comanda
+ *   - confirmed cu mai puțin decât plata → underpaid, nu capturăm
  *   - restul (paid_pending, error, fraud, credit) → doar consemnăm
  *
  * Răspunsul diferă: v1 vrea XML `<crc>`, v2 vrea JSON `{errorType, errorCode,
@@ -206,6 +207,7 @@ async function applyIpn(
       'status',
       'metadata',
       'payment_collections.payments.id',
+      'payment_collections.payments.amount',
       'payment_collections.payments.captured_at',
       'payment_collections.payment_sessions.provider_id',
     ],
@@ -226,7 +228,31 @@ async function applyIpn(
   }
 
   const meta = (order.metadata ?? {}) as Record<string, any>
-  const action = facts.action
+  const payment = (order.payment_collections ?? [])
+    .flatMap((pc: any) => pc?.payments ?? [])
+    .find((p: any) => p?.id)
+
+  /**
+   * Netopia incaseaza exact suma pe care i-am trimis-o. Daca aceea a fost
+   * gresita (vezi comanda #41: 38 lei in loc de 1.137), IPN-ul vine tot
+   * „confirmed” — iar capturarea ar marca drept platita integral o comanda
+   * achitata doar partial. `underpaid` nu captureaza si nu blocheaza o plata
+   * noua; operatorul returneaza diferenta din admin-ul Netopia.
+   */
+  const processed = Number(facts.processedAmount)
+  const expected = Number(payment?.amount)
+  const underpaid =
+    facts.action === 'confirmed' &&
+    facts.processedAmount != null &&
+    Number.isFinite(processed) &&
+    Number.isFinite(expected) &&
+    processed + 0.01 < expected
+  if (underpaid) {
+    logger.error(
+      `[netopia] Plata incompleta pe comanda ${order.id}: incasat ${processed}, asteptat ${expected} — NU capturam`
+    )
+  }
+  const action = underpaid ? 'underpaid' : facts.action
 
   // Idempotență: repetarea aceluiași status final nu re-execută nimic.
   if (meta.netopia?.status === action && action !== 'paid_pending') {
@@ -245,9 +271,6 @@ async function applyIpn(
   }
 
   if (action === 'confirmed') {
-    const payment = (order.payment_collections ?? [])
-      .flatMap((pc: any) => pc?.payments ?? [])
-      .find((p: any) => p?.id)
     if (payment && !payment.captured_at) {
       await capturePaymentWorkflow(req.scope).run({
         input: { payment_id: payment.id },
@@ -264,7 +287,8 @@ async function applyIpn(
       )
     }
   }
-  // paid_pending / credit / fraud / error → doar metadata și, la error, email
+  // paid_pending / credit / fraud / error / underpaid → doar metadata și, la
+  // error, email
 
   const orderModule = req.scope.resolve(Modules.ORDER)
   await orderModule.updateOrders(order.id, {

@@ -128,14 +128,6 @@ export default function GarantiePage() {
           <br />
           {COMPANY.adresaRetur.cap} {COMPANY.adresaRetur.citta}, jud.{" "}
           {COMPANY.adresaRetur.judet}
-          <br />
-          Telefon:{" "}
-          <a
-            href={`tel:${COMPANY.telefono.replace(/\s+/g, "")}`}
-            className="text-brand-accent hover:underline"
-          >
-            {COMPANY.telefono}
-          </a>
         </p>
       </Callout>
 
@@ -293,13 +285,6 @@ export default function GarantiePage() {
             className="text-brand-accent hover:underline"
           >
             {COMPANY.email}
-          </a>{" "}
-          sau sună la{" "}
-          <a
-            href={`tel:${COMPANY.telefono.replace(/\s+/g, "")}`}
-            className="text-brand-accent hover:underline"
-          >
-            {COMPANY.telefono}
           </a>
           . {COMPANY.orari} — {COMPANY.slaRisposta}
         </p>

@@ -12,7 +12,13 @@ import {
   Textarea,
   toast,
 } from "@medusajs/ui"
+import { Buildings, Cash, CreditCard } from "@medusajs/icons"
 import { useCallback, useEffect, useState } from "react"
+
+import type {
+  PaymentMethod,
+  PaymentMethodGroup,
+} from "../../lib/orders/payment-method"
 
 type StatusCode =
   | "processing"
@@ -32,6 +38,7 @@ type StatusState = {
   }
   derived: { code: StatusCode; label: string }
   medusa: { payment_status: string | null; fulfillment_status: string | null }
+  payment_method: PaymentMethod | null
   can_send_payment_link: boolean
   payment_link_blocked_reason: string | null
   payment_link: { sent_at: string; count: number } | null
@@ -54,6 +61,14 @@ const TONE: Record<StatusCode, "green" | "orange" | "red" | "grey" | "blue"> = {
   completed: "green",
 }
 
+const PAYMENT_ICON: Record<PaymentMethodGroup, typeof Cash> = {
+  cod: Cash,
+  card: CreditCard,
+  partner: Buildings,
+  bank_transfer: Buildings,
+  unknown: CreditCard,
+}
+
 const formatDate = (iso: string) => {
   try {
     return new Date(iso).toLocaleString("ro-RO")
@@ -73,6 +88,32 @@ const api = async (url: string, init?: RequestInit) => {
     throw new Error(body?.message || `Eroare ${res.status}`)
   }
   return body
+}
+
+/**
+ * Cum a plătit clientul: ramburs / card / partener, cu numele partenerului.
+ * Secțiunea de plăți din Medusa arată doar `pp_tbi_tbi` și o ascunde pe
+ * telefon.
+ */
+const PaymentMethodRow = ({ method }: { method: PaymentMethod }) => {
+  const Icon = PAYMENT_ICON[method.group]
+  // Plata cu cardul iese în evidență, în verde.
+  const card = method.group === "card"
+  return (
+    <div className="flex items-center gap-3 px-6 py-3">
+      <Icon
+        className={`shrink-0 ${card ? "text-ui-tag-green-icon" : "text-ui-fg-subtle"}`}
+      />
+      <Text size="small">
+        <span
+          className={`font-medium ${card ? "text-ui-tag-green-text" : ""}`}
+        >
+          {method.label}
+        </span>
+        <span className="text-ui-fg-muted"> · {method.detail}</span>
+      </Text>
+    </div>
+  )
 }
 
 /**
@@ -178,6 +219,10 @@ const OrderStatusWidget = ({ data: order }: DetailWidgetProps<AdminOrder>) => {
         </Badge>
       </div>
 
+      {state.payment_method && (
+        <PaymentMethodRow method={state.payment_method} />
+      )}
+
       <div className="px-6 py-4 flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <Text size="small" className="text-ui-fg-muted">
@@ -239,32 +284,40 @@ const OrderStatusWidget = ({ data: order }: DetailWidgetProps<AdminOrder>) => {
         </div>
       </div>
 
-      <div className="px-6 py-4 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex flex-col">
-            <Text size="small" weight="plus">
-              Link de plată cu cardul
-            </Text>
-            <Text size="small" className="text-ui-fg-muted">
-              {state.can_send_payment_link
-                ? state.payment_link
+      {/* Doar când linkul chiar se poate trimite (card eșuat, virament
+          neîncasat) sau a fost trimis deja. La ramburs și rate ar rămâne
+          doar motivul blocării, pe care rândul cu metoda de plată îl spune. */}
+      {(state.can_send_payment_link || state.payment_link) && (
+        <div className="px-6 py-4 flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col">
+              <Text size="small" weight="plus">
+                Link de plată cu cardul
+              </Text>
+              <Text size="small" className="text-ui-fg-muted">
+                {state.payment_link
                   ? `Trimis ultima dată ${formatDate(state.payment_link.sent_at)} (${state.payment_link.count}×)`
-                  : `Trimite un link de plată către ${order.email}`
-                : state.payment_link_blocked_reason}
-            </Text>
+                  : `Trimite un link de plată către ${order.email}`}
+              </Text>
+              {!state.can_send_payment_link && (
+                <Text size="small" className="text-ui-fg-muted">
+                  {state.payment_link_blocked_reason}
+                </Text>
+              )}
+            </div>
+            {state.can_send_payment_link && (
+              <Button
+                size="small"
+                variant="secondary"
+                isLoading={sendingLink}
+                onClick={sendPaymentLink}
+              >
+                {state.payment_link ? "Retrimite" : "Trimite"}
+              </Button>
+            )}
           </div>
-          {state.can_send_payment_link && (
-            <Button
-              size="small"
-              variant="secondary"
-              isLoading={sendingLink}
-              onClick={sendPaymentLink}
-            >
-              {state.payment_link ? "Retrimite" : "Trimite"}
-            </Button>
-          )}
         </div>
-      </div>
+      )}
 
       {state.history.length > 0 && (
         <div className="px-6 py-4 flex flex-col gap-2">

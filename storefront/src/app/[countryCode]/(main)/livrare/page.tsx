@@ -83,8 +83,7 @@ export default function LivrarePage() {
         Dacă observi deteriorări evidente ale ambalajului, poți refuza coletul
         sau îl poți accepta cu mențiunea „accept cu rezerva de verificare pentru
         daune externe” pe documentul curierului. Contactează-ne imediat la{" "}
-        <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a> sau{" "}
-        {COMPANY.telefono}, atașând fotografii și numărul comenzii, iar noi
+        <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>, atașând fotografii și numărul comenzii, iar noi
         rezolvăm situația (înlocuire sau rambursare).
       </p>
 

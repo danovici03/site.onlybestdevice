@@ -5,7 +5,6 @@ import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import {
-  FILTER_KEYS,
   emptyFacets,
   serializePrice,
   type Facets,
@@ -202,6 +201,11 @@ export const listCatalog = async ({
     sort: sortBy,
     page,
     limit,
+    // Versiunea formei răspunsului. Face parte din cheia de cache: răspunsurile
+    // păstrate în Data Cache cu forma veche a fațetelor (care supraviețuiește
+    // unui deploy) nu mai pot fi servite codului nou. Se crește la orice
+    // schimbare incompatibilă a lui `facets`. Backendul ignoră parametrul.
+    facets_v: 2,
   }
   if (categoryIds?.length) query.category_id = categoryIds
   if (collectionId) query.collection_id = collectionId
@@ -215,12 +219,16 @@ export const listCatalog = async ({
   // Absent = fațeta de categorie oferă nivelul de top.
   if (facetParentId) query.facet_parent_id = facetParentId
 
-  for (const key of FILTER_KEYS) {
-    // Array, nu CSV: valorile pot conține virgule (numele de categorii).
-    if (selected[key].length) query[key] = selected[key]
+  if (selected.category.length) query.category = selected.category
+  // Filtrele de atribut pleacă așa cum sunt în URL; backendul le potrivește pe
+  // filtrele care se aplică aici și le ignoră pe celelalte. Array, nu CSV:
+  // valorile pot conține virgule.
+  for (const [key, values] of Object.entries(selected.attrs)) {
+    if (values.length) query[key] = values
   }
   const price = serializePrice(selected.price)
   if (price) query.price = price
+  if (selected.stock) query.stock = "1"
 
   const headers = {}
   const next = { ...(await getCacheOptions("products")) }
@@ -237,6 +245,9 @@ export const listCatalog = async ({
       next,
       cache: "force-cache",
     })
+    // Plasă de siguranță pentru un răspuns fără câmpurile noi (backend vechi în
+    // timpul unui deploy): panoul de filtre citește `attributes` și `stock`.
+    .then((r) => ({ ...r, facets: { ...emptyFacets(), ...(r.facets ?? {}) } }))
     .catch((e) => {
       // Fără log, un catalog picat arată exact ca „niciun produs găsit".
       console.error("[catalog] cererea a eșuat:", e?.message ?? e)

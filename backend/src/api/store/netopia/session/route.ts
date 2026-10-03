@@ -10,10 +10,10 @@ import {
 } from '@medusajs/core-flows'
 import { getNetopiaClient } from '../../../../modules/netopia/client'
 import {
-  PAID_STATUSES,
   canSendPaymentLink,
   isCodOrder,
   isFinancedOrder,
+  isPaymentLocked,
 } from '../../../../lib/orders/order-status'
 import {
   countryNumeric,
@@ -62,10 +62,11 @@ export const POST = async (
       'payment_status',
       'fulfillment_status',
       'customer_id',
-      'items.title',
-      'items.quantity',
-      'items.unit_price',
-      'items.variant_sku',
+      // `items.*`, NU `items.quantity`: pe `order` cantitatea sta in
+      // `order_item`, iar cu campuri explicite vine `undefined` — `total` iese
+      // atunci doar transportul si clientul plateste 38 de lei in loc de
+      // comanda intreaga (comanda #41, 25.09.2026).
+      'items.*',
       'shipping_address.first_name',
       'shipping_address.last_name',
       'shipping_address.phone',
@@ -84,6 +85,7 @@ export const POST = async (
       'billing_address.country_code',
       'payment_collections.id',
       'payment_collections.status',
+      'payment_collections.amount',
       'payment_collections.payments.provider_id',
       'payment_collections.payment_sessions.provider_id',
     ],
@@ -105,17 +107,14 @@ export const POST = async (
    * asincron, iar clientul se poate intoarce cu butonul „inapoi" din pagina de
    * confirmare inainte sa fi ajuns. Pana atunci metadata inca zice „pending",
    * dar banii sunt luati — de aceea ne uitam si la `payment_status`, care e
-   * calculat din platile reale, si la anulare.
+   * calculat din platile reale, si la anulare. `authorized` NU conteaza — apare
+   * la orice comanda abia plasata — dar o plata in curs la Netopia
+   * (`paid_pending`) da: vezi `isPaymentLocked`.
    */
-  const netopiaMeta = ((order.metadata ?? {}) as Record<string, any>).netopia ?? {}
-  const alreadyPaid =
-    netopiaMeta.status === 'confirmed' ||
-    PAID_STATUSES.has(((order as any).payment_status ?? '') as string)
-
-  if (alreadyPaid) {
+  if (isPaymentLocked(order)) {
     throw new MedusaError(
       MedusaError.Types.NOT_ALLOWED,
-      'Comanda este deja platita'
+      'Comanda este deja platita sau plata e in curs de procesare'
     )
   }
   if (order.status === 'canceled' || (order as any).canceled_at) {
@@ -169,6 +168,28 @@ export const POST = async (
   const amount = Number(order.total ?? 0)
   const currency = (order.currency_code ?? 'ron').toUpperCase()
 
+  /**
+   * Suma trimisa la banca trebuie sa fie exact cea asteptata de colectia de
+   * plata (fixata la plasarea comenzii). Daca `order.total` e calculat din
+   * campuri incomplete, iese mai mic si clientul plateste doar o parte — deci
+   * refuzam deschiderea platii in loc sa incasam o suma gresita.
+   */
+  const expected = (order.payment_collections ?? [])
+    .filter((pc: any) => pc?.status !== 'canceled')
+    .map((pc: any) => Number(pc?.amount ?? 0))
+    .find((a: number) => a > 0)
+  if (!(amount > 0) || (expected != null && Math.abs(amount - expected) > 0.01)) {
+    req.scope
+      .resolve(ContainerRegistrationKeys.LOGGER)
+      .error(
+        `[netopia] Suma pentru comanda ${order.id} nu corespunde: total=${amount}, colectie=${expected}`
+      )
+    throw new MedusaError(
+      MedusaError.Types.UNEXPECTED_STATE,
+      'Suma comenzii nu a putut fi calculata corect. Te rugam sa ne contactezi.'
+    )
+  }
+
   const orderModule = req.scope.resolve(Modules.ORDER)
   /**
    * Fiecare apel e o incercare NOUA de plata, deci `error_code` de la
@@ -200,7 +221,7 @@ export const POST = async (
     const freshMeta = (fresh?.[0]?.metadata ?? {}) as Record<string, any>
     const freshNetopia = freshMeta.netopia ?? {}
 
-    if (freshNetopia.status === 'confirmed') {
+    if (isPaymentLocked({ metadata: freshMeta })) {
       throw new MedusaError(
         MedusaError.Types.NOT_ALLOWED,
         'Comanda a fost platita intre timp'

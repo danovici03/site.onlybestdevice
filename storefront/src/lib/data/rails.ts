@@ -172,10 +172,20 @@ const fetchBestSellersPage = async (
     // Un best-seller epuizat nu are ce căuta în vitrină. Nu cade nici în
     // completarea din catalog (`shown` exclude tot clasamentul), deci iese din
     // rail cu totul până revine în stoc.
+    //
+    // Cererea după `id` e „lookup direct", deci `listProducts` nu mai scoate
+    // produsele ascunse — garanția extinsă, vândută ca linie de comandă, ar
+    // intra în vitrină. Ruta de clasament le exclude deja; filtrul de aici
+    // acoperă un backend încă nedeployat.
     ranked.push(
       ...wanted
         .map((id) => byId.get(id))
-        .filter((p): p is HttpTypes.StoreProduct => !!p && isInStock(p))
+        .filter(
+          (p): p is HttpTypes.StoreProduct =>
+            !!p &&
+            (p.metadata as Record<string, unknown> | null)?.hidden !== "true" &&
+            isInStock(p)
+        )
     )
   }
 

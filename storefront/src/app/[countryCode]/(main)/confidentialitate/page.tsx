@@ -25,9 +25,8 @@ export default function ConfidentialitatePage() {
       <h2>1. Operatorul de date</h2>
       <p>
         Operatorul datelor este <strong>{COMPANY.ragioneSociale}</strong>, cu
-        sediul în {indirizzoLegale()}, CUI {COMPANY.piva}, email{" "}
-        <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>, telefon{" "}
-        {COMPANY.telefono}.
+        sediul în {indirizzoLegale()}, CUI {COMPANY.piva} și email{" "}
+        <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.
       </p>
 
       <h2>2. Ce date prelucrăm</h2>

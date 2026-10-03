@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { getProductCategoryPath } from "@lib/data/categories"
+import { listProductFilters } from "@lib/data/product-filters"
 import { listProducts } from "@lib/data/products"
 import { getRegion, listRegions } from "@lib/data/regions"
 import { listProductReviews } from "@lib/data/reviews"
@@ -118,7 +119,7 @@ export default async function ProductPage(props: Props) {
     return list.filter((h): h is string => typeof h === "string" && h.length > 0)
   })()
 
-  const [upgrades, reviewStats, warranty] = await Promise.all([
+  const [upgrades, reviewStats, warranty, filters] = await Promise.all([
     upgradeHandles.length
       ? listProducts({
           countryCode: params.countryCode,
@@ -140,15 +141,16 @@ export default async function ProductPage(props: Props) {
     canOfferWarrantyFor(pricedProduct)
       ? getWarrantyProduct({ countryCode: params.countryCode })
       : Promise.resolve(undefined),
+    listProductFilters(pricedProduct.id),
   ])
 
   // Breadcrumb: categorie → marcă, din ierarhia completă de categorii (produsul
-  // e legat de mai multe noduri, ne trebuie lanțul cel mai adânc).
-  const productMeta = (pricedProduct.metadata ?? {}) as Record<string, unknown>
-  const brand =
-    typeof productMeta.filter_brand === "string" && productMeta.filter_brand
-      ? productMeta.filter_brand
-      : null
+  // e legat de mai multe noduri, ne trebuie lanțul cel mai adânc). Marca vine
+  // din filtrul `brand`, cu slug-ul pe care îl folosește și listarea filtrată.
+  const brandFilter = filters.find((f) => f.key === "brand" && f.value && f.slug)
+  const brand = brandFilter
+    ? { name: brandFilter.value!, slug: brandFilter.slug! }
+    : null
   const categoryPath = await getProductCategoryPath(pricedProduct.categories)
   const crumbs = buildProductCrumbs({ path: categoryPath, brand })
 
@@ -176,7 +178,7 @@ export default async function ProductPage(props: Props) {
       .slice(0, 6),
     description: descriptionText(pricedProduct.description) || pricedProduct.title,
     sku: pricedProduct.variants?.[0]?.sku || undefined,
-    brand: { "@type": "Brand", name: brand ?? "onlybestdevice" },
+    brand: { "@type": "Brand", name: brand?.name ?? "onlybestdevice" },
     ...(lowPrice
       ? {
           offers: {

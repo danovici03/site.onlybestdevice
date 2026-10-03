@@ -59,8 +59,18 @@ singură dată, ca regula să nu fie duplicată în PHP:
 | `payment_status=requires_action`                    | `failed`     | ca `cancelled`                                     |
 | `status=completed`                                  | `completed`  | rezervările devin vânzări, se generează garanțiile |
 | `fulfillment_status` ∈ {fulfilled, shipped, delivered} | `completed` | idem                                            |
-| `payment_status` ∈ {captured, authorized, partially_*} | `processing` | stocul rămâne rezervat; `date_paid` marchează vânzarea ca încasată |
-| altfel                                              | `pending`    | stocul rămâne rezervat                             |
+| plata încasată (`captured`, `partially_*`, IPN Netopia `confirmed`) | `processing` | stocul rămâne rezervat; `date_paid` marchează vânzarea ca încasată |
+| ramburs (`authorized`)                              | `processing` | stocul rămâne rezervat                             |
+| altfel — inclusiv card, virament și rate neîncasate | `pending`    | stocul rămâne rezervat                             |
+
+**`authorized` nu înseamnă bani.** Toți providerii noștri răspund `authorized`
+la plasare, doar ca Medusa să accepte comanda — cardul înainte de bancă,
+viramentul înainte de virament, ratele înainte de aprobarea creditului. Singurul
+la care `authorized` pune comanda în lucru e rambursul. Regula e
+`isPaymentCommitted` din `lib/orders/order-status.ts`, aceeași cu statusul din
+admin. Pentru gestiune `pending` și `processing` sunt echivalente la stoc
+(ambele rezervă; doar `cancelled` / `failed` / `refunded` eliberează), deci o
+comandă trimisă deja ca `processing` și retrimisă ca `pending` nu mișcă nimic.
 
 **Încasarea nu e finalizare.** La plata cu cardul banii intră în secunda în care
 clientul apasă „Plătește", cu telefonul încă în raft. Dacă `captured` ar da

@@ -1,3 +1,5 @@
+import { UCFIN_METHOD_LABEL } from "@lib/util/installments"
+
 /**
  * Numele metodei de plată, așa cum l-a ales clientul în checkout.
  *
@@ -12,7 +14,7 @@ export const paymentLabelFor = (providerId?: string | null): string => {
   if (providerId.startsWith("pp_netopia")) return "Card bancar"
   if (providerId.startsWith("pp_tbi")) return "Rate prin TBI Bank"
   if (providerId.startsWith("pp_unicredit"))
-    return "Rate prin UniCredit Consumer Financing"
+    return UCFIN_METHOD_LABEL
   return "Plată"
 }
 

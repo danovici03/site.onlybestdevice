@@ -2,6 +2,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import { applyStock, type StockInput } from "../../../../lib/erp/stock"
+import { revalidateStorefront } from "../../../../lib/storefront-revalidate"
 
 /**
  * Scrie stocul venit din ERP-ul Laravel.
@@ -55,6 +56,20 @@ export const POST = async (req: MedusaRequest<Body>, res: MedusaResponse) => {
         `${result.enabled_manage_inventory} cu manage_inventory pornit, ` +
         `${result.errors.length} erori.`,
     )
+
+    // Cantitatea stă pe inventory_level, iar schimbarea ei nu emite
+    // `product.updated` / `product-variant.updated` — deci subscriberul de
+    // revalidare nu se declanșează și site-ul rămâne pe stocul vechi (cache
+    // `force-cache` fără TTL). Invalidăm explicit, cu aceleași taguri ca la
+    // `product-variant.updated`.
+    if (result.updated > 0) {
+      await revalidateStorefront(logger, "erp.stock", [
+        "products",
+        "categories",
+        "best-sellers",
+        "carts",
+      ])
+    }
 
     return res.json(result)
   } catch (e) {

@@ -13,12 +13,16 @@ import {
  *
  *   POST /hooks/unicredit?token=<UNICREDIT_CALLBACK_TOKEN>
  *   {
- *     "external_id": "order_01...",      // id-ul trimis de noi la /offers
- *     "status": "Started",               // statusul curent al cererii
- *     "application_id": "...",           // opțional, referința UCFin
- *     "amount": 4999.99,                 // opțional, suma finanțată
- *     "timestamp": "2026-07-23T10:00:00Z"
+ *     "order_id": "order_01...",         // = `external_id` trimis de noi la /offers
+ *     "status": "Started"                // statusul curent al cererii
  *   }
+ *
+ * Formatul standard ePOS (https://epos.unicredit.ro/docs/guides/status-update/)
+ * trimite id-ul nostru ca `order_id`, nu ca `external_id` — primele callback-uri
+ * reale (sept. 2026) au picat cu 400 din cauza asta. Acceptăm ambele nume, ca
+ * să nu depindem de o eventuală personalizare a corpului de la UCFin.
+ * `application_id`, `amount` și `timestamp` nu sunt în formatul standard; îi
+ * păstrăm dacă vin.
  *
  * ePOS trimite TOT ciclul de viață al cererii, nu doar stările finale — panoul
  * UCFin arată „Started" cât timp clientul n-a terminat creditarea. De aceea
@@ -42,6 +46,7 @@ const CAPTURE_STATUSES = new Set(['disbursed'])
 const CANCEL_STATUSES = new Set(['rejected', 'cancelled', 'canceled', 'expired'])
 
 type CallbackBody = {
+  order_id?: string
   external_id?: string
   status?: string
   application_id?: string
@@ -70,13 +75,13 @@ export const POST = async (
   // Corpul brut, ca să vedem exact ce câmpuri și ce statusuri trimite UCFin.
   logger.info(`[unicredit] Callback brut: ${JSON.stringify(body)}`)
 
-  const orderId = body.external_id
+  const orderId = (body.order_id ?? body.external_id)?.trim()
   const status = (body.status ?? '').trim().toLowerCase()
 
   if (!orderId) {
     return res
       .status(400)
-      .json({ received: false, error: 'external_id lipsește' })
+      .json({ received: false, error: 'order_id lipsește' })
   }
   if (!status) {
     return res.status(400).json({ received: false, error: 'status lipsește' })

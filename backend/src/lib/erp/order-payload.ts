@@ -4,6 +4,7 @@ import { WARRANTY_HANDLE } from "../warranty-prices"
 import {
   SHIPPED_STATUSES,
   effectiveOrderStatus,
+  isPaymentCommitted,
 } from "../orders/order-status"
 
 /**
@@ -159,13 +160,13 @@ export const toCanonicalStatus = (order: any): ErpCanonicalStatus => {
   // returna "completed" aici, IMEI-ul ar fi marcat vandut si garantia ar porni
   // inainte de livrare. Faptul ca s-a incasat calatoreste separat, prin `date_paid`,
   // exact ca la WooCommerce (unde plata cu cardul lasa comanda in "processing").
-  if (
-    paymentStatus === "captured" ||
-    paymentStatus === "partially_captured" ||
-    paymentStatus === "authorized" ||
-    paymentStatus === "partially_authorized" ||
-    paymentStatus === "partially_refunded"
-  ) {
+  //
+  // Cardul si viramentul neincasate raman insa "pending": Medusa le marcheaza
+  // `authorized` din clipa plasarii, inainte sa intre vreun ban, deci
+  // `authorized` singur nu dovedeste nimic (vezi `isPaymentCommitted`).
+  // Pentru stoc e totuna — gestiunea rezerva la fel pe pending si processing
+  // si elibereaza doar pe cancelled / failed / refunded.
+  if (isPaymentCommitted(order)) {
     return "processing"
   }
 

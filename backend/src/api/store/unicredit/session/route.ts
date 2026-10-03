@@ -37,10 +37,9 @@ export const POST = async (
       'total',
       'shipping_total',
       'metadata',
-      'items.title',
-      'items.product_title',
-      'items.quantity',
-      'items.unit_price',
+      // `items.*`: cu `items.quantity` explicit cantitatea vine `undefined`
+      // pe `order` (sta in `order_item`) si ar cadea pe 1.
+      'items.*',
       'shipping_address.first_name',
       'shipping_address.last_name',
       'shipping_address.phone',

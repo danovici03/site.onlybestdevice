@@ -52,7 +52,12 @@ const nextConfig = {
     // Cu 6 trepte, cererile se concentrează pe aceleași intrări din cache.
     // Sursele de pe WordPress sunt pătrate de ~700-720px, deci treptele de
     // 1920/2048/3840 nu făceau decât upscale — fișier mai mare, zero detaliu.
-    deviceSizes: [640, 828, 1280],
+    //
+    // Excepția e hero-ul (full-bleed, `sizes="100vw"`): plafonat la 1280, pe un
+    // monitor de 1920 poza era întinsă 1.5x (3x pe retina) și ieșea vizibil
+    // blurată până pornea videoul. 1920/2560 sunt pentru el; pozele de produs
+    // au `sizes` plafonat la 640px, ca să rămână pe treptele de mai jos.
+    deviceSizes: [640, 828, 1280, 1920, 2560],
     imageSizes: [64, 128, 256, 384],
 
     // Allowlist de calitate: fără el, oricine poate cere q=1..100 pe același

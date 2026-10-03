@@ -20,6 +20,7 @@ const SUPPORT_LINKS = [
   { label: "Contact", href: "/contact" },
   { label: "Întrebări frecvente", href: "/faq" },
   { label: "Livrarea comenzilor", href: "/livrare" },
+  { label: "Cumpără în rate", href: "/credit-online" },
   { label: "Retur produse", href: "/retur" },
   { label: "Garanție și service", href: "/garantie" },
   { label: "Formular de service", href: "/service" },
@@ -58,8 +59,8 @@ export default function Footer() {
               <Logo className="w-[15rem] md:w-[17rem] text-white" />
             </LocalizedClientLink>
             <p className="text-white/60 font-medium max-w-sm mb-8">
-              Cele mai noi device-uri, cu garanție 24 de luni, plata cu cardul
-              sau în rate și retur gratuit în 14 zile.
+              Upgrade-ul tău începe aici. Device-uri premium, garanție și
+              servicii complete.
             </p>
 
             <div className="flex gap-4">

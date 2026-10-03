@@ -74,9 +74,6 @@ export default function InformatiiLegalePage() {
               {COMPANY.email}
             </a>
           </li>
-          <li>
-            <strong>Telefon</strong>: {COMPANY.telefono}
-          </li>
         </ul>
       </div>
 

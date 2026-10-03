@@ -34,8 +34,56 @@ describe("toCanonicalStatus", () => {
 
   it("incasarea NU inseamna livrare — marfa e inca in raft", () => {
     expect(toCanonicalStatus(order({ payment_status: "captured" }))).toBe("processing")
-    expect(toCanonicalStatus(order({ payment_status: "authorized" }))).toBe("processing")
     expect(toCanonicalStatus(order({ payment_status: "partially_captured" }))).toBe("processing")
+  })
+
+  it("cardul neincasat ramane pending, desi Medusa zice `authorized`", () => {
+    const card = order({
+      payment_status: "authorized",
+      payment_collections: [
+        { payments: [], payment_sessions: [{ provider_id: "pp_netopia_netopia" }] },
+      ],
+    })
+    expect(toCanonicalStatus(card)).toBe("pending")
+    expect(
+      toCanonicalStatus({ ...card, metadata: { netopia: { status: "confirmed" } } }),
+    ).toBe("processing")
+    expect(toCanonicalStatus({ ...card, payment_status: "captured" })).toBe("processing")
+  })
+
+  it("viramentul neincasat ramane pending, cel incasat intra in lucru", () => {
+    const transfer = order({
+      payment_status: "authorized",
+      payment_collections: [
+        { payments: [], payment_sessions: [{ provider_id: "pp_system_default" }] },
+      ],
+    })
+    expect(toCanonicalStatus(transfer)).toBe("pending")
+    expect(toCanonicalStatus({ ...transfer, payment_status: "captured" })).toBe("processing")
+  })
+
+  it("ratele neaprobate raman pending — TBI/UniCredit captureaza la aprobare", () => {
+    for (const provider_id of ["pp_tbi_tbi", "pp_unicredit_unicredit"]) {
+      const financed = order({
+        payment_status: "authorized",
+        payment_collections: [{ payments: [], payment_sessions: [{ provider_id }] }],
+      })
+      expect(toCanonicalStatus(financed)).toBe("pending")
+      expect(toCanonicalStatus({ ...financed, payment_status: "captured" })).toBe("processing")
+    }
+  })
+
+  it("rambursul autorizat intra in lucru", () => {
+    expect(
+      toCanonicalStatus(
+        order({
+          payment_status: "authorized",
+          payment_collections: [
+            { payments: [], payment_sessions: [{ provider_id: "pp_cod_cod" }] },
+          ],
+        }),
+      ),
+    ).toBe("processing")
   })
 
   it("expedierea finalizeaza comanda", () => {
