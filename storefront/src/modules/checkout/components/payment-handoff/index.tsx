@@ -33,32 +33,39 @@ const goToBank = (fields: NetopiaHandoffFields) => {
  * — iar pagina e publică, deci orice reîmprospătare sau navigare înapoi ar
  * repeta-o. Guardul e un ref, nu o dependență de efect: un obiect nou din
  * re-randare ar reporni efectul și ar trimite clientul a doua oară.
+ *
+ * `mounted` e tot un ref, nu o variabilă locală a efectului: în dev,
+ * StrictMode montează, demontează și remontează componenta. Cu un `alive`
+ * local, demontarea de probă marca rezultatul primei (și singurei) cereri ca
+ * „de ignorat”, iar remontarea nu mai pornea alta — pagina rămânea pe
+ * „Te ducem la plata securizată…” la nesfârșit.
  */
 const PaymentHandoff = ({ orderId, confirmedHref, displayId }: Props) => {
   const started = useRef(false)
+  const mounted = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [slow, setSlow] = useState(false)
   const [fields, setFields] = useState<NetopiaHandoffFields | null>(null)
 
   useEffect(() => {
-    if (started.current) return
-    started.current = true
+    mounted.current = true
+    const timer = setTimeout(() => mounted.current && setSlow(true), 6000)
 
-    let alive = true
-    const timer = setTimeout(() => alive && setSlow(true), 6000)
-
-    createNetopiaPaymentSession(orderId).then((result) => {
-      if (!alive) return
-      if ("error" in result) {
-        setError(result.error)
-        return
-      }
-      setFields(result.fields)
-      goToBank(result.fields)
-    })
+    if (!started.current) {
+      started.current = true
+      createNetopiaPaymentSession(orderId).then((result) => {
+        if (!mounted.current) return
+        if ("error" in result) {
+          setError(result.error)
+          return
+        }
+        setFields(result.fields)
+        goToBank(result.fields)
+      })
+    }
 
     return () => {
-      alive = false
+      mounted.current = false
       clearTimeout(timer)
     }
   }, [orderId])
