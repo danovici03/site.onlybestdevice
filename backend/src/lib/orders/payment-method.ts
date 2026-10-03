@@ -26,6 +26,8 @@ export type PaymentMethod = {
   detail: string
   /** Pentru subiectul emailului: „Ramburs”, „Card”, „Rate TBI”. */
   short: string
+  /** Pentru coloana din lista de comenzi: „Card Netopia”, „TBI”, „Transfer”. */
+  tag: string
 }
 
 const GROUP_LABEL: Record<PaymentMethodGroup, string> = {
@@ -39,29 +41,38 @@ const GROUP_LABEL: Record<PaymentMethodGroup, string> = {
 // Cheia e partea din mijloc a id-ului: `pp_<cheie>_<identifier>`.
 const PROVIDERS: Record<
   string,
-  { group: PaymentMethodGroup; detail: string; short: string }
+  { group: PaymentMethodGroup; detail: string; short: string; tag: string }
 > = {
   cod: {
     group: "cod",
     detail: "numerar la curier",
     short: "Ramburs",
+    tag: "Ramburs",
   },
-  netopia: { group: "card", detail: "Netopia", short: "Card" },
-  stripe: { group: "card", detail: "Stripe", short: "Card" },
+  netopia: {
+    group: "card",
+    detail: "Netopia",
+    short: "Card",
+    tag: "Card Netopia",
+  },
+  stripe: { group: "card", detail: "Stripe", short: "Card", tag: "Card Stripe" },
   tbi: {
     group: "partner",
     detail: "TBI Bank, credit în rate",
     short: "Rate TBI",
+    tag: "TBI",
   },
   unicredit: {
     group: "partner",
     detail: "UniCredit Consumer Financing, credit în rate",
     short: "Rate UniCredit",
+    tag: "UniCredit",
   },
   system: {
     group: "bank_transfer",
     detail: "transfer bancar în contul firmei",
     short: "Ordin de plată",
+    tag: "Transfer",
   },
 }
 
@@ -100,6 +111,7 @@ export const describePaymentProvider = (
       label: GROUP_LABEL.unknown,
       detail: providerId,
       short: providerId,
+      tag: providerId,
     }
   }
   return {
@@ -108,6 +120,7 @@ export const describePaymentProvider = (
     label: GROUP_LABEL[known.group],
     detail: known.detail,
     short: known.short,
+    tag: known.tag,
   }
 }
 
