@@ -9,7 +9,15 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/*/account", "/*/checkout", "/*/cart"],
+      // Căutarea internă și API-ul n-au conținut de indexat, dar fiecare cerere
+      // e o funcție Vercel facturată (paginile sunt dinamice).
+      disallow: [
+        "/*/account",
+        "/*/checkout",
+        "/*/cart",
+        "/*/search",
+        "/api/",
+      ],
     },
     sitemap: `${BASE}/sitemap.xml`,
   }
