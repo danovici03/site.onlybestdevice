@@ -49,6 +49,9 @@ export default async function RelatedProducts({
   const products = await listProducts({
     queryParams,
     countryCode,
+    // Raftul e pe fiecare pagină de produs: fără `product-lists`, altfel orice
+    // produs epuizat ar invalida toate paginile de produs (vezi `cache-tags.ts`).
+    listTag: false,
   }).then(({ response }) => {
     // Cele în stoc în față (sortarea e stabilă, restul ordinii rămâne):
     // raftul arată doar primele 4, care nu trebuie să fie epuizate.
