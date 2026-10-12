@@ -56,11 +56,15 @@ async function postWithAuth(url: string, secret: string, body: string) {
   return fetch(next, init)
 }
 
+/**
+ * Întoarce `true` doar dacă storefront-ul a confirmat revalidarea (sau n-a
+ * avut ce revalida). Configurația lipsă e `false`, ca și un răspuns de eroare.
+ */
 export const revalidateStorefront = async (
   logger: Logger,
   eventName: string,
   tags: string[]
-): Promise<void> => {
+): Promise<boolean> => {
   const url = process.env.STOREFRONT_REVALIDATE_URL
   const secret = process.env.REVALIDATE_SECRET
 
@@ -80,10 +84,10 @@ export const revalidateStorefront = async (
           `de storefront. (Mesajul apare o singură dată per pornire.)`
       )
     }
-    return
+    return false
   }
 
-  if (!tags.length) return
+  if (!tags.length) return true
 
   try {
     const res = await postWithAuth(url, secret, JSON.stringify({ tags }))
@@ -92,12 +96,54 @@ export const revalidateStorefront = async (
       logger.warn(
         `Storefront revalidate ${res.status} for ${eventName} (${tags.join(", ")}): ${text}`
       )
-    } else {
-      logger.info(`Revalidated storefront [${tags.join(", ")}] on ${eventName}`)
+      return false
     }
+    logger.info(`Revalidated storefront [${tags.join(", ")}] on ${eventName}`)
+    return true
   } catch (e) {
     logger.warn(
       `Storefront revalidate failed for ${eventName}: ${(e as Error).message}`
     )
+    return false
   }
+}
+
+/**
+ * Tagurile pe care le revalidează o schimbare de stoc din gestiune.
+ *
+ * Stocul se schimbă la fiecare vânzare din magazin. Revalidarea tagului global
+ * `products` la fiecare push invalida toate paginile site-ului, iar pe Vercel
+ * fiecare pagină invalidată și apoi vizitată (de crawlere, zeci de ori pe zi)
+ * e o regenerare facturată — ISR Writes era cea mai mare linie din factură.
+ *
+ * Acum: pagina fiecărui produs schimbat (`product-<id>`, `product-<handle>`),
+ * coșurile, iar listările (`product-lists`) doar când un produs a intrat sau a
+ * ieșit din stoc. Tagurile sunt definite în storefront, `lib/util/cache-tags.ts`.
+ * Peste `MAX_TARGETED_PRODUCTS` (o resincronizare în masă) revenim la tagul
+ * global: o singură invalidare în loc de sute de taguri.
+ */
+export const PRODUCT_LISTS_TAG = "product-lists"
+export const productTag = (idOrHandle: string) => `product-${idOrHandle}`
+export const MAX_TARGETED_PRODUCTS = 50
+
+/** Tagurile de dinainte de revalidarea țintită, pentru un storefront vechi. */
+export const GLOBAL_STOCK_TAGS = ["products", "carts"]
+
+export const stockRevalidationTags = (
+  products: Array<{
+    id: string
+    handle?: string | null
+    availability_changed: boolean
+  }>
+): string[] => {
+  if (!products.length) return []
+  if (products.length > MAX_TARGETED_PRODUCTS) return [...GLOBAL_STOCK_TAGS]
+
+  const tags = new Set<string>(["carts"])
+  for (const p of products) {
+    tags.add(productTag(p.id))
+    if (p.handle) tags.add(productTag(p.handle))
+    if (p.availability_changed) tags.add(PRODUCT_LISTS_TAG)
+  }
+  return [...tags]
 }

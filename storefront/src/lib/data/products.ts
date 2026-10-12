@@ -10,6 +10,11 @@ import {
   type Facets,
   type SelectedFilters,
 } from "@lib/util/product-filters"
+import {
+  MAX_PRODUCT_TAGS,
+  PRODUCT_LISTS_TAG,
+  productTag,
+} from "@lib/util/cache-tags"
 import { getCacheOptions } from "./cookies"
 import { getRegion, retrieveRegion } from "./regions"
 
@@ -18,11 +23,18 @@ export const listProducts = async ({
   queryParams,
   countryCode,
   regionId,
+  listTag = true,
 }: {
   pageParam?: number
   queryParams?: HttpTypes.FindParams & HttpTypes.StoreProductListParams
   countryCode?: string
   regionId?: string
+  /**
+   * Doar pentru listări (fără `handle`/`id`): `false` le scoate din tagul
+   * `product-lists`, revalidat la fiecare produs intrat/ieșit din stoc. Pentru
+   * listările randate pe fiecare pagină de produs — vezi `cache-tags.ts`.
+   */
+  listTag?: boolean
 }): Promise<{
   response: { products: HttpTypes.StoreProduct[]; count: number }
   nextPage: number | null
@@ -58,7 +70,7 @@ export const listProducts = async ({
   const headers = {}
 
   const next = {
-    ...(await getCacheOptions("products")),
+    ...(await getCacheOptions(productCacheTags(queryParams, listTag))),
   }
 
   return sdk.client
@@ -104,6 +116,25 @@ export const listProducts = async ({
         queryParams,
       }
     })
+}
+
+/**
+ * Tagurile unei cereri `/store/products` (vezi `cache-tags.ts`): cererile
+ * directe primesc tagul fiecărui produs cerut, listările `product-lists`.
+ */
+function productCacheTags(
+  queryParams: HttpTypes.StoreProductListParams | undefined,
+  listTag: boolean
+): string[] {
+  const keys = [queryParams?.handle, queryParams?.id]
+    .flat()
+    .filter((k): k is string => typeof k === "string" && k.length > 0)
+
+  if (keys.length && keys.length <= MAX_PRODUCT_TAGS) {
+    return ["products", ...keys.map(productTag)]
+  }
+
+  return listTag || keys.length ? ["products", PRODUCT_LISTS_TAG] : ["products"]
 }
 
 /**
@@ -175,6 +206,7 @@ export const listCatalog = async ({
   sortBy = "created_at",
   page = 1,
   limit = 12,
+  listTag = true,
 }: {
   countryCode: string
   categoryIds?: string[]
@@ -190,6 +222,8 @@ export const listCatalog = async ({
   sortBy?: SortOptions
   page?: number
   limit?: number
+  /** `false` pentru listările de pe fiecare pagină (mega-meniul) — vezi `cache-tags.ts`. */
+  listTag?: boolean
 }): Promise<{ products: HttpTypes.StoreProduct[]; count: number; facets: Facets }> => {
   const region = await getRegion(countryCode)
   if (!region) {
@@ -231,7 +265,11 @@ export const listCatalog = async ({
   if (selected.stock) query.stock = "1"
 
   const headers = {}
-  const next = { ...(await getCacheOptions("products")) }
+  const next = {
+    ...(await getCacheOptions(
+      listTag ? ["products", PRODUCT_LISTS_TAG] : ["products"]
+    )),
+  }
 
   return sdk.client
     .fetch<{
