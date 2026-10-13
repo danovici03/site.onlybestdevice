@@ -88,10 +88,14 @@ export default function InformatiiLegalePage() {
         <a href="https://anpc.ro/ce-este-sal/" target="_blank" rel="noreferrer">
           SAL
         </a>
-        ). Platforma europeană de soluționare online a litigiilor (SOL) este
-        disponibilă la{" "}
-        <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noreferrer">
-          ec.europa.eu/consumers/odr
+        ). Telefonul Consumatorului: 0219551.
+      </p>
+      <p>
+        Comisariatul Județean pentru Protecția Consumatorilor Bistrița-Năsăud:
+        Bistrița, Bd. Republicii nr. 2, et. 1, cod 420053 — tel. 0377 755 363,
+        e-mail{" "}
+        <a href="mailto:secretariat.bistrita-nasaud@anpc.ro">
+          secretariat.bistrita-nasaud@anpc.ro
         </a>
         .
       </p>

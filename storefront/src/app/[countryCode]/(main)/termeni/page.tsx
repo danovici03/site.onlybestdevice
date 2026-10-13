@@ -585,16 +585,8 @@ export default function TermeniPage() {
         <a href="https://anpc.ro/" target="_blank" rel="noreferrer">
           ANPC
         </a>{" "}
-        (Autoritatea Națională pentru Protecția Consumatorilor), iar platforma
-        europeană de soluționare online a litigiilor (SOL) este disponibilă la{" "}
-        <a
-          href="https://ec.europa.eu/consumers/odr"
-          target="_blank"
-          rel="noreferrer"
-        >
-          ec.europa.eu/consumers/odr
-        </a>
-        .
+        (Autoritatea Națională pentru Protecția Consumatorilor), Telefonul
+        Consumatorului: 0219551.
       </p>
 
       <h2>Legea aplicabilă</h2>
