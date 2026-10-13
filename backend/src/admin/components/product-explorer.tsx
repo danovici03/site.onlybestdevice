@@ -59,7 +59,10 @@ type ExploreProduct = {
   id: string
   title: string
   status: string
+  /** Prețul efectiv: cu reducerea activă, dacă există. */
   price: number | null
+  /** Prețul de bază; mai mare decât `price` = produsul e la reducere. */
+  original_price: number | null
   stock_qty: number | null
   in_stock: boolean
   thumbnail: string | null
@@ -632,7 +635,18 @@ const ProductExplorer = () => {
                       )}
                     </div>
                   </Table.Cell>
-                  <Table.Cell className="text-right">{formatPrice(p.price)}</Table.Cell>
+                  <Table.Cell className="text-right">
+                    {p.price != null && p.original_price != null && p.original_price > p.price ? (
+                      <div className="flex flex-col items-end leading-tight">
+                        <span className="text-ui-fg-muted text-xs line-through">
+                          {formatPrice(p.original_price)}
+                        </span>
+                        <span className="text-ui-fg-error font-medium">{formatPrice(p.price)}</span>
+                      </div>
+                    ) : (
+                      formatPrice(p.price)
+                    )}
+                  </Table.Cell>
                   <Table.Cell className="text-right">
                     {p.stock_qty != null ? (
                       <span className={p.in_stock ? "" : "text-ui-fg-error"}>{p.stock_qty}</span>

@@ -216,6 +216,12 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
    * Stocul pe toate locațiile (adminul nu are canal de vânzare). „În stoc" are
    * regula din card: variantă fără inventar gestionat, cu backorder sau cu
    * cantitate disponibilă; `stock_qty` e suma disponibilă pe variantele gestionate.
+   *
+   * `price` e prețul efectiv, cu aceeași regulă ca în `/store/catalog`: cel mai
+   * mic dintre prețul de bază și listele `sale` active care se aplică tuturor —
+   * deci sortarea și filtrul de preț merg după prețul pe care îl vede clientul.
+   * `original_price` e prețul de bază al variantei care dă acel minim; tabelul
+   * îl arată tăiat când e mai mare.
    */
   const scopedCte = `
     scoped AS (
@@ -223,7 +229,9 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
              p.title,
              p.status,
              p.created_at,
-             MIN(bp.amount)::float AS price,
+             MIN(ep.amount)::float AS price,
+             ((ARRAY_AGG(bp.amount ORDER BY ep.amount ASC NULLS LAST, bp.amount ASC NULLS LAST))[1])::float
+               AS original_price,
              SUM(CASE WHEN v.manage_inventory THEN COALESCE(inv.qty, 0) END)::int AS stock_qty,
              (COUNT(v.id) = 0 OR BOOL_OR(
                NOT v.manage_inventory OR v.allow_backorder OR COALESCE(inv.qty, 0) > 0
@@ -239,6 +247,23 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
           AND pr.price_list_id IS NULL
           AND pr.currency_code = :currency
       ) bp ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT MIN(pr.amount) AS amount
+        FROM price pr
+        LEFT JOIN price_list pl ON pl.id = pr.price_list_id AND pl.deleted_at IS NULL
+        WHERE pr.price_set_id = vps.price_set_id
+          AND pr.deleted_at IS NULL
+          AND pr.currency_code = :currency
+          AND (
+            pr.price_list_id IS NULL
+            OR (
+              pl.status = 'active'
+              AND pl.rules_count = 0
+              AND (pl.starts_at IS NULL OR pl.starts_at <= NOW())
+              AND (pl.ends_at   IS NULL OR pl.ends_at   >= NOW())
+            )
+          )
+      ) ep ON TRUE
       LEFT JOIN LATERAL (
         SELECT SUM(il.stocked_quantity - il.reserved_quantity) AS qty
         FROM product_variant_inventory_item pvi
@@ -385,7 +410,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
         ORDER BY ${orderBy}
         LIMIT ${bind(q.limit, "lim")} OFFSET ${bind((q.page - 1) * q.limit, "off")}
       )
-    SELECT pg.id, pg.title, pg.status, pg.price, pg.stock_qty, pg.in_stock,
+    SELECT pg.id, pg.title, pg.status, pg.price, pg.original_price, pg.stock_qty, pg.in_stock,
            p.handle, p.thumbnail,
            COALESCE(p.metadata->>'hidden', '') = 'true' AS hidden,
            (SELECT COUNT(*)::int FROM product_variant pv
