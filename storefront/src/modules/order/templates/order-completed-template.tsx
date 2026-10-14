@@ -18,6 +18,7 @@ import {
 } from "@lib/util/warranty"
 import { paymentCapturedAt, paymentLabelFor } from "@lib/util/payment-label"
 import Thumbnail from "@modules/products/components/thumbnail"
+import { invoiceUrlFor } from "@lib/util/invoice"
 
 type OrderCompletedTemplateProps = {
   order: HttpTypes.StoreOrder
@@ -65,6 +66,7 @@ export default async function OrderCompletedTemplate({
     "ro-RO",
     DATE_FMT
   )
+  const invoiceUrl = invoiceUrlFor(order)
   const fiscal = readCompanyFiscal(
     order.metadata as Record<string, unknown> | null
   )
@@ -142,13 +144,17 @@ export default async function OrderCompletedTemplate({
           </dl>
 
           <div className="flex flex-wrap justify-center gap-3 mt-8 pt-8 border-t border-brand-dark/[0.06]">
-            <LocalizedClientLink
-              href={`/api/invoice/${order.id}`}
-              className="inline-flex items-center justify-center rounded-full bg-brand-dark text-white px-6 py-3 text-sm font-semibold hover:bg-brand-accent transition-colors"
-              data-testid="download-invoice-button"
-            >
-              {t.orderConfirmed.downloadInvoice}
-            </LocalizedClientLink>
+            {invoiceUrl && (
+              <a
+                href={invoiceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-full bg-brand-dark text-white px-6 py-3 text-sm font-semibold hover:bg-brand-accent transition-colors"
+                data-testid="download-invoice-button"
+              >
+                {t.orderConfirmed.downloadInvoice}
+              </a>
+            )}
             {customer && (
               <LocalizedClientLink
                 href="/account/orders"

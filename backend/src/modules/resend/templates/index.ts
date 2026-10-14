@@ -681,7 +681,6 @@ const customerWelcome: Renderer = ({ customer, storefront_url }) => {
     <ul style="font-size:14px;padding-left:20px;margin:0 0 16px;line-height:1.7;">
       <li>Urmărești starea comenzilor și a livrărilor.</li>
       <li>Salvezi adresele de livrare și de facturare.</li>
-      <li>Descarci facturile în PDF.</li>
       <li>Ceri retur în 14 zile de la primirea comenzii.</li>
     </ul>
     ${button(storeUrl, "Descoperă produsele")}
