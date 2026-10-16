@@ -48,6 +48,8 @@ type StatusState = {
     note: string | null
     at: string
     by: string | null
+    /** Lipsește la intrările de dinainte să-l salvăm. */
+    notified?: boolean
   }[]
   options: { code: StatusCode; label: string }[]
 }
@@ -159,7 +161,7 @@ const OrderStatusWidget = ({ data: order }: DetailWidgetProps<AdminOrder>) => {
   const apply = async (chosen: StatusCode) => {
     setSaving(true)
     try {
-      await api(`/admin/orders/${order.id}/status`, {
+      const body = await api(`/admin/orders/${order.id}/status`, {
         method: "POST",
         body: JSON.stringify({
           code: chosen,
@@ -167,13 +169,21 @@ const OrderStatusWidget = ({ data: order }: DetailWidgetProps<AdminOrder>) => {
           notify,
         }),
       })
-      toast.success(
-        chosen === "canceled"
-          ? "Comanda a fost anulată"
-          : notify
-            ? "Status salvat, email trimis clientului"
-            : "Status salvat"
-      )
+      // Ne luăm după `notified` din răspuns, nu după bifă: dacă Resend pică
+      // sau comanda n-are email, statusul se salvează dar emailul nu pleacă.
+      if (chosen === "canceled") {
+        toast.success("Comanda a fost anulată")
+      } else if (notify && !body.notified) {
+        toast.warning(
+          order.email
+            ? `Status salvat, dar emailul către ${order.email} NU a putut fi trimis`
+            : "Status salvat, dar comanda nu are email — nu s-a trimis nimic"
+        )
+      } else {
+        toast.success(
+          notify ? "Status salvat, email trimis clientului" : "Status salvat"
+        )
+      }
       setNotify(false)
       await load()
     } catch (e: any) {
@@ -329,6 +339,11 @@ const OrderStatusWidget = ({ data: order }: DetailWidgetProps<AdminOrder>) => {
               <Text size="small" className="text-ui-fg-subtle">
                 {state.options.find((o) => o.code === h.code)?.label ?? h.code}
                 {h.note ? ` — ${h.note}` : ""}
+                {h.notified === true
+                  ? " · ✉ email trimis"
+                  : h.notified === false
+                    ? " · fără email"
+                    : ""}
               </Text>
               <Text size="small" className="text-ui-fg-muted whitespace-nowrap">
                 {formatDate(h.at)}

@@ -58,7 +58,30 @@ export async function uploadVideos(files: File[]): Promise<string[]> {
   return uploadFiles(files, MAX_VIDEO_BYTES)
 }
 
-async function uploadFiles(files: File[], maxBytes: number): Promise<string[]> {
+/** O factură PDF are câteva sute de KB; peste 10 MB e sigur fișierul greșit. */
+const MAX_PDF_BYTES = 10 * 1024 * 1024
+
+/**
+ * Factura fiscală atașată unei comenzi. Nu trece prin sanitizatorul de
+ * descrieri — linkul nu ajunge niciodată într-un HTML de produs.
+ */
+export async function uploadPdf(file: File): Promise<string> {
+  const isPdf =
+    file.type === "application/pdf" || /\.pdf$/i.test(file.name)
+  if (!isPdf) {
+    throw new Error(`„${file.name}" nu e un PDF`)
+  }
+  const [url] = await uploadFiles([file], MAX_PDF_BYTES, {
+    sanitizerSafe: false,
+  })
+  return url
+}
+
+async function uploadFiles(
+  files: File[],
+  maxBytes: number,
+  { sanitizerSafe = true }: { sanitizerSafe?: boolean } = {}
+): Promise<string[]> {
   if (!files.length) return []
 
   for (const file of files) {
@@ -91,7 +114,9 @@ async function uploadFiles(files: File[], maxBytes: number): Promise<string[]> {
     throw new Error("Răspuns invalid de la încărcare")
   }
 
-  const rejected = urls.filter((u) => !isSanitizerSafeUrl(u))
+  const rejected = sanitizerSafe
+    ? urls.filter((u) => !isSanitizerSafeUrl(u))
+    : []
   if (rejected.length) {
     throw new Error(
       `URL-ul rezultat nu e acceptat de sanitizator (${rejected[0]}). ` +

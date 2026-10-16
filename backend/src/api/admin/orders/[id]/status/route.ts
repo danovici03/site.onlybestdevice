@@ -192,20 +192,29 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     at: new Date().toISOString(),
     by: (req as any).auth_context?.actor_id ?? null,
     snapshot: orderStateSnapshot(order),
+    /**
+     * Dacă a plecat email la schimbarea asta. Fără el, din istoric nu se poate
+     * spune dacă clientul a aflat — bifa se debifează după fiecare salvare și
+     * a doua salvare pleacă ușor fără email.
+     */
+    notified: false,
   }
 
   const history = Array.isArray(metadata.order_status_history)
     ? metadata.order_status_history
     : []
 
-  await orderModule.updateOrders(order.id, {
-    metadata: {
-      ...metadata,
-      order_status: entry,
-      // Ultimele 20 de schimbări; mai mult n-ar face decât să umfle metadata.
-      order_status_history: [...history, entry].slice(-20),
-    },
-  })
+  const writeStatus = () =>
+    orderModule.updateOrders(order.id, {
+      metadata: {
+        ...metadata,
+        order_status: entry,
+        // Ultimele 20 de schimbări; mai mult n-ar face decât să umfle metadata.
+        order_status_history: [...history, entry].slice(-20),
+      },
+    })
+
+  await writeStatus()
 
   let notified = false
   if (notify && order.email) {
@@ -240,6 +249,11 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         `[status] Nu am putut trimite emailul de status pentru ${order.id}: ${e?.message}`
       )
     }
+  }
+
+  if (notified) {
+    entry.notified = true
+    await writeStatus()
   }
 
   logger.info(
