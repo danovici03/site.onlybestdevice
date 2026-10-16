@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 import {
   ArrowUpRight,
   ClipboardText,
@@ -25,6 +26,7 @@ export const metadata: Metadata = {
   title: "Garanție și service",
   description:
     "Garanția legală de conformitate 2 ani pentru consumatori și 12 luni pentru persoane juridice, conform OUG 140/2021. Cum trimiți un produs în service.",
+  alternates: canonical("/garantie"),
 }
 
 export default function GarantiePage() {

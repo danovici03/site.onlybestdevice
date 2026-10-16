@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { COMPANY, indirizzoLegale } from "@lib/util/company-info"
@@ -7,6 +8,7 @@ export const metadata: Metadata = {
   title: "Politica de confidențialitate",
   description:
     "Informații privind prelucrarea datelor cu caracter personal conform Regulamentului (UE) 2016/679 (GDPR).",
+  alternates: canonical("/confidentialitate"),
 }
 
 const REVISION_DATE = "iunie 2026"

@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import {
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
   title: "Informații legale",
   description:
     "Date de identificare obligatorii conform Legii 365/2002 privind comerțul electronic.",
+  alternates: canonical("/informatii-legale"),
 }
 
 export default function InformatiiLegalePage() {

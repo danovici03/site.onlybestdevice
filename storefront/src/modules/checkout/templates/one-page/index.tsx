@@ -1342,7 +1342,7 @@ const OnePageCheckout = ({
                       data-testid="marketing-opt-in-checkbox"
                     />
                     <span>
-                      Vreau să primesc pe email oferte și noutăți onlybestdevice
+                      Vreau să primesc pe email oferte și noutăți Onlybestdevice
                       (opțional — te poți dezabona oricând).
                     </span>
                   </label>

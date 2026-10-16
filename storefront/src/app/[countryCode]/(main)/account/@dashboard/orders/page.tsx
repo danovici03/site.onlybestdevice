@@ -9,7 +9,7 @@ import { clx } from "@medusajs/ui"
 
 export const metadata: Metadata = {
   title: "Comenzile mele",
-  description: "Prezentare generală a comenzilor tale pe onlybestdevice.",
+  description: "Prezentare generală a comenzilor tale pe Onlybestdevice.",
 }
 
 const PAGE_SIZE = 12

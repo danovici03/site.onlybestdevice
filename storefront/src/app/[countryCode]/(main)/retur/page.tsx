@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 import {
   AppleLogo,
   ArrowUpRight,
@@ -24,6 +25,7 @@ export const metadata: Metadata = {
   title: "Retur produse și drept de retragere",
   description:
     "14 zile drept de retragere conform OUG 34/2014. Cerere de retur în doi pași, condiții, adresa de retur și termenul de rambursare.",
+  alternates: canonical("/retur"),
 }
 
 /** Categoriile cu reguli proprii de retur. */

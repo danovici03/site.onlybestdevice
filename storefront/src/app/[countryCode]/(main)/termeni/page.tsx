@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { COMPANY } from "@lib/util/company-info"
@@ -7,6 +8,7 @@ export const metadata: Metadata = {
   title: "Termeni și condiții",
   description:
     "Termenii și condițiile de vânzare ONLY BEST DEVICE S.R.L.: comandă, plată, livrare, garanție, retur și regimul special de TVA pe marjă (art. 312 Cod Fiscal).",
+  alternates: canonical("/termeni"),
 }
 
 const REVISION_DATE = "septembrie 2026"
@@ -25,7 +27,7 @@ export default function TermeniPage() {
         sunt oferite de <strong>{COMPANY.ragioneSociale}</strong>, persoană
         juridică de naționalitate română, înmatriculată la Registrul Comerțului
         sub nr. {COMPANY.rea}, având cod unic de înregistrare fiscală{" "}
-        {COMPANY.piva} („onlybestdevice” sau „operator” sau „noi”), care este
+        {COMPANY.piva} („Onlybestdevice” sau „operator” sau „noi”), care este
         operatorul datelor tale și entitatea care îți furnizează, prin
         intermediul magazinului online {COMPANY.baseUrl}, produse din
         categoriile tehnologie, electronice și electrocasnice.

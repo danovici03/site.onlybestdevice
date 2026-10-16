@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 import {
   Envelope,
   WhatsappLogo,
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
   title: "Contact",
   description:
     "Scrie-ne prin formular, email, telefon sau WhatsApp. Răspuns în 24–48 de ore lucrătoare.",
+  alternates: canonical("/contact"),
 }
 
 const CHANNELS = [

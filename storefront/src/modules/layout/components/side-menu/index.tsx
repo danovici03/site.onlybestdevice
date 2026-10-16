@@ -74,7 +74,7 @@ const SideMenu = ({ regions, locales, cartIndicator }: SideMenuProps) => {
               href="/"
               onClick={close}
               className="flex items-center"
-              aria-label="onlybestdevice — Acasă"
+              aria-label="Onlybestdevice — Acasă"
             >
               <span className="font-serif text-xl font-bold tracking-tight text-brand-dark select-none">
                 onlybest<span className="text-brand-accent">device</span>
@@ -274,7 +274,7 @@ const SideMenu = ({ regions, locales, cartIndicator }: SideMenuProps) => {
                 </div>
               )}
               <p className="text-xs text-brand-dark/50 mt-2">
-                © {new Date().getFullYear()} onlybestdevice. Toate drepturile
+                © {new Date().getFullYear()} Onlybestdevice. Toate drepturile
                 rezervate.
               </p>
             </div>

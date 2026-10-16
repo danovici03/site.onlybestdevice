@@ -43,7 +43,7 @@ const StoreTemplate = async ({
     ? "Filtrează rezultatele după marcă, preț sau categorie."
     : sale
       ? "Produsele alese de noi, la preț redus — stoc limitat."
-      : "Explorează întreaga gamă onlybestdevice — device-uri alese cu grijă pentru tine."
+      : "Explorează întreaga gamă Onlybestdevice — device-uri alese cu grijă pentru tine."
 
   return (
     <section

@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
 import { COMPANY } from "@lib/util/company-info"
 import {
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
   title: "Livrarea comenzilor",
   description:
     "Termene, costuri și modalități de livrare prin curier. Ce faci în cazul unui colet deteriorat.",
+  alternates: canonical("/livrare"),
 }
 
 export default function LivrarePage() {

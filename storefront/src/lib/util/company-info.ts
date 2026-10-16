@@ -1,5 +1,5 @@
 /**
- * Date societare onlybestdevice.
+ * Date societare Onlybestdevice.
  *
  * NOTĂ: cheile păstrează denumirile originale (italiene) pentru compatibilitate
  * cu componentele care le importă; valorile sunt cele românești.
@@ -15,7 +15,7 @@
 export const COMPANY = {
   // Identitate juridică
   ragioneSociale: "ONLY BEST DEVICE S.R.L.",
-  marchio: "onlybestdevice",
+  marchio: "Onlybestdevice",
   formaGiuridica: "Societate cu răspundere limitată",
   piva: "43546040",
   codiceFiscale: "43546040",

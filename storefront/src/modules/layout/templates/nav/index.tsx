@@ -46,7 +46,7 @@ export default async function Nav({ countryCode }: { countryCode: string }) {
         href="/"
         className="flex items-center shrink-0"
         data-testid="nav-store-link"
-        aria-label="onlybestdevice — Acasă"
+        aria-label="Onlybestdevice — Acasă"
       >
         {/* Lățimea vine din `--logo-w`, setat de fiecare bară în parte
             (NavShell): bara de sus și pastila de la scroll au spații diferite.

@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 import Image from "next/image"
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
 import {
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
   title: "Credit Online UniCredit Consumer Financing",
   description:
     "Cumpără în rate prin Creditul Online de la UniCredit Consumer Financing IFN S.A. — 100% online, cu răspuns în maximum 15 minute. Condiții, produse financiare și DAE.",
+  alternates: canonical("/credit-online"),
 }
 
 export default function CreditOnlinePage() {

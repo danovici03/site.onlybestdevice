@@ -71,7 +71,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
   const metadata = {
     title: collection.title,
-    description: `Colecția ${collection.title}`,
+    description: `Colecția ${collection.title} pe Onlybestdevice — produse noi, cu garanție 24 de luni, plată cu cardul sau în rate.`,
   } as Metadata
 
   return metadata

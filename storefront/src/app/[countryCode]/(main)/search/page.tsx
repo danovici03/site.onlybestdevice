@@ -25,8 +25,8 @@ export async function generateMetadata(props: Params): Promise<Metadata> {
   return {
     title: term ? `Căutare: ${term}` : "Căutare",
     description: term
-      ? `Produse onlybestdevice pentru „${term}”.`
-      : "Caută în catalogul onlybestdevice.",
+      ? `Produse Onlybestdevice pentru „${term}”.`
+      : "Caută în catalogul Onlybestdevice.",
     // Paginile de căutare n-au ce căuta în index: conținutul lor e o felie din
     // catalog, iar variantele de termeni sunt nelimitate.
     robots: { index: false, follow: true },

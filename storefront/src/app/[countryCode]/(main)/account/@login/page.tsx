@@ -4,7 +4,7 @@ import LoginTemplate from "@modules/account/templates/login-template"
 
 export const metadata: Metadata = {
   title: "Autentificare",
-  description: "Autentifică-te în contul tău onlybestdevice.",
+  description: "Autentifică-te în contul tău Onlybestdevice.",
 }
 
 export default function Login() {

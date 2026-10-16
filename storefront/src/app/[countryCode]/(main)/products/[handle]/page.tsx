@@ -6,6 +6,7 @@ import { listProducts } from "@lib/data/products"
 import { getRegion, listRegions } from "@lib/data/regions"
 import { listProductReviews } from "@lib/data/reviews"
 import { getWarrantyProduct } from "@lib/data/warranty"
+import { canonical } from "@lib/util/canonical"
 import { canOfferWarrantyFor } from "@lib/util/warranty"
 import {
   descriptionSnippet,
@@ -80,13 +81,14 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   // intră doar textul.
   const desc =
     descriptionSnippet(product.description) ||
-    `${product.title} — disponibil pe onlybestdevice, cu garanție și livrare rapidă.`
+    `${product.title} — disponibil pe Onlybestdevice, cu garanție și livrare rapidă.`
 
   return {
     title: product.title,
     description: desc,
+    alternates: canonical(`/products/${handle}`, params.countryCode),
     openGraph: {
-      title: `${product.title} | onlybestdevice`,
+      title: `${product.title} | Onlybestdevice`,
       description: desc,
       images: product.thumbnail ? [product.thumbnail] : [],
     },
@@ -178,7 +180,7 @@ export default async function ProductPage(props: Props) {
       .slice(0, 6),
     description: descriptionText(pricedProduct.description) || pricedProduct.title,
     sku: pricedProduct.variants?.[0]?.sku || undefined,
-    brand: { "@type": "Brand", name: brand?.name ?? "onlybestdevice" },
+    brand: { "@type": "Brand", name: brand?.name ?? "Onlybestdevice" },
     ...(lowPrice
       ? {
           offers: {

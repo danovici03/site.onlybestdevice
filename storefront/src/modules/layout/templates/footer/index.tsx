@@ -54,7 +54,7 @@ export default function Footer() {
             <LocalizedClientLink
               href="/"
               className="inline-flex mb-8"
-              aria-label="onlybestdevice — Acasă"
+              aria-label="Onlybestdevice — Acasă"
             >
               {/* Aici nu concurează cu nimic pe orizontală, deci logo-ul poate
                   fi mai lat decât în nav — dar rămâne sub lățimea coloanei. */}

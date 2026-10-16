@@ -391,9 +391,17 @@ export async function middleware(request: NextRequest) {
   const queryString = request.nextUrl.search ? request.nextUrl.search : ""
 
   // If no country code is set, we redirect to the relevant region.
+  //
+  // Spre regiunea implicită redirectul e permanent (308): e destinația pentru
+  // oricine nu are altă regiune, inclusiv Googlebot, iar cu 307 Google păstrează
+  // `/` ca adresă proprie și nu mută semnalele pe `/ro`. Spre o regiune aleasă
+  // după IP rămâne 307 — ține de vizitator, nu de adresă.
   if (!urlHasCountryCode && countryCode) {
     redirectUrl = `${request.nextUrl.origin}/${countryCode}${redirectPath}${queryString}`
-    response = NextResponse.redirect(`${redirectUrl}`, 307)
+    response = NextResponse.redirect(
+      `${redirectUrl}`,
+      countryCode === DEFAULT_REGION ? 308 : 307
+    )
   } else if (!urlHasCountryCode && !countryCode) {
     // Handle case where no valid country code exists (empty regions)
     return new NextResponse(

@@ -9,6 +9,7 @@ import {
   getCategoryPath,
   listCategories,
 } from "@lib/data/categories"
+import { canonical } from "@lib/util/canonical"
 import { categorySlug } from "@lib/util/category-slug"
 import { listRegions } from "@lib/data/regions"
 import { StoreRegion } from "@medusajs/types"
@@ -124,8 +125,12 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     notFound()
   }
 
+  // Medusa întoarce `""` (nu `null`) la categoriile fără descriere, iar un
+  // `description` gol nu mai ajunge deloc în <head>: Google își alegea atunci
+  // singur fragmentul, de obicei textul de abonare din footer.
   const description =
-    productCategory.description ?? `Categoria ${productCategory.name}.`
+    productCategory.description?.trim() ||
+    `${productCategory.name} la Onlybestdevice: produse noi, cu garanție 24 de luni, plată cu cardul sau în rate și livrare rapidă în toată România.`
 
   // Canonic e calea ierarhică completă, nu segmentele cerute: forma plată
   // (`/categories/apple`) rămâne accesibilă, dar nu se indexează separat.
@@ -134,12 +139,13 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   return {
     title: productCategory.name,
     description,
-    alternates: {
-      canonical: `/categories/${(path.length
+    alternates: canonical(
+      `/categories/${(path.length
         ? categoryPathSegments(path)
         : params.category
       ).join("/")}`,
-    },
+      params.countryCode
+    ),
   }
 }
 
