@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 import { listFaq } from "@lib/data/faq"
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
 import FaqClient from "@modules/suport/components/faq-client"
@@ -8,6 +9,7 @@ export const metadata: Metadata = {
   title: "Întrebări frecvente (FAQ)",
   description:
     "Toate răspunsurile despre comenzi, livrare, plăți, retururi și garanție. Caută în FAQ sau navighează pe categorii.",
+  alternates: canonical("/faq"),
 }
 
 export default async function FaqPage() {

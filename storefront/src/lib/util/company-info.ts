@@ -1,5 +1,5 @@
 /**
- * Date societare onlybestdevice.
+ * Date societare Onlybestdevice.
  *
  * NOTĂ: cheile păstrează denumirile originale (italiene) pentru compatibilitate
  * cu componentele care le importă; valorile sunt cele românești.
@@ -15,7 +15,7 @@
 export const COMPANY = {
   // Identitate juridică
   ragioneSociale: "ONLY BEST DEVICE S.R.L.",
-  marchio: "onlybestdevice",
+  marchio: "Onlybestdevice",
   formaGiuridica: "Societate cu răspundere limitată",
   piva: "43546040",
   codiceFiscale: "43546040",
@@ -58,7 +58,6 @@ export const COMPANY = {
   // Contacte
   email: "office@onlybestdevice.ro",
   emailPec: "",
-  telefono: "0785 866 866",
   // Format internațional: linkurile wa.me se construiesc din cifrele acestui
   // câmp, iar wa.me nu acceptă prefixul național „0".
   whatsapp: "+40 785 866 866",
@@ -69,9 +68,9 @@ export const COMPANY = {
 
   // Social
   social: {
-    facebook: "https://www.facebook.com/onlybestdevice",
-    instagram: "https://www.instagram.com/onlybestdevice",
-    tiktok: "https://www.tiktok.com/@onlybestdevice",
+    facebook: "https://www.facebook.com/onlybestdevicebistrita",
+    instagram: "https://www.instagram.com/onlybestdevice.ro",
+    tiktok: "https://www.tiktok.com/@onlybestdevice.ro",
   },
 
   // Web

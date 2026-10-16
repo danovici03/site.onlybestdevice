@@ -57,6 +57,7 @@ export async function resolveMegaMenu(
                 selected: emptySelectedFilters(),
                 sale: true,
                 limit: PRODUCTS_PER_CATEGORY,
+                listTag: false,
               })
               return { ...item, count, products: toMenuProducts(products) }
             } catch {
@@ -79,6 +80,10 @@ export async function resolveMegaMenu(
               categoryIds: [categoryId],
               selected: emptySelectedFilters(),
               limit: PRODUCTS_PER_CATEGORY,
+              // Meniul e în header-ul fiecărei pagini: cu `product-lists`, orice
+              // produs epuizat ar invalida toate paginile (vezi `cache-tags.ts`).
+              // Se reîmprospătează pe `products` și pe TTL.
+              listTag: false,
             })
 
             return { ...item, count, products: toMenuProducts(products) }

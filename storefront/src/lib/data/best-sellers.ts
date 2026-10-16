@@ -15,7 +15,12 @@ export const listBestSellers = async ({
 }): Promise<BestSellerEntry[]> => {
   const next = {
     ...(await getCacheOptions("best-sellers")),
-    revalidate: 300,
+    // Clasamentul vine din comenzi, iar nicio comandă nu revalidează tagul,
+    // deci TTL-ul e singurul lucru care îl împrospătează. O oră, nu 5 minute:
+    // TTL-ul fetch-ului devine TTL-ul paginii, iar fiecare expirare a unei
+    // pagini vizitate e o regenerare facturată pe Vercel. Raftul apare doar pe
+    // homepage, nu pe paginile de produs.
+    revalidate: 3600,
   }
 
   return sdk.client

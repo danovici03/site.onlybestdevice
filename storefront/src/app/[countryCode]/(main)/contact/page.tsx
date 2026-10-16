@@ -1,7 +1,7 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 import {
   Envelope,
-  Phone,
   WhatsappLogo,
   MapPin,
   Clock,
@@ -14,6 +14,7 @@ export const metadata: Metadata = {
   title: "Contact",
   description:
     "Scrie-ne prin formular, email, telefon sau WhatsApp. Răspuns în 24–48 de ore lucrătoare.",
+  alternates: canonical("/contact"),
 }
 
 const CHANNELS = [
@@ -24,15 +25,9 @@ const CHANNELS = [
     href: `mailto:${COMPANY.email}`,
   },
   {
-    icon: <Phone size={22} weight="duotone" />,
-    label: "Telefon",
-    value: COMPANY.telefono,
-    href: `tel:${COMPANY.telefono.replace(/\s+/g, "")}`,
-  },
-  {
     icon: <WhatsappLogo size={22} weight="duotone" />,
     label: "WhatsApp",
-    value: COMPANY.whatsapp,
+    value: "Scrie-ne pe WhatsApp",
     href: `https://wa.me/${COMPANY.whatsapp.replace(/[^\d]/g, "")}`,
   },
 ]

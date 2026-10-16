@@ -20,6 +20,7 @@ const SUPPORT_LINKS = [
   { label: "Contact", href: "/contact" },
   { label: "Întrebări frecvente", href: "/faq" },
   { label: "Livrarea comenzilor", href: "/livrare" },
+  { label: "Cumpără în rate", href: "/credit-online" },
   { label: "Retur produse", href: "/retur" },
   { label: "Garanție și service", href: "/garantie" },
   { label: "Formular de service", href: "/service" },
@@ -33,11 +34,13 @@ const LEGAL_LINKS = [
   { label: "Informații legale", href: "/informatii-legale" },
 ]
 
-// Linkuri externe obligatorii pentru comerțul electronic din România.
+// Linkuri externe pentru protecția consumatorilor. Linkul spre www.anpc.ro e
+// obligatoriu pe prima pagină (art. 2 din Ordinul ANPC 72/2010, modificat prin
+// Ordinul 505/2026) — footerul apare și pe home, deci îl acoperă. Platforma SOL
+// (ec.europa.eu/consumers/odr) a fost închisă de UE pe 20.07.2025.
 const ANPC_LINKS = [
-  { label: "ANPC", href: "https://anpc.ro/" },
+  { label: "ANPC – www.anpc.ro", href: "https://anpc.ro/" },
   { label: "ANPC – SAL", href: "https://anpc.ro/ce-este-sal/" },
-  { label: "SOL (litigii online)", href: "https://ec.europa.eu/consumers/odr" },
 ]
 
 export default function Footer() {
@@ -51,15 +54,15 @@ export default function Footer() {
             <LocalizedClientLink
               href="/"
               className="inline-flex mb-8"
-              aria-label="onlybestdevice — Acasă"
+              aria-label="Onlybestdevice — Acasă"
             >
               {/* Aici nu concurează cu nimic pe orizontală, deci logo-ul poate
                   fi mai lat decât în nav — dar rămâne sub lățimea coloanei. */}
               <Logo className="w-[15rem] md:w-[17rem] text-white" />
             </LocalizedClientLink>
             <p className="text-white/60 font-medium max-w-sm mb-8">
-              Cele mai noi device-uri, cu garanție 24 de luni, plata cu cardul
-              sau în rate și retur gratuit în 14 zile.
+              Upgrade-ul tău începe aici. Device-uri premium, garanție și
+              servicii complete.
             </p>
 
             <div className="flex gap-4">
@@ -181,7 +184,7 @@ export default function Footer() {
                   href={link.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="hover:text-white transition-colors"
+                  className="text-white/70 hover:text-white transition-colors"
                 >
                   {link.label}
                 </a>

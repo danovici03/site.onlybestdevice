@@ -59,7 +59,11 @@ export const listProductReviews = async (
       `/store/products/${productId}/reviews?${params.toString()}`,
       {
         method: "GET",
-        next: { ...next, revalidate: 300 },
+        // Fără `revalidate` propriu: TTL-ul de 5 minute de aici devenea TTL-ul
+        // întregii pagini de produs, care se regenera (facturat) la aproape
+        // fiecare vizită. O recenzie nouă sau moderată invalidează oricum tagul
+        // `reviews-<id>`, din backend și din `submitProductReview`.
+        next,
       },
     )
     return data

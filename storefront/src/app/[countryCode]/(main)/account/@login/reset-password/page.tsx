@@ -4,7 +4,7 @@ import ResetPasswordForm from "@modules/account/components/reset-password"
 
 export const metadata: Metadata = {
   title: "Resetează parola",
-  description: "Setează o parolă nouă pentru contul tău onlybestdevice.",
+  description: "Setează o parolă nouă pentru contul tău Onlybestdevice.",
 }
 
 type SearchParams = Promise<{ token?: string; email?: string }>

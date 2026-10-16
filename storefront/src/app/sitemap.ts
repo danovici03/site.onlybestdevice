@@ -2,6 +2,7 @@ import { MetadataRoute } from "next"
 import { listProducts } from "@lib/data/products"
 import { listCategories } from "@lib/data/categories"
 import { categorySlug } from "@lib/util/category-slug"
+import { brandCategoryRedirect } from "@lib/util/brand-category-redirects"
 import { RETIRED_CATEGORY_HANDLES } from "@lib/util/retired-categories"
 
 const BASE = (
@@ -55,6 +56,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // le mută — un hop irosit la fiecare crawl.
       const leaf = path[path.length - 1]
       if (leaf && RETIRED_CATEGORY_HANDLES[leaf.toLowerCase()]) continue
+      // Subcategoriile-marcă desființate: middleware-ul le mută pe părinte cu
+      // `?brand=`. Contează doar până rulează scriptul de curățenie pe baza de
+      // date — după, nu mai vin din listCategories.
+      if (brandCategoryRedirect(path)) continue
 
       if (path.length && path.every(Boolean))
         entries.push({

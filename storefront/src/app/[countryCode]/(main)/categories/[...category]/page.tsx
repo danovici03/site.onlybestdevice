@@ -2,12 +2,14 @@ import { Metadata } from "next"
 import { notFound, permanentRedirect } from "next/navigation"
 
 import {
+  brandCategoryFallback,
   CategoriesUnavailableError,
   categoryPathSegments,
   getCategoryByHandle,
   getCategoryPath,
   listCategories,
 } from "@lib/data/categories"
+import { canonical } from "@lib/util/canonical"
 import { categorySlug } from "@lib/util/category-slug"
 import { listRegions } from "@lib/data/regions"
 import { StoreRegion } from "@medusajs/types"
@@ -15,6 +17,7 @@ import CategoryTemplate from "@modules/categories/templates"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import { parseSelectedFilters } from "@lib/util/product-filters"
 import { failStaticParams } from "@lib/util/static-params"
+import { withBrandParam } from "@lib/util/brand-category-redirects"
 
 type Props = {
   params: Promise<{ category: string[]; countryCode: string }>
@@ -75,6 +78,30 @@ export async function generateStaticParams() {
   }
 }
 
+/**
+ * Subcategorie-marcă desființată → părintele filtrat pe marcă (308).
+ *
+ * Harta statică a redirecturilor e în middleware; aici e plasa pentru ce nu e
+ * în hartă (vezi `brandCategoryFallback`). Se cheamă și din `generateMetadata`,
+ * nu doar din pagină: metadata rulează în paralel, iar `notFound()`-ul ei ar
+ * câștiga cursa și ar răspunde 404 înainte ca pagina să apuce să redirecteze.
+ */
+async function redirectRetiredBrandCategory(
+  params: { category: string[]; countryCode: string },
+  searchParams: Record<string, string | string[] | undefined>
+) {
+  const target = await brandCategoryFallback(params.category).catch(() => null)
+  if (!target) return
+  const qs = new URLSearchParams()
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (value == null || key === "page") continue
+    for (const v of Array.isArray(value) ? value : [value]) qs.append(key, v)
+  }
+  permanentRedirect(
+    `/${params.countryCode}${target.path}${withBrandParam(qs, target.brand)}`
+  )
+}
+
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params
 
@@ -94,11 +121,16 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   }
 
   if (!productCategory) {
+    await redirectRetiredBrandCategory(params, await props.searchParams)
     notFound()
   }
 
+  // Medusa întoarce `""` (nu `null`) la categoriile fără descriere, iar un
+  // `description` gol nu mai ajunge deloc în <head>: Google își alegea atunci
+  // singur fragmentul, de obicei textul de abonare din footer.
   const description =
-    productCategory.description ?? `Categoria ${productCategory.name}.`
+    productCategory.description?.trim() ||
+    `${productCategory.name} la Onlybestdevice: produse noi, cu garanție 24 de luni, plată cu cardul sau în rate și livrare rapidă în toată România.`
 
   // Canonic e calea ierarhică completă, nu segmentele cerute: forma plată
   // (`/categories/apple`) rămâne accesibilă, dar nu se indexează separat.
@@ -107,12 +139,13 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   return {
     title: productCategory.name,
     description,
-    alternates: {
-      canonical: `/categories/${(path.length
+    alternates: canonical(
+      `/categories/${(path.length
         ? categoryPathSegments(path)
         : params.category
       ).join("/")}`,
-    },
+      params.countryCode
+    ),
   }
 }
 
@@ -125,6 +158,7 @@ export default async function CategoryPage(props: Props) {
   const productCategory = await getCategoryByHandle(params.category)
 
   if (!productCategory) {
+    await redirectRetiredBrandCategory(params, searchParams)
     notFound()
   }
 
