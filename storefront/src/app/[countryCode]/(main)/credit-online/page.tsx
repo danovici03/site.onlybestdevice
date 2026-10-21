@@ -16,7 +16,7 @@ import bannerImg from "../../../../assets/ucfin/banner-credit-online.png"
 // UCFin.
 
 export const metadata: Metadata = {
-  title: "Credit Online UniCredit Consumer Financing",
+  title: "Cumpără în rate – Credit Online UniCredit",
   description:
     "Cumpără în rate prin Creditul Online de la UniCredit Consumer Financing IFN S.A. — 100% online, cu răspuns în maximum 15 minute. Condiții, produse financiare și DAE.",
   alternates: canonical("/credit-online"),

@@ -6,9 +6,9 @@ import { SortOptions } from "@modules/store/components/refinement-list/sort-prod
 import StoreTemplate from "@modules/store/templates"
 
 export const metadata: Metadata = {
-  title: "Oferte",
+  title: "Oferte telefoane, laptopuri și accesorii",
   description:
-    "Produsele Onlybestdevice aflate acum la ofertă — telefoane, laptopuri și accesorii la preț redus.",
+    "Telefoane, laptopuri, tablete și accesorii la preț redus, cu garanție 24 de luni și plată cu cardul sau în rate. Toate produsele aflate acum la ofertă.",
   alternates: canonical("/oferte"),
 }
 

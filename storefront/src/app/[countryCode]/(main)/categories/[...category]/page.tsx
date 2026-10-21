@@ -11,6 +11,7 @@ import {
 } from "@lib/data/categories"
 import { canonical } from "@lib/util/canonical"
 import { categorySlug } from "@lib/util/category-slug"
+import { categorySeo } from "@lib/util/seo"
 import { listRegions } from "@lib/data/regions"
 import { StoreRegion } from "@medusajs/types"
 import CategoryTemplate from "@modules/categories/templates"
@@ -125,27 +126,22 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     notFound()
   }
 
-  // Medusa întoarce `""` (nu `null`) la categoriile fără descriere, iar un
-  // `description` gol nu mai ajunge deloc în <head>: Google își alegea atunci
-  // singur fragmentul, de obicei textul de abonare din footer.
-  const description =
-    productCategory.description?.trim() ||
-    `${productCategory.name} la Onlybestdevice: produse noi, cu garanție 24 de luni, plată cu cardul sau în rate și livrare rapidă în toată România.`
-
   // Canonic e calea ierarhică completă, nu segmentele cerute: forma plată
   // (`/categories/apple`) rămâne accesibilă, dar nu se indexează separat.
   const path = await getCategoryPath(productCategory.id)
+  const slugs = path.length ? categoryPathSegments(path) : params.category
+
+  const { title, description } = categorySeo({
+    names: path.length ? path.map((c) => c.name) : [productCategory.name],
+    slugs,
+    metadata: productCategory.metadata,
+    description: productCategory.description,
+  })
 
   return {
-    title: productCategory.name,
+    title,
     description,
-    alternates: canonical(
-      `/categories/${(path.length
-        ? categoryPathSegments(path)
-        : params.category
-      ).join("/")}`,
-      params.countryCode
-    ),
+    alternates: canonical(`/categories/${slugs.join("/")}`, params.countryCode),
   }
 }
 

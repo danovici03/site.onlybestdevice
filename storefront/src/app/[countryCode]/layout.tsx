@@ -1,5 +1,6 @@
 import { listRegions } from "@lib/data/regions"
 import { failStaticParams } from "@lib/util/static-params"
+import { notFound } from "next/navigation"
 
 /**
  * Țările pentru care se prerandează paginile de sub `[countryCode]`.
@@ -28,10 +29,23 @@ export async function generateStaticParams() {
   }
 }
 
-export default function CountryLayout({
+/**
+ * Middleware-ul lasă să treacă orice cale cu punct (o ia drept fișier static),
+ * așa că `/page-sitemap.xml` — sitemap-urile vechi de pe WordPress, încă
+ * trimise în Search Console — ajungea aici cu `countryCode = "page-sitemap.xml"`
+ * și primea homepage-ul cu 200. Google raporta „Sitemap is HTML" și, pe
+ * deasupra, vedea home-ul duplicat la oricâte adrese. Un segment care nu e cod
+ * de țară e 404.
+ */
+export default async function CountryLayout({
   children,
+  params,
 }: {
   children: React.ReactNode
+  params: Promise<{ countryCode: string }>
 }) {
+  const { countryCode } = await params
+  if (!/^[a-z]{2}$/i.test(countryCode)) notFound()
+
   return children
 }

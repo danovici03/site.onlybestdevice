@@ -8,10 +8,9 @@ import { listProductReviews } from "@lib/data/reviews"
 import { getWarrantyProduct } from "@lib/data/warranty"
 import { canonical } from "@lib/util/canonical"
 import { canOfferWarrantyFor } from "@lib/util/warranty"
-import {
-  descriptionSnippet,
-  descriptionText,
-} from "@lib/util/description-text"
+import { descriptionText } from "@lib/util/description-text"
+import { getProductPrice } from "@lib/util/get-product-price"
+import { productSeo } from "@lib/util/seo"
 import { buildProductCrumbs } from "@modules/products/components/product-breadcrumbs"
 import ProductTemplate from "@modules/products/templates"
 import { HttpTypes } from "@medusajs/types"
@@ -77,19 +76,19 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     notFound()
   }
 
-  // Descrierea e HTML (galeriile importate din WooCommerce) — în meta tag-uri
-  // intră doar textul.
-  const desc =
-    descriptionSnippet(product.description) ||
-    `${product.title} — disponibil pe Onlybestdevice, cu garanție și livrare rapidă.`
+  const { title, description } = productSeo({
+    title: product.title,
+    metadata: product.metadata,
+    price: getProductPrice({ product }).cheapestPrice?.calculated_price,
+  })
 
   return {
-    title: product.title,
-    description: desc,
+    title,
+    description,
     alternates: canonical(`/products/${handle}`, params.countryCode),
     openGraph: {
-      title: `${product.title} | Onlybestdevice`,
-      description: desc,
+      title: `${title} | Onlybestdevice`,
+      description,
       images: product.thumbnail ? [product.thumbnail] : [],
     },
   }

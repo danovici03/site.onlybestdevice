@@ -9,11 +9,25 @@ import {
 import { COMPANY } from "@lib/util/company-info"
 import ManagePreferencesLink from "@modules/layout/components/cookie-consent/manage-preferences-link"
 
+// Toate categoriile principale, nu doar cele din meniu: mega-meniul are șase,
+// iar restul (huse, console, pentru casă...) nu le linka nicio pagină — Google
+// le găsea doar în sitemap și nu le propunea ca sitelinks sub rezultatul
+// brandului. Categoriile goale (folii) lipsesc intenționat.
 const SHOP_LINKS = [
   { label: "Toate produsele", href: "/store" },
   { label: "Oferte", href: "/oferte" },
   { label: "Telefoane mobile", href: "/categories/telefoane-mobile" },
+  { label: "Tablete", href: "/categories/tablete" },
   { label: "Laptopuri", href: "/categories/laptop" },
+  { label: "Smartwatch", href: "/categories/smartwatch-wearables" },
+  { label: "Căști și audio", href: "/categories/tv-audio-video-si-foto" },
+  { label: "Periferice PC", href: "/categories/desktop-pc-periferice" },
+  { label: "Console și jocuri", href: "/categories/console-jocuri" },
+  { label: "Huse telefoane", href: "/categories/huse-telefoane" },
+  { label: "Încărcătoare și accesorii", href: "/categories/incarcatoare-accesorii" },
+  { label: "Pentru casă", href: "/categories/pentru-casa" },
+  { label: "Ceasuri", href: "/categories/ceasuri-analogice" },
+  { label: "Diverse", href: "/categories/diverse" },
 ]
 
 const SUPPORT_LINKS = [
