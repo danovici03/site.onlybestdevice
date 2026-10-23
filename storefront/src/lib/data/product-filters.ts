@@ -1,6 +1,7 @@
 "use server"
 
 import { sdk } from "@lib/config"
+import { productTag } from "@lib/util/cache-tags"
 import { getCacheOptions } from "./cookies"
 
 export type ProductFilterDTO = {
@@ -15,13 +16,16 @@ export type ProductFilterDTO = {
 
 /**
  * Valorile de filtru ale produsului (modulul `product_filter` din backend).
- * Sub tagul `products`: backend-ul îl revalidează la orice schimbare de
- * filtre, din admin sau din completarea automată.
+ * Sub `product-<id>`: completarea automată revalidează doar produsul salvat.
+ * `products` rămâne pentru schimbările de filtre din admin, care ating tot
+ * catalogul.
  */
 export const listProductFilters = async (
   productId: string
 ): Promise<ProductFilterDTO[]> => {
-  const next = { ...(await getCacheOptions("products")) }
+  const next = {
+    ...(await getCacheOptions(["products", productTag(productId)])),
+  }
 
   try {
     const { filters } = await sdk.client.fetch<{ filters: ProductFilterDTO[] }>(

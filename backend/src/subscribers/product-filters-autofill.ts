@@ -2,7 +2,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 
 import { syncProductFilters } from "../lib/product-filters/autofill"
-import { revalidateStorefront } from "../lib/storefront-revalidate"
+import { revalidateProducts } from "../lib/product-revalidate"
 
 /**
  * Completează filtrele produsului la fiecare salvare: produs nou din ERP,
@@ -41,7 +41,15 @@ export default async function productFiltersAutofill({
   try {
     const r = await syncProductFilters(container, ids)
     if (r.rowsCreated || r.rowsDeleted) {
-      await revalidateStorefront(logger, `product-filters.${event.name}`, ["products"])
+      // Fațetele stau în listări (`product-lists`), valorile produsului pe
+      // pagina lui (`product-<id>`); tagul global `products` pleacă amânat,
+      // altfel fiecare salvare ar regenera tot catalogul. O categorie întreagă
+      // revine la `products`, ca înainte — fără coșuri și categorii.
+      await revalidateProducts(container, logger, `product-filters.${event.name}`, {
+        productIds: ids,
+        carts: false,
+        fallbackTags: ["products"],
+      })
       logger.info(
         `[product-filters] ${event.name}: ${r.rowsCreated} valori scrise, ${r.rowsDeleted} scoase` +
           (r.valuesCreated ? `, ${r.valuesCreated} valori noi` : "")
