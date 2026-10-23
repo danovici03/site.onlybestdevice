@@ -147,3 +147,101 @@ export const stockRevalidationTags = (
   }
   return [...tags]
 }
+
+/**
+ * Tagurile pe care le revalidează imediat o modificare de produs din Admin sau
+ * din gestiune.
+ *
+ * Până acum orice `product.updated` trimitea `products, categories,
+ * best-sellers, carts`. `categories` stă pe fiecare pagină (meniul,
+ * breadcrumb-ul), deci o salvare invalida tot site-ul; o salvare emite însă
+ * mai multe evenimente (miniatura, descrierea, legarea telefoanelor), iar ERP-ul
+ * creează produse toată ziua — ~600 de invalidări globale în 72h, iar fiecare
+ * pagină de produs vizitată după ele era o regenerare facturată pe Vercel.
+ *
+ * Sub `categories` stau arborele categoriilor și, pe pagina categoriei,
+ * `category.products` — folosit doar pentru câte carduri are scheletul de
+ * încărcare. Lista reală vine din `/store/catalog` (`product-lists`), deci
+ * `categories` rămâne doar pe evenimentele de categorie. Imediat pleacă pagina produsului, listările
+ * (prețul, poza și titlul din carduri) și, la nevoie, coșurile. Ce depinde de
+ * produs pe TOATE paginile (mega-meniul, „S-ar putea să-ți placă") stă sub
+ * `products` și se împrospătează amânat, vezi `revalidateStorefrontLater`.
+ */
+export const productRevalidationTags = (
+  products: Array<{ id: string; handle?: string | null }>,
+  { carts }: { carts: boolean }
+): string[] => {
+  if (!products.length) return []
+  const tags = new Set<string>([PRODUCT_LISTS_TAG])
+  if (carts) tags.add("carts")
+  for (const p of products) {
+    tags.add(productTag(p.id))
+    if (p.handle) tags.add(productTag(p.handle))
+  }
+  return [...tags]
+}
+
+/** Tagurile care se strâng și pleacă o singură dată pe fereastră. */
+export const DEFERRED_PRODUCT_TAGS = ["products", "best-sellers"]
+
+/**
+ * Cât așteaptă tagurile amânate. Fereastra e fixă (nu se prelungește la fiecare
+ * eveniment), deci întârzierea maximă rămâne garantată și în zilele în care se
+ * lucrează la catalog fără pauză.
+ */
+export const DEFERRED_REVALIDATE_MS = 30 * 60 * 1000
+
+let deferred: {
+  tags: Set<string>
+  events: Set<string>
+  timer: ReturnType<typeof setTimeout>
+} | null = null
+
+/**
+ * Pune tagurile în coada amânată; prima intrare pornește ceasul.
+ *
+ * Coada stă în memoria procesului: la un restart se pierde, iar ce era în ea se
+ * împrospătează pe TTL-ul storefront-ului (12h). Pagina produsului modificat
+ * nu depinde de coadă — ea pleacă imediat. Ce rămâne vechi în fereastră:
+ * mega-meniul și „S-ar putea să-ți placă" (inclusiv un produs tocmai trecut pe
+ * draft, care apare acolo încă până la trimitere) și pagina de sub un handle
+ * vechi, după redenumire.
+ */
+export const revalidateStorefrontLater = (
+  logger: Logger,
+  eventName: string,
+  tags: string[],
+  delayMs = DEFERRED_REVALIDATE_MS
+) => {
+  if (!tags.length) return
+  if (!deferred) {
+    const tagSet = new Set<string>()
+    const events = new Set<string>()
+    const timer = setTimeout(async () => {
+      deferred = null
+      const ok = await revalidateStorefront(
+        logger,
+        `amânat (${[...events].join(", ")})`,
+        [...tagSet]
+      )
+      // Storefront-ul indisponibil (deploy Vercel, 502) nu pierde lotul: intră
+      // în fereastra următoare. Fără configurație nu are rost să reîncercăm.
+      if (!ok && process.env.STOREFRONT_REVALIDATE_URL && process.env.REVALIDATE_SECRET) {
+        for (const e of events) {
+          revalidateStorefrontLater(logger, e, [...tagSet], delayMs)
+        }
+      }
+    }, delayMs)
+    // Ceasul nu ține procesul în viață la oprire.
+    timer.unref?.()
+    deferred = { tags: tagSet, events, timer }
+  }
+  for (const t of tags) deferred.tags.add(t)
+  deferred.events.add(eventName)
+}
+
+/** Doar pentru teste: golește coada fără să trimită nimic. */
+export const resetDeferredRevalidation = () => {
+  if (deferred) clearTimeout(deferred.timer)
+  deferred = null
+}
