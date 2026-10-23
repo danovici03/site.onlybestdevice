@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 import {
   ArrowUpRight,
   ClipboardText,
@@ -25,6 +26,7 @@ export const metadata: Metadata = {
   title: "Garanție și service",
   description:
     "Garanția legală de conformitate 2 ani pentru consumatori și 12 luni pentru persoane juridice, conform OUG 140/2021. Cum trimiți un produs în service.",
+  alternates: canonical("/garantie"),
 }
 
 export default function GarantiePage() {
@@ -128,14 +130,6 @@ export default function GarantiePage() {
           <br />
           {COMPANY.adresaRetur.cap} {COMPANY.adresaRetur.citta}, jud.{" "}
           {COMPANY.adresaRetur.judet}
-          <br />
-          Telefon:{" "}
-          <a
-            href={`tel:${COMPANY.telefono.replace(/\s+/g, "")}`}
-            className="text-brand-accent hover:underline"
-          >
-            {COMPANY.telefono}
-          </a>
         </p>
       </Callout>
 
@@ -293,13 +287,6 @@ export default function GarantiePage() {
             className="text-brand-accent hover:underline"
           >
             {COMPANY.email}
-          </a>{" "}
-          sau sună la{" "}
-          <a
-            href={`tel:${COMPANY.telefono.replace(/\s+/g, "")}`}
-            className="text-brand-accent hover:underline"
-          >
-            {COMPANY.telefono}
           </a>
           . {COMPANY.orari} — {COMPANY.slaRisposta}
         </p>

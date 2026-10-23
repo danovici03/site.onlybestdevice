@@ -29,7 +29,7 @@ export default function CheckoutLayout({
             href="/"
             className="flex items-center shrink-0"
             data-testid="store-link"
-            aria-label="onlybestdevice — Acasă"
+            aria-label="Onlybestdevice — Acasă"
           >
             <Logo className="w-[9rem] lg:w-[10.5rem] text-brand-dark" />
           </LocalizedClientLink>
@@ -44,7 +44,7 @@ export default function CheckoutLayout({
       <div className="relative" data-testid="checkout-container">{children}</div>
       <div className="py-5 w-full flex items-center justify-center">
         <p className="text-xs text-brand-dark/45">
-          © onlybestdevice · Plată securizată · TVA inclus
+          © Onlybestdevice · Plată securizată · TVA inclus
         </p>
       </div>
     </div>

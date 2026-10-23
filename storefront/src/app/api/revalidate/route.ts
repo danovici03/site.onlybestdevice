@@ -1,5 +1,6 @@
 import { revalidateTag } from "next/cache"
 import { NextResponse, type NextRequest } from "next/server"
+import { PRODUCT_LISTS_TAG, PRODUCT_TAG_PREFIX } from "@lib/util/cache-tags"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -7,6 +8,9 @@ export const runtime = "nodejs"
 const KNOWN_TAGS = new Set([
   "categories",
   "products",
+  // Listările de produse, revalidate de stocul din gestiune doar când un
+  // produs intră sau iese din stoc (vezi `lib/util/cache-tags.ts`).
+  PRODUCT_LISTS_TAG,
   // Payload-ul coșului conține date de produs (inclusiv tagurile, de care
   // depinde oferta de garanție extinsă), deci o schimbare de produs trebuie să
   // poată invalida și coșurile — altfel bifa debifată din Admin lasă oferta
@@ -25,7 +29,8 @@ const KNOWN_TAGS = new Set([
 
 // Tags prefixed with one of these keys are scoped per-entity (e.g.
 // `reviews-prod_01XYZ`). Accepting the prefix avoids enumerating every id.
-const KNOWN_PREFIXES = ["reviews-"]
+// `product-<id>` / `product-<handle>`: un singur produs, la schimbarea stocului.
+const KNOWN_PREFIXES = ["reviews-", PRODUCT_TAG_PREFIX]
 
 const isKnownTag = (t: string) =>
   KNOWN_TAGS.has(t) || KNOWN_PREFIXES.some((p) => t.startsWith(p))

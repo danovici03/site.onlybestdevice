@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 import { ArrowUpRight, MapPin, Truck } from "@phosphor-icons/react/dist/ssr"
 
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
   title: "Formular de service",
   description:
     "Completează cererea de service pentru un produs defect. După confirmare, chemi curierul să ridice produsul de la tine.",
+  alternates: canonical("/service"),
 }
 
 export default function ServicePage() {
@@ -47,14 +49,6 @@ export default function ServicePage() {
           <br />
           {COMPANY.adresaRetur.cap} {COMPANY.adresaRetur.citta}, jud.{" "}
           {COMPANY.adresaRetur.judet}
-          <br />
-          Telefon:{" "}
-          <a
-            href={`tel:${COMPANY.telefono.replace(/\s+/g, "")}`}
-            className="text-brand-accent hover:underline"
-          >
-            {COMPANY.telefono}
-          </a>
         </p>
       </Callout>
 

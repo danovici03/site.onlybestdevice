@@ -39,6 +39,12 @@ export type StockResult = {
     reserved_quantity: number
   }>
   errors: Array<{ variant_id?: string; sku?: string; message: string }>
+  /**
+   * Produsele ale căror variante chiar s-au schimbat, pentru revalidarea
+   * țintită a storefront-ului. `availability_changed`: o variantă a trecut
+   * între „în stoc" și „epuizat" — doar asta mută produsul în listări.
+   */
+  changed: Array<{ product_id: string; availability_changed: boolean }>
 }
 
 const VARIANT_FIELDS = [
@@ -121,6 +127,7 @@ export const applyStock = async (
     enabled_manage_inventory: 0,
     results: [],
     errors: [],
+    changed: [],
   }
 
   const variantIds = items.map((i) => i.variant_id).filter(Boolean) as string[]
@@ -183,6 +190,23 @@ export const applyStock = async (
     return result
   }
 
+  // Disponibilitatea de dinainte, cu regula din storefront (`isInStock`): fără
+  // gestiune de stoc sau cu backorder varianta e mereu disponibilă.
+  const wasAvailable = new Map<string, boolean>()
+  for (const p of plans) {
+    const v = p.variant
+    const level = (v.inventory_items?.[0]?.inventory?.location_levels ?? []).find(
+      (l: any) => l.location_id === locationId,
+    )
+    const available =
+      Number(level?.stocked_quantity ?? 0) - Number(level?.reserved_quantity ?? 0)
+    wasAvailable.set(
+      v.id,
+      !v.manage_inventory || !!v.allow_backorder || available > 0,
+    )
+  }
+  const changedVariants = new Set<string>()
+
   // ---- Faza 1: porneste gestiunea de stoc unde e inca oprita ----------------
   // Fara manage_inventory varianta e mereu "in stoc" pe site si poate fi
   // supravanduta. allow_backorder se stinge o singura data, la aprindere, ca sa
@@ -212,6 +236,11 @@ export const applyStock = async (
       },
     })
     result.enabled_manage_inventory = toEnable.length
+    for (const p of toEnable) {
+      changedVariants.add(p.variant.id)
+      // Backorder-ul tocmai s-a stins: de acum contează doar cantitatea.
+      p.variant.allow_backorder = false
+    }
   }
 
   // ---- Faza 2: creeaza inventory_item + nivel initial unde lipsesc -----------
@@ -250,6 +279,7 @@ export const applyStock = async (
     result.created_items = needsItem.length
 
     for (const p of needsItem) {
+      changedVariants.add(p.variant.id)
       result.results.push({
         variant_id: p.variant.id,
         sku: p.variant.sku ?? null,
@@ -296,6 +326,7 @@ export const applyStock = async (
     })
 
     if (!level) {
+      changedVariants.add(p.variant.id)
       levelsToCreate.push({
         inventory_item_id: inventory.id,
         location_id: locationId,
@@ -305,6 +336,7 @@ export const applyStock = async (
     }
 
     if (Number(level.stocked_quantity ?? 0) !== target) {
+      changedVariants.add(p.variant.id)
       levelsToUpdate.push({
         id: level.id,
         inventory_item_id: inventory.id,
@@ -326,6 +358,21 @@ export const applyStock = async (
   }
 
   result.updated = result.created_items + levelsToCreate.length + levelsToUpdate.length
+
+  const changedByProduct = new Map<string, boolean>()
+  for (const p of plans) {
+    if (!changedVariants.has(p.variant.id) || !p.variant.product_id) continue
+    const nowAvailable = !!p.variant.allow_backorder || p.quantity > 0
+    const flipped = wasAvailable.get(p.variant.id) !== nowAvailable
+    changedByProduct.set(
+      p.variant.product_id,
+      (changedByProduct.get(p.variant.product_id) ?? false) || flipped,
+    )
+  }
+  result.changed = [...changedByProduct].map(([product_id, availability_changed]) => ({
+    product_id,
+    availability_changed,
+  }))
 
   return result
 }

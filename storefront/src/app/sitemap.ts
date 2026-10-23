@@ -2,6 +2,7 @@ import { MetadataRoute } from "next"
 import { listProducts } from "@lib/data/products"
 import { listCategories } from "@lib/data/categories"
 import { categorySlug } from "@lib/util/category-slug"
+import { brandCategoryRedirect } from "@lib/util/brand-category-redirects"
 import { RETIRED_CATEGORY_HANDLES } from "@lib/util/retired-categories"
 
 const BASE = (
@@ -13,6 +14,7 @@ const STATIC_PATHS = [
   "",
   "/store",
   "/oferte",
+  "/credit-online",
   "/livrare",
   "/retur",
   "/garantie",
@@ -33,12 +35,69 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: p === "" ? 1 : 0.6,
   }))
 
+  // Produsele întâi: din ele aflăm și care categorii au ce arăta.
+  const productEntries: MetadataRoute.Sitemap = []
+  const stockedCategoryIds = new Set<string>()
+  let productsLoaded = false
+  try {
+    const limit = 100
+    let offset = 0
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { response } = await listProducts({
+        countryCode: REGION,
+        // `metadata` e necesar pentru filtrul din `listProducts` care scoate
+        // produsele „de serviciu" (garanția extinsă, `metadata.hidden`) — fără
+        // el ajungeau în sitemap pagini pe care nu le linkează nimic.
+        queryParams: {
+          limit,
+          offset,
+          fields: "handle,metadata,categories.id",
+        } as any,
+      })
+      for (const pr of response.products) {
+        pr.categories?.forEach((c) => stockedCategoryIds.add(c.id))
+        if (pr.handle)
+          productEntries.push({
+            url: `${BASE}/${REGION}/products/${pr.handle}`,
+            changeFrequency: "weekly",
+            priority: 0.8,
+          })
+      }
+      offset += limit
+      if (!response.products.length || offset >= (response.count ?? 0)) break
+    }
+    productsLoaded = true
+  } catch {
+    // ignoră dacă backend-ul nu e disponibil la build
+  }
+
   try {
     const cats = await listCategories()
     // Calea canonică, nu handle-ul: `apple-tablete` redirectează 308 către
     // `tablete/apple`, iar un sitemap plin de redirecturi irosește crawl budget.
     const byId = new Map(cats.map((c) => [c.id, c]))
+
+    // O categorie e „plină" dacă are produse ea sau oricare descendent: urcăm
+    // de la fiecare categorie cu produse până la rădăcină.
+    const nonEmpty = new Set<string>()
+    stockedCategoryIds.forEach((id) => {
+      let cur = byId.get(id)
+      while (cur && !nonEmpty.has(cur.id)) {
+        nonEmpty.add(cur.id)
+        cur = cur.parent_category?.id
+          ? byId.get(cur.parent_category.id)
+          : undefined
+      }
+    })
+
     for (const c of cats) {
+      // Categoriile goale (folii, huse pe modele vechi) sunt pentru Google
+      // pagini subțiri — „Soft 404" în Search Console. Intră singure în
+      // sitemap când primesc produse. Dacă produsele n-au venit deloc, nu
+      // știm care-s goale, deci le lăsăm pe toate.
+      if (productsLoaded && !nonEmpty.has(c.id)) continue
+
       const path: string[] = []
       const seen = new Set<string>()
       let cur: (typeof cats)[number] | undefined = c
@@ -55,6 +114,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // le mută — un hop irosit la fiecare crawl.
       const leaf = path[path.length - 1]
       if (leaf && RETIRED_CATEGORY_HANDLES[leaf.toLowerCase()]) continue
+      // Subcategoriile-marcă desființate: middleware-ul le mută pe părinte cu
+      // `?brand=`. Contează doar până rulează scriptul de curățenie pe baza de
+      // date — după, nu mai vin din listCategories.
+      if (brandCategoryRedirect(path)) continue
 
       if (path.length && path.every(Boolean))
         entries.push({
@@ -67,29 +130,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // ignoră dacă backend-ul nu e disponibil la build
   }
 
-  try {
-    const limit = 100
-    let offset = 0
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const { response } = await listProducts({
-        countryCode: REGION,
-        queryParams: { limit, offset, fields: "handle" } as any,
-      })
-      for (const pr of response.products) {
-        if (pr.handle)
-          entries.push({
-            url: `${BASE}/${REGION}/products/${pr.handle}`,
-            changeFrequency: "weekly",
-            priority: 0.8,
-          })
-      }
-      offset += limit
-      if (!response.products.length || offset >= (response.count ?? 0)) break
-    }
-  } catch {
-    // ignoră dacă backend-ul nu e disponibil la build
-  }
-
-  return entries
+  return [...entries, ...productEntries]
 }

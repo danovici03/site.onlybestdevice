@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 import {
   Question,
   Envelope,
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
   title: "Suport clienți",
   description:
     "FAQ, contact, livrare, retururi, garanție și documente legale. Echipa noastră de suport e aici să te ajute.",
+  alternates: canonical("/suport"),
 }
 
 const CARDS = [

@@ -10,6 +10,7 @@ import {
 } from "@lib/util/warranty"
 import { paymentLabelFor } from "@lib/util/payment-label"
 import Thumbnail from "@modules/products/components/thumbnail"
+import { invoiceUrlFor } from "@lib/util/invoice"
 import AccountCard from "../account-card"
 import { OrderStatusBadge } from "../status-badge"
 import { convertToLocale } from "@lib/util/money"
@@ -82,6 +83,7 @@ const OrderDetail = ({ order }: { order: HttpTypes.StoreOrder }) => {
         })
 
   const placedOn = new Date(order.created_at).toLocaleDateString("ro-RO", DATE_FMT)
+  const invoiceUrl = invoiceUrlFor(order)
   const canReturn = isReturnable(order)
   const paymentLabel = (order.payment_collections?.[0]?.payments?.[0] as any)
     ?.provider_id
@@ -118,13 +120,17 @@ const OrderDetail = ({ order }: { order: HttpTypes.StoreOrder }) => {
         </div>
 
         <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-brand-dark/[0.06]">
-          <LocalizedClientLink
-            href={`/api/invoice/${order.id}`}
-            className="inline-flex items-center justify-center rounded-full bg-brand-dark text-white px-5 py-2.5 text-sm font-semibold hover:bg-brand-accent transition-colors"
-            data-testid="download-invoice-button"
-          >
-            {t.orders.downloadInvoice}
-          </LocalizedClientLink>
+          {invoiceUrl && (
+            <a
+              href={invoiceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-full bg-brand-dark text-white px-5 py-2.5 text-sm font-semibold hover:bg-brand-accent transition-colors"
+              data-testid="download-invoice-button"
+            >
+              {t.orders.downloadInvoice}
+            </a>
+          )}
           <LocalizedClientLink
             href={canReturn ? `/account/orders/details/${order.id}/return` : "#"}
             aria-disabled={!canReturn}

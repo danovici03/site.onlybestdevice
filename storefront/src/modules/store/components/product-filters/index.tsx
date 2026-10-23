@@ -1,14 +1,12 @@
 "use client"
 
 import {
-  FILTER_KEYS,
-  FILTER_LABELS,
   countActiveFilters,
   emptySelectedFilters,
   serializePrice,
+  type AttributeFacet,
   type FacetValue,
   type Facets,
-  type FilterKey,
   type PriceRange,
   type SelectedFilters,
 } from "@lib/util/product-filters"
@@ -21,14 +19,11 @@ import { countWithNoun } from "@lib/util/plural-ro"
 
 /**
  * Câte valori arătăm inițial per fațetă (restul intră sub „Vezi mai multe”).
- * Fațetele lipsă de aici se afișează integral — stocarea și RAM-ul au oricum
- * puține valori și sunt sortate crescător, deci n-are sens să le tăiem.
+ * Listele numerice (stocare, RAM) sunt scurte și sortate crescător; tăiem doar
+ * listele lungi.
  */
-const COLLAPSE_AFTER: Partial<Record<FilterKey, number>> = {
-  category: 8,
-  brand: 6,
-  color: 8,
-}
+const COLLAPSE_AFTER = 8
+const BRAND_COLLAPSE_AFTER = 6
 
 type ProductFiltersProps = {
   facets: Facets
@@ -36,10 +31,57 @@ type ProductFiltersProps = {
   resultCount: number
 }
 
-const ProductFilters = ({ facets, selected, resultCount }: ProductFiltersProps) => {
+const fmtNum = (n: number) => n.toLocaleString("ro-RO")
+
+/** „6–6,7 inch", „peste 4.000 mAh", „sub 12 h". */
+const rangeLabel = (p: PriceRange, unit: string | null): string => {
+  const u = unit ? ` ${unit}` : ""
+  if (p.min != null && p.max != null) return `${fmtNum(p.min)}–${fmtNum(p.max)}${u}`
+  if (p.min != null) return `peste ${fmtNum(p.min)}${u}`
+  if (p.max != null) return `sub ${fmtNum(p.max)}${u}`
+  return ""
+}
+
+const parseRange = (raw: string | undefined): PriceRange => {
+  const [a, b] = (raw ?? "").split("-")
+  const n = (s?: string) => {
+    if (s == null || s.trim() === "") return null
+    const v = Number(s)
+    return Number.isFinite(v) ? v : null
+  }
+  return { min: n(a), max: n(b) }
+}
+
+/**
+ * Selecția din URL, adusă la forma canonică pe care o recunoaște backendul:
+ * slug-uri în loc de nume vechi (`?brand=Apple` → `apple`), iar filtrele care
+ * nu se aplică aici (rămase în URL de pe altă categorie) cad. Tot panoul
+ * lucrează pe forma asta, deci și aplicarea curăță URL-ul.
+ */
+const canonicalize = (selected: SelectedFilters, facets: Facets): SelectedFilters => {
+  const attrs: Record<string, string[]> = {}
+  for (const a of facets.attributes) {
+    if (a.type === "number") {
+      const r = a.selected as PriceRange | null
+      const s = r ? serializePrice(r) : null
+      if (s) attrs[a.key] = [s]
+    } else {
+      const slugs = Array.isArray(a.selected) ? a.selected : []
+      if (slugs.length) attrs[a.key] = slugs
+    }
+  }
+  return { ...selected, attrs }
+}
+
+const ProductFilters = ({ facets, selected: rawSelected, resultCount }: ProductFiltersProps) => {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+
+  const selected = useMemo(
+    () => canonicalize(rawSelected, facets),
+    [rawSelected, facets]
+  )
 
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<SelectedFilters>(selected)
@@ -51,53 +93,56 @@ const ProductFilters = ({ facets, selected, resultCount }: ProductFiltersProps) 
   }, [JSON.stringify(selected)])
 
   const activeCount = countActiveFilters(selected)
-  const visibleKeys = useMemo(
-    () => FILTER_KEYS.filter((k) => facets[k].length > 0),
-    [facets]
-  )
 
   const pushFilters = (next: SelectedFilters) => {
     const params = new URLSearchParams(searchParams)
-    for (const k of FILTER_KEYS) {
-      // O apariție per valoare, nu o listă separată prin virgulă: numele de
-      // categorii conțin virgule („Console, Jocuri") și s-ar rupe la citire.
-      params.delete(k)
-      for (const v of next[k]) params.append(k, v)
+    // Toate cheile de filtru cunoscute: cele din răspuns și cele venite în URL
+    // (inclusiv cele care nu se mai aplică, ca să iasă din URL).
+    const attrKeys = new Set([
+      ...facets.attributes.map((a) => a.key),
+      ...Object.keys(rawSelected.attrs),
+    ])
+    for (const k of [...Array.from(attrKeys), "category", "price", "stock", "page"]) params.delete(k)
+
+    // O apariție per valoare, nu o listă separată prin virgulă: numele de
+    // categorii conțin virgule („Console, Jocuri") și s-ar rupe la citire.
+    for (const v of next.category) params.append("category", v)
+    for (const [k, values] of Object.entries(next.attrs)) {
+      for (const v of values) params.append(k, v)
     }
     const priceStr = serializePrice(next.price)
     if (priceStr) params.set("price", priceStr)
-    else params.delete("price")
-    params.delete("page")
+    if (next.stock) params.set("stock", "1")
+
     const qs = params.toString()
     router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }
 
-  const setDraftPrice = (next: PriceRange) =>
-    setDraft((prev) => ({ ...prev, price: next }))
+  const toggleIn = (list: string[], value: string) =>
+    list.some((v) => v.toLowerCase() === value.toLowerCase())
+      ? list.filter((v) => v.toLowerCase() !== value.toLowerCase())
+      : [...list, value]
 
-  const removePrice = () =>
-    pushFilters({ ...selected, price: { min: null, max: null } })
+  const toggleCategory = (value: string) =>
+    setDraft((prev) => ({ ...prev, category: toggleIn(prev.category, value) }))
 
-  const priceLabel = (p: PriceRange): string => {
-    const fmt = (n: number) => n.toLocaleString("ro-RO")
-    if (p.min != null && p.max != null) return `${fmt(p.min)}–${fmt(p.max)} lei`
-    if (p.min != null) return `peste ${fmt(p.min)} lei`
-    if (p.max != null) return `sub ${fmt(p.max)} lei`
-    return ""
-  }
-  const priceActive = selected.price.min != null || selected.price.max != null
-
-  const toggleDraft = (key: FilterKey, value: string) => {
+  const toggleAttr = (key: string, slug: string) =>
     setDraft((prev) => {
-      const has = prev[key].some((v) => v.toLowerCase() === value.toLowerCase())
-      return {
-        ...prev,
-        [key]: has
-          ? prev[key].filter((v) => v.toLowerCase() !== value.toLowerCase())
-          : [...prev[key], value],
-      }
+      const values = toggleIn(prev.attrs[key] ?? [], slug)
+      const attrs = { ...prev.attrs }
+      if (values.length) attrs[key] = values
+      else delete attrs[key]
+      return { ...prev, attrs }
     })
-  }
+
+  const setAttrRange = (key: string, range: PriceRange) =>
+    setDraft((prev) => {
+      const attrs = { ...prev.attrs }
+      const s = serializePrice(range)
+      if (s) attrs[key] = [s]
+      else delete attrs[key]
+      return { ...prev, attrs }
+    })
 
   const applyDraft = () => {
     pushFilters(draft)
@@ -110,21 +155,65 @@ const ProductFilters = ({ facets, selected, resultCount }: ProductFiltersProps) 
     setOpen(false)
   }
 
-  const removeChip = (key: FilterKey, value: string) => {
-    const next = {
-      ...selected,
-      [key]: selected[key].filter((v) => v.toLowerCase() !== value.toLowerCase()),
-    }
-    pushFilters(next)
-  }
-
-  if (!visibleKeys.length && !facets.priceRange) return null
+  if (!hasContent(facets)) return null
 
   const draftCount = countActiveFilters(draft)
 
-  const chips: { key: FilterKey; value: string }[] = FILTER_KEYS.flatMap((k) =>
-    selected[k].map((value) => ({ key: k, value }))
-  )
+  /* ---------------- Chips pentru selecția activă ---------------- */
+
+  type Chip = { id: string; label: string; remove: () => SelectedFilters }
+  const chips: Chip[] = []
+  if (selected.stock) {
+    chips.push({ id: "stock", label: "În stoc", remove: () => ({ ...selected, stock: false }) })
+  }
+  for (const value of selected.category) {
+    chips.push({
+      id: `category:${value}`,
+      label: value,
+      remove: () => ({ ...selected, category: toggleIn(selected.category, value) }),
+    })
+  }
+  for (const a of facets.attributes) {
+    const current = selected.attrs[a.key]
+    if (!current?.length) continue
+    const without = () => {
+      const attrs = { ...selected.attrs }
+      delete attrs[a.key]
+      return attrs
+    }
+    if (a.type === "number") {
+      chips.push({
+        id: `${a.key}:range`,
+        label: `${a.label}: ${rangeLabel(parseRange(current[0]), a.unit)}`,
+        remove: () => ({ ...selected, attrs: without() }),
+      })
+      continue
+    }
+    for (const slug of current) {
+      const v = a.values?.find((x) => x.slug === slug)
+      chips.push({
+        id: `${a.key}:${slug}`,
+        label: `${a.label}: ${v?.value ?? slug}`,
+        remove: () => {
+          const rest = current.filter((s) => s !== slug)
+          const attrs = without()
+          if (rest.length) attrs[a.key] = rest
+          return { ...selected, attrs }
+        },
+      })
+    }
+  }
+  const priceActive = selected.price.min != null || selected.price.max != null
+  if (priceActive) {
+    chips.push({
+      id: "price",
+      label: rangeLabel(selected.price, "lei"),
+      remove: () => ({ ...selected, price: { min: null, max: null } }),
+    })
+  }
+
+  const chipClass =
+    "group inline-flex items-center gap-1.5 rounded-full bg-brand-light px-3 py-1.5 text-xs font-bold text-brand-dark transition-colors hover:bg-brand-dark hover:text-white"
 
   return (
     <div className="mb-6 flex flex-wrap items-center gap-2.5">
@@ -146,28 +235,17 @@ const ProductFilters = ({ facets, selected, resultCount }: ProductFiltersProps) 
       </button>
 
       {/* Chips active */}
-      {chips.map(({ key, value }) => (
+      {chips.map((chip) => (
         <button
-          key={`${key}:${value}`}
+          key={chip.id}
           type="button"
-          onClick={() => removeChip(key, value)}
-          className="group inline-flex items-center gap-1.5 rounded-full bg-brand-light px-3 py-1.5 text-xs font-bold text-brand-dark transition-colors hover:bg-brand-dark hover:text-white"
+          onClick={() => pushFilters(chip.remove())}
+          className={chipClass}
         >
-          {value}
+          {chip.label}
           <X size={12} weight="bold" className="opacity-60 group-hover:opacity-100" />
         </button>
       ))}
-
-      {priceActive && (
-        <button
-          type="button"
-          onClick={removePrice}
-          className="group inline-flex items-center gap-1.5 rounded-full bg-brand-light px-3 py-1.5 text-xs font-bold text-brand-dark transition-colors hover:bg-brand-dark hover:text-white"
-        >
-          {priceLabel(selected.price)}
-          <X size={12} weight="bold" className="opacity-60 group-hover:opacity-100" />
-        </button>
-      )}
 
       {activeCount > 0 && (
         <button
@@ -213,23 +291,58 @@ const ProductFilters = ({ facets, selected, resultCount }: ProductFiltersProps) 
 
             <div className="flex-1 overflow-y-auto px-5 py-5">
               {facets.priceRange && (
-                <PriceSection
+                <RangeSection
+                  title="Preț (lei)"
                   range={facets.priceRange}
                   value={draft.price}
-                  onChange={setDraftPrice}
+                  step={1}
+                  onChange={(price) => setDraft((prev) => ({ ...prev, price }))}
                 />
               )}
-              {visibleKeys.map((key) => (
-                <FacetSection
-                  key={key}
-                  title={FILTER_LABELS[key]}
-                  values={facets[key]}
-                  isColor={key === "color"}
-                  collapseAfter={COLLAPSE_AFTER[key]}
-                  selectedValues={draft[key]}
-                  onToggle={(v) => toggleDraft(key, v)}
+
+              {(facets.stock.count > 0 || draft.stock) && (
+                <StockSection
+                  count={facets.stock.count}
+                  checked={draft.stock}
+                  onChange={(stock) => setDraft((prev) => ({ ...prev, stock }))}
                 />
-              ))}
+              )}
+
+              {facets.category.length > 0 && (
+                <FacetSection
+                  title="Categorie"
+                  values={facets.category}
+                  isColor={false}
+                  collapseAfter={COLLAPSE_AFTER}
+                  selectedValues={draft.category}
+                  onToggle={toggleCategory}
+                />
+              )}
+
+              {facets.attributes.map((a) =>
+                a.type === "number" ? (
+                  a.range ? (
+                    <RangeSection
+                      key={a.key}
+                      title={a.unit ? `${a.label} (${a.unit})` : a.label}
+                      range={a.range}
+                      value={parseRange(draft.attrs[a.key]?.[0])}
+                      step="any"
+                      onChange={(r) => setAttrRange(a.key, r)}
+                    />
+                  ) : null
+                ) : (
+                  <FacetSection
+                    key={a.key}
+                    title={a.label}
+                    values={a.values ?? []}
+                    isColor={a.display === "swatch"}
+                    collapseAfter={a.key === "brand" ? BRAND_COLLAPSE_AFTER : COLLAPSE_AFTER}
+                    selectedValues={draft.attrs[a.key] ?? []}
+                    onToggle={(slug) => toggleAttr(a.key, slug)}
+                  />
+                )
+              )}
             </div>
 
             <footer className="flex items-center gap-3 border-t border-brand-dark/10 px-5 py-4">
@@ -255,6 +368,50 @@ const ProductFilters = ({ facets, selected, resultCount }: ProductFiltersProps) 
   )
 }
 
+const hasContent = (f: Facets) =>
+  f.priceRange != null ||
+  f.stock.count > 0 ||
+  f.category.length > 0 ||
+  f.attributes.some((a: AttributeFacet) =>
+    a.type === "number" ? a.range != null : (a.values?.length ?? 0) > 0
+  )
+
+type StockSectionProps = {
+  count: number
+  checked: boolean
+  onChange: (next: boolean) => void
+}
+
+const StockSection = ({ count, checked, onChange }: StockSectionProps) => (
+  <section className="border-b border-brand-dark/10 py-4 first:pt-0">
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="flex w-full items-center justify-between gap-3 text-left"
+    >
+      <span className="text-sm font-bold text-brand-dark">
+        Doar produse în stoc
+        <span className="ml-1.5 text-[11px] text-brand-dark/40">{count}</span>
+      </span>
+      <span
+        className={clx(
+          "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+          checked ? "bg-brand-dark" : "bg-brand-dark/15"
+        )}
+      >
+        <span
+          className={clx(
+            "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
+            checked ? "translate-x-[22px]" : "translate-x-[2px]"
+          )}
+        />
+      </span>
+    </button>
+  </section>
+)
+
 type FacetSectionProps = {
   title: string
   values: FacetValue[]
@@ -274,6 +431,8 @@ const FacetSection = ({
 }: FacetSectionProps) => {
   const [expanded, setExpanded] = useState(false)
 
+  // Identitatea unei valori e slug-ul (filtrele de atribut) sau numele
+  // (categoriile, care n-au slug).
   const isSelected = (v: string) =>
     selectedValues.some((x) => x.toLowerCase() === v.toLowerCase())
 
@@ -283,7 +442,7 @@ const FacetSection = ({
   const visible = useMemo(() => {
     if (!collapsible || expanded) return values
     const head = values.slice(0, collapseAfter)
-    const tail = values.slice(collapseAfter).filter((v) => isSelected(v.value))
+    const tail = values.slice(collapseAfter).filter((v) => isSelected(v.slug ?? v.value))
     return [...head, ...tail]
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values, collapsible, expanded, collapseAfter, selectedValues])
@@ -297,7 +456,7 @@ const FacetSection = ({
       </h3>
       <div className="flex flex-wrap gap-2">
         {visible.map((v) => {
-          const active = isSelected(v.value)
+          const active = isSelected(v.slug ?? v.value)
           // Backendul întoarce count 0 doar pentru valori bifate pe care restul
           // selecției le exclude complet — le păstrează în listă tocmai ca să
           // poată fi debifate.
@@ -307,7 +466,7 @@ const FacetSection = ({
               <button
                 key={v.value}
                 type="button"
-                onClick={() => onToggle(v.value)}
+                onClick={() => onToggle(v.slug ?? v.value)}
                 aria-pressed={active}
                 className={clx(
                   "inline-flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3 text-xs font-bold transition-colors",
@@ -328,7 +487,7 @@ const FacetSection = ({
             <button
               key={v.value}
               type="button"
-              onClick={() => onToggle(v.value)}
+              onClick={() => onToggle(v.slug ?? v.value)}
               aria-pressed={active}
               className={clx(
                 "rounded-full border px-3.5 py-2 text-sm font-bold transition-colors",
@@ -374,16 +533,18 @@ const FacetSection = ({
   )
 }
 
-type PriceSectionProps = {
+type RangeSectionProps = {
+  title: string
   range: { min: number; max: number }
   value: PriceRange
+  step: number | "any"
   onChange: (next: PriceRange) => void
 }
 
-const PriceSection = ({ range, value, onChange }: PriceSectionProps) => {
+const RangeSection = ({ title, range, value, step, onChange }: RangeSectionProps) => {
   const toNum = (v: string): number | null => {
     if (v.trim() === "") return null
-    const n = Number(v)
+    const n = Number(v.replace(",", "."))
     return Number.isFinite(n) ? n : null
   }
   const inputClass =
@@ -391,16 +552,17 @@ const PriceSection = ({ range, value, onChange }: PriceSectionProps) => {
   return (
     <section className="border-b border-brand-dark/10 py-4 first:pt-0">
       <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-brand-dark/50">
-        Preț (lei)
+        {title}
       </h3>
       <div className="flex items-center gap-2.5">
         <label className="flex-1">
-          <span className="sr-only">Preț minim</span>
+          <span className="sr-only">{title} minim</span>
           <input
             type="number"
-            inputMode="numeric"
+            inputMode="decimal"
             min={0}
-            placeholder={`${range.min}`}
+            step={step}
+            placeholder={String(range.min)}
             value={value.min ?? ""}
             onChange={(e) => onChange({ ...value, min: toNum(e.target.value) })}
             className={inputClass}
@@ -408,12 +570,13 @@ const PriceSection = ({ range, value, onChange }: PriceSectionProps) => {
         </label>
         <span className="text-brand-dark/40">–</span>
         <label className="flex-1">
-          <span className="sr-only">Preț maxim</span>
+          <span className="sr-only">{title} maxim</span>
           <input
             type="number"
-            inputMode="numeric"
+            inputMode="decimal"
             min={0}
-            placeholder={`${range.max}`}
+            step={step}
+            placeholder={String(range.max)}
             value={value.max ?? ""}
             onChange={(e) => onChange({ ...value, max: toNum(e.target.value) })}
             className={inputClass}

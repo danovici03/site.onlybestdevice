@@ -1,12 +1,15 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import StoreTemplate from "@modules/store/templates"
 import { parseSelectedFilters } from "@lib/util/product-filters"
 
 export const metadata: Metadata = {
-  title: "Magazin",
-  description: "Explorează toate produsele noastre.",
+  title: "Magazin online: telefoane, laptopuri, tablete",
+  description:
+    "Toate produsele Onlybestdevice: telefoane, laptopuri, tablete, smartwatch-uri și accesorii noi, cu garanție 24 de luni, plată cu cardul sau în rate.",
+  alternates: canonical("/store"),
 }
 
 type Params = {

@@ -1,6 +1,10 @@
 import { HttpTypes } from "@medusajs/types"
 import { NextRequest, NextResponse } from "next/server"
 
+import {
+  brandCategoryRedirect,
+  withBrandParam,
+} from "@lib/util/brand-category-redirects"
 import { RETIRED_CATEGORY_HANDLES } from "@lib/util/retired-categories"
 
 const BACKEND_URL = process.env.MEDUSA_BACKEND_URL
@@ -193,6 +197,31 @@ function legacyRedirect(request: NextRequest): NextResponse | null {
   const retired = pathname.match(
     /^(?:\/([a-z]{2}))?\/categories\/(?:.*\/)?([^/]+)$/
   )
+  // Subcategoriile-marcă desființate (`/categories/tablete/apple`) → părintele
+  // filtrat pe marcă. Înaintea hărții de mai jos, care se uită doar la ultimul
+  // segment: `apple` e marcă sub patru părinți diferiți.
+  const catPath = pathname.match(/^(?:\/([a-z]{2}))?\/categories\/(.+)$/)
+  if (catPath) {
+    let segs = catPath[2].split("/")
+    try {
+      segs = segs.map((s) => decodeURIComponent(s))
+    } catch {
+      // Percent-encoding rupt — mergem pe forma brută.
+    }
+    const brandTarget = brandCategoryRedirect(segs)
+    if (brandTarget) {
+      const qs = new URLSearchParams(request.nextUrl.search)
+      qs.delete("page")
+      return NextResponse.redirect(
+        new URL(
+          `/${catPath[1] ?? DEFAULT_REGION}${brandTarget.path}${withBrandParam(qs, brandTarget.brand)}`,
+          request.url
+        ),
+        308
+      )
+    }
+  }
+
   if (retired) {
     let leaf = retired[2]
     try {
@@ -362,9 +391,17 @@ export async function middleware(request: NextRequest) {
   const queryString = request.nextUrl.search ? request.nextUrl.search : ""
 
   // If no country code is set, we redirect to the relevant region.
+  //
+  // Spre regiunea implicită redirectul e permanent (308): e destinația pentru
+  // oricine nu are altă regiune, inclusiv Googlebot, iar cu 307 Google păstrează
+  // `/` ca adresă proprie și nu mută semnalele pe `/ro`. Spre o regiune aleasă
+  // după IP rămâne 307 — ține de vizitator, nu de adresă.
   if (!urlHasCountryCode && countryCode) {
     redirectUrl = `${request.nextUrl.origin}/${countryCode}${redirectPath}${queryString}`
-    response = NextResponse.redirect(`${redirectUrl}`, 307)
+    response = NextResponse.redirect(
+      `${redirectUrl}`,
+      countryCode === DEFAULT_REGION ? 308 : 307
+    )
   } else if (!urlHasCountryCode && !countryCode) {
     // Handle case where no valid country code exists (empty regions)
     return new NextResponse(

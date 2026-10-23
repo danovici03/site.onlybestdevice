@@ -24,10 +24,10 @@ export const RETIRED_CATEGORY_HANDLES: Record<string, string> = {
   "desktop-pc-&-periferice": "/categories/desktop-pc-periferice",
   "încărcătoare-&-accesorii": "/categories/incarcatoare-accesorii",
   "smartwatch-&-wearables": "/categories/smartwatch-wearables",
-  "honor-2": "/categories/telefoane-mobile/honor",
-  // Redenumite, nu șterse — vechiul handle avea typo-ul din slug-ul WooCommerce.
-  "incarcatoare-acccesorii": "/categories/incarcatoare-accesorii",
-  "smartatch-si-wearables": "/categories/smartwatch-wearables",
+  // `honor-2`, `incarcatoare-acccesorii` și `smartatch-si-wearables` s-au mutat
+  // în `brand-category-redirects.json` (scriptul `cleanup-brand-categories.ts`
+  // le șterge din baza de date): Honor merge acum pe Telefoane filtrat pe marcă,
+  // iar harta aceea se verifică înaintea celei de aici.
   // Pubela WooCommerce pentru produse necategorizate: nu e o categorie de
   // navigat, iar produsele ei sunt oricum în catalog.
   "fara-categorie": "/store",

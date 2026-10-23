@@ -1,13 +1,15 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 
 import { parseSelectedFilters } from "@lib/util/product-filters"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import StoreTemplate from "@modules/store/templates"
 
 export const metadata: Metadata = {
-  title: "Oferte",
+  title: "Oferte telefoane, laptopuri și accesorii",
   description:
-    "Produsele onlybestdevice aflate acum la ofertă — telefoane, laptopuri și accesorii la preț redus.",
+    "Telefoane, laptopuri, tablete și accesorii la preț redus, cu garanție 24 de luni și plată cu cardul sau în rate. Toate produsele aflate acum la ofertă.",
+  alternates: canonical("/oferte"),
 }
 
 type Params = {

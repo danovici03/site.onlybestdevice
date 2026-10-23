@@ -65,7 +65,7 @@ export const account = {
     invalidCredentials:
       "Email sau parolă incorecte. Verifică datele și încearcă din nou.",
     marketingConsent:
-      "Vreau să primesc oferte și noutăți de la onlybestdevice. Mă pot dezabona oricând.",
+      "Vreau să primesc oferte și noutăți de la Onlybestdevice. Mă pot dezabona oricând.",
     termsConsent:
       "Prin crearea unui cont accepți {terms} și ai luat la cunoștință {privacy}.",
     termsLink: "Termenii și condițiile",
@@ -159,7 +159,7 @@ export const account = {
     detailsTitle: "Detalii comandă",
     backToOrders: "Înapoi la comenzile mele",
     requestReturn: "Solicită retur",
-    downloadInvoice: "Descarcă factura PDF",
+    downloadInvoice: "Descarcă factura",
     shippingAddress: "Adresă de livrare",
     billingAddress: "Adresă de facturare",
     paymentMethod: "Metodă de plată",
@@ -234,11 +234,11 @@ export const account = {
     emailNotice: "Am trimis confirmarea la",
     orderNumber: "Comanda nr.",
     placedOn: "Plasată la",
-    downloadInvoice: "Descarcă factura PDF",
+    downloadInvoice: "Descarcă factura",
     viewOrders: "Mergi la comenzile mele",
     guestAccountTitle: "Vrei să urmărești comanda mai ușor?",
     guestAccountBody:
-      "Creează-ți un cont cu emailul folosit la comandă — vezi statusul comenzilor, descarci facturi și faci retururi în câteva clickuri.",
+      "Creează-ți un cont cu emailul folosit la comandă — vezi statusul comenzilor și faci retururi în câteva clickuri.",
     guestAccountCta: "Creează-ți cont",
     itemsTitle: "Produse",
     summaryTitle: "Rezumat",
@@ -266,7 +266,7 @@ export const account = {
   // Preferences
   preferences: {
     title: "Preferințe",
-    subtitle: "Gestionează cum și când primești comunicări de la onlybestdevice.",
+    subtitle: "Gestionează cum și când primești comunicări de la Onlybestdevice.",
     marketingEmails: "Emailuri promoționale și noutăți",
     marketingHint:
       "Oferte, noutăți și conturi dedicate. Te poți dezabona oricând.",

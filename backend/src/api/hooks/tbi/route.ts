@@ -8,6 +8,7 @@ import {
   Modules,
 } from '@medusajs/framework/utils'
 import { getTbiClient } from '../../../modules/tbi-pay/client'
+import { isTbiOrder } from '../../../lib/tbi/submit-application'
 
 /**
  * Callback-ul de statusuri TBI (ReturnToProvider). TBI trimite un POST cu
@@ -96,10 +97,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.status(404).json({ received: false, error: 'order not found' })
   }
 
-  const isTbi = (order.payment_collections ?? [])
-    .flatMap((pc: any) => pc?.payment_sessions ?? [])
-    .some((ps: any) => ps?.provider_id?.includes('_tbi_'))
-  if (!isTbi) {
+  if (!isTbiOrder(order)) {
     return res
       .status(400)
       .json({ received: false, error: 'order is not financed via TBI' })
@@ -116,9 +114,10 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
   const orderModule = req.scope.resolve(Modules.ORDER)
   const saveStatus = () =>
+    // Doar cheia `tbi`: Medusa face merge pe primul nivel al metadata, iar
+    // restul (ex. `emails`) poate fi scris în paralel de alți subscriberi.
     orderModule.updateOrders(order.id, {
       metadata: {
-        ...meta,
         tbi: {
           ...(meta.tbi ?? {}),
           status: statusName,
