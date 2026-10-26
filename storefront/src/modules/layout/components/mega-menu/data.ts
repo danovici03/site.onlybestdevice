@@ -57,23 +57,29 @@ export type MegaMenuProduct = {
   price: string | null
 }
 
-// A curated category enriched at request time with its real products + count.
-export type ResolvedMegaItem = MegaMenuItem & {
+/** Produsele și numărul lor pentru o intrare din meniu. */
+export type MegaMenuItemData = {
   count: number
   products: MegaMenuProduct[]
 }
 
-export type ResolvedMegaRoot = Omit<MegaMenuRoot, "items" | "feature"> & {
-  items: ResolvedMegaItem[]
-  feature: MegaMenuRoot["feature"] & {
+/**
+ * Partea vie a meniului, servită de `/api/mega-menu/[countryCode]` și cerută
+ * de browser abia când se deschide meniul. Pe rădăcini, după `key`.
+ */
+export type MegaMenuData = Record<
+  string,
+  {
+    /** După `href`-ul intrării. */
+    items: Record<string, MegaMenuItemData>
     /**
      * Produsul real arătat în bannerul din dreapta. `null` cât timp magazinul
      * n-are nicio ofertă activă (sau backendul nu răspunde) — bannerul rămâne
      * atunci doar text, fără poză.
      */
-    product: MegaMenuProduct | null
+    feature: MegaMenuProduct | null
   }
-}
+>
 
 // Structură preluată de pe onlybestdevice.ro: un dropdown „Produse" cu toate
 // categoriile. Imaginile sunt placeholder (de înlocuit cu imaginile reale de categorie).
@@ -149,6 +155,41 @@ export const MEGA_MENU: MegaMenuRoot[] = [
         description: "Televizoare, audio și aparate foto.",
         image:
           "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&q=80",
+      },
+      // De aici în jos, categoriile care până acum se găseau doar din footer.
+      // Lista din panou se derulează, deci ordinea contează: primele șapte se
+      // văd fără scroll. „Folii de protecție" lipsește cât timp e goală.
+      {
+        label: "Console & jocuri",
+        href: "/categories/console-jocuri",
+        description: "Console, jocuri și accesorii de gaming.",
+      },
+      {
+        label: "Huse telefoane",
+        href: "/categories/huse-telefoane",
+        description: "Huse și carcase pentru telefoane.",
+      },
+      {
+        label: "Încărcătoare & accesorii",
+        href: "/categories/incarcatoare-accesorii",
+        description: "Încărcătoare, cabluri și accesorii.",
+      },
+      {
+        label: "Ceasuri",
+        href: "/categories/ceasuri-analogice",
+        description: "Ceasuri analogice clasice.",
+      },
+      {
+        // Handle-ul din Medusa e „pentru-casă"; URL-ul folosește slug-ul fără
+        // diacritice, ca restul site-ului (vezi `categorySlug`).
+        label: "Pentru casă",
+        href: "/categories/pentru-casa",
+        description: "Electrocasnice și gadgeturi pentru casă.",
+      },
+      {
+        label: "Diverse",
+        href: "/categories/diverse",
+        description: "Alte produse din catalog.",
       },
     ],
   },

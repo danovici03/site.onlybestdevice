@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation"
 
 import MegaMenuPanel from "@modules/layout/components/mega-menu/panel"
 import MegaMenuTriggers from "@modules/layout/components/mega-menu/triggers"
-import { ResolvedMegaRoot } from "@modules/layout/components/mega-menu/data"
 import SearchInput from "@modules/search/components/search-input"
 import SearchPanel from "@modules/search/components/search-panel"
 import SearchSheet from "@modules/search/components/search-sheet"
@@ -15,7 +14,6 @@ import NavShell from "./nav-shell"
 type Props = {
   left: ReactNode
   right: ReactNode
-  megaMenu: ResolvedMegaRoot[]
 }
 
 export default function NavInteractive(props: Props) {
@@ -26,7 +24,7 @@ export default function NavInteractive(props: Props) {
   )
 }
 
-function NavBody({ left, right, megaMenu }: Props) {
+function NavBody({ left, right }: Props) {
   const [active, setActive] = useState<string | null>(null)
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pathname = usePathname()
@@ -111,7 +109,6 @@ function NavBody({ left, right, megaMenu }: Props) {
 
       <div onMouseEnter={cancelDismiss} onMouseLeave={dismiss}>
         <MegaMenuPanel
-          roots={megaMenu}
           active={active}
           onActivate={activate}
           onDismiss={dismiss}
