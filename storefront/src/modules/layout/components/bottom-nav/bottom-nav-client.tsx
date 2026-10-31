@@ -81,7 +81,7 @@ export default function BottomNavClient({ cartIndicator }: Props) {
       aria-label="Navigare principală mobil"
       aria-hidden={!visible}
       className={clx(
-        "lg:hidden fixed inset-x-0 bottom-0 z-[60] bg-brand-dark text-white rounded-t-[2rem] shadow-[0_-12px_32px_-8px_rgba(0,0,0,0.35)] transition-transform duration-300 ease-out",
+        "bf-bottom-nav lg:hidden fixed inset-x-0 bottom-0 z-[60] bg-brand-dark text-white rounded-t-[2rem] shadow-[0_-12px_32px_-8px_rgba(0,0,0,0.35)] transition-transform duration-300 ease-out",
         visible ? "translate-y-0" : "translate-y-full"
       )}
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}

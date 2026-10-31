@@ -202,6 +202,7 @@ export const listCatalog = async ({
   selected,
   q,
   sale,
+  livePriceList,
   tag,
   sortBy = "created_at",
   page = 1,
@@ -215,6 +216,8 @@ export const listCatalog = async ({
   selected: SelectedFilters
   /** Doar produsele bifate „La ofertă" în admin. */
   sale?: boolean
+  /** Împreună cu `sale`: adaugă produsele din acest price list cât timp e în desfășurare. */
+  livePriceList?: string
   /** Doar produsele care poartă tagul dat (ex. `recomandat`). */
   tag?: string
   /** Căutare liberă; îngustează și fațetele, nu doar lista de produse. */
@@ -244,6 +247,7 @@ export const listCatalog = async ({
   if (categoryIds?.length) query.category_id = categoryIds
   if (collectionId) query.collection_id = collectionId
   if (sale) query.sale = "true"
+  if (livePriceList) query.live_price_list = livePriceList
   if (tag) query.tag = tag
   // Peste 120 de caractere `/store/catalog` respinge cererea cu 400, iar
   // clientul ar vedea „niciun rezultat" fără să înțeleagă de ce — un titlu de
