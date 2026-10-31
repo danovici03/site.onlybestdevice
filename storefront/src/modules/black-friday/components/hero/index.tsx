@@ -4,6 +4,7 @@ import { ArrowDown } from "@phosphor-icons/react/dist/ssr"
 import { useEffect, useState } from "react"
 
 import { BLACK_FRIDAY, getBlackFridayPhase } from "@lib/util/black-friday"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 const UNITS = [
   { label: "zile", ms: 86_400_000 },
@@ -22,9 +23,9 @@ const remainingUnits = (ms: number) => {
 }
 
 const LEAD = {
-  upcoming: `Reducerile încep pe 27 noiembrie. Până atunci, ofertele de acum sunt mai jos.`,
+  upcoming: `Reducerile încep pe ${BLACK_FRIDAY.startDate}.`,
   live: `Reduceri la telefoane, laptopuri și accesorii, ${BLACK_FRIDAY.dates}.`,
-  ended: "Campania s-a încheiat. Ofertele de acum rămân mai jos.",
+  ended: "Campania s-a încheiat.",
 }
 
 /**
@@ -55,12 +56,18 @@ const BlackFridayHero = ({ now: serverNow }: { now: number }) => {
       <div className="bf-hero-footer">
         <div>
           <p className="bf-lead">{LEAD[phase]}</p>
-          <a href="#oferte" className="bf-cta">
-            Vezi ofertele
-            <span className="bf-cta-icon">
-              <ArrowDown size={20} weight="bold" aria-hidden />
-            </span>
-          </a>
+          {phase === "live" ? (
+            <a href="#oferte" className="bf-cta">
+              Vezi ofertele
+              <span className="bf-cta-icon">
+                <ArrowDown size={20} weight="bold" aria-hidden />
+              </span>
+            </a>
+          ) : (
+            <LocalizedClientLink href="/oferte" className="bf-cta">
+              Vezi ofertele
+            </LocalizedClientLink>
+          )}
         </div>
 
         {phase !== "ended" && (

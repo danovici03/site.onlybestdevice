@@ -14,24 +14,29 @@
  * `storefront/src/lib/util/black-friday.ts`. Offsetul e explicit, +02:00 e ora
  * României iarna.
  *
- * Idempotent: dacă lista există deja, nu scrie nimic, doar spune dacă datele ei
- * diferă de cele de aici. O rulare repetată nu poate atinge prețurile adăugate
- * între timp de operator.
+ * Idempotent: dacă lista există deja, îi aliniază doar datele cu cele de aici.
+ * Prețurile adăugate de operator nu sunt atinse, deci scriptul se poate rula din
+ * nou oricând se mută campania.
  *
  * Rulare locală:  cd backend && yarn medusa exec ./src/scripts/seed-black-friday-price-list.ts
  * Rulare pe prod: docker exec <container-backend> npx medusa exec ./src/scripts/seed-black-friday-price-list.js
  *   Opțional: DRY_RUN=1 (doar raport, fără scriere)
  *
- * Lista e goală, deci nu schimbă niciun preț și nu cere revalidarea storefront-ului.
+ * Nu cere revalidarea storefront-ului: când începe lista, jobul o face singur.
+ * Dacă mutarea datelor o face să înceapă sau să se termine pe loc, cheamă
+ * manual `/api/revalidate`, pentru că `medusa exec` n-o face.
  */
 import { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import { createPriceListsWorkflow } from "@medusajs/medusa/core-flows"
+import {
+  createPriceListsWorkflow,
+  updatePriceListsWorkflow,
+} from "@medusajs/medusa/core-flows"
 
 const TITLE = "Black Friday"
-const DESCRIPTION = "Reducerile de Black Friday, 27–30 noiembrie 2026."
-const STARTS_AT = "2026-11-27T00:00:00+02:00"
-const ENDS_AT = "2026-11-30T23:59:59+02:00"
+const DESCRIPTION = "Reducerile de Black Friday, 1–7 noiembrie 2026."
+const STARTS_AT = "2026-11-01T00:00:00+02:00"
+const ENDS_AT = "2026-11-07T23:59:59+02:00"
 
 const DRY_RUN = /^(1|true|yes)$/i.test(process.env.DRY_RUN ?? "")
 
@@ -53,13 +58,34 @@ export default async function seedBlackFridayPriceList({ container }: ExecArgs) 
     const scheduled =
       sameMoment(existing.starts_at, STARTS_AT) &&
       sameMoment(existing.ends_at, ENDS_AT)
-    logger.info(`Lista „${TITLE}” există deja (${existing.id}). Nu scriu nimic.`)
-    if (!scheduled || existing.status !== "active") {
-      logger.warn(
-        `Lista e „${existing.status}”, ${existing.starts_at} – ${existing.ends_at}. ` +
-          `Așteptat: „active”, ${STARTS_AT} – ${ENDS_AT}. Corecteaz-o din Admin.`
-      )
+
+    if (existing.status !== "active") {
+      logger.warn(`Lista e „${existing.status}”. Treci-o pe „active” din Admin.`)
     }
+    if (scheduled) {
+      logger.info(`Lista „${TITLE}” are deja datele corecte. Nu scriu nimic.`)
+      return
+    }
+    if (DRY_RUN) {
+      logger.info(
+        `[dry-run] Aș muta lista „${TITLE}” de la ${existing.starts_at} – ${existing.ends_at} la ${STARTS_AT} – ${ENDS_AT}.`
+      )
+      return
+    }
+
+    await updatePriceListsWorkflow(container).run({
+      input: {
+        price_lists_data: [
+          {
+            id: existing.id,
+            description: DESCRIPTION,
+            starts_at: STARTS_AT,
+            ends_at: ENDS_AT,
+          },
+        ],
+      },
+    })
+    logger.info(`Gata: lista „${TITLE}” mutată la ${STARTS_AT} – ${ENDS_AT}.`)
     return
   }
 

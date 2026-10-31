@@ -77,10 +77,9 @@ const QuerySchema = z.object({
     .optional()
     .transform((v) => v === "true" || v === "1"),
   /**
-   * Titlul unui price list de campanie. Împreună cu `sale`, adaugă la selecție
-   * produsele din listă cât timp lista e în desfășurare. Înainte de start nu
-   * adaugă nimic: reducerea nu se aplică încă, deci produsul ar apărea în
-   * campanie la preț întreg.
+   * Doar produsele din price list-ul cu acest titlu, cât timp lista e în
+   * desfășurare. Înainte de start nu întoarce nimic: reducerea nu se aplică încă,
+   * deci produsul ar apărea în campanie la preț întreg.
    */
   live_price_list: z.string().trim().max(64).optional(),
   /**
@@ -339,15 +338,20 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   // Oferta îngustează SCOPE-ul, nu setul filtrat: pe /oferte fațetele și
   // intervalul de preț trebuie să descrie ofertele, nu tot catalogul.
   if (q.sale) {
-    const tagged = `p.id IN (
+    scopeWhere.push(
+      `p.id IN (
         SELECT pt.product_id
         FROM product_tags pt
         JOIN product_tag t ON t.id = pt.product_tag_id AND t.deleted_at IS NULL
         WHERE LOWER(t.value) = ${bind(SALE_TAG, "sale")}
       )`
+    )
+  }
+
+  // Campania îngustează scope-ul la fel ca oferta, ca fațetele să descrie lista.
+  if (q.live_price_list) {
     scopeWhere.push(
-      q.live_price_list
-        ? `(${tagged} OR p.id IN (
+      `p.id IN (
         SELECT v.product_id
         FROM price_list pl
         JOIN price pr ON pr.price_list_id = pl.id AND pr.deleted_at IS NULL
@@ -359,8 +363,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
           AND pl.rules_count = 0
           AND (pl.starts_at IS NULL OR pl.starts_at <= NOW())
           AND (pl.ends_at   IS NULL OR pl.ends_at   >= NOW())
-      ))`
-        : tagged
+      )`
     )
   }
 

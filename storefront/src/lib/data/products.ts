@@ -216,7 +216,7 @@ export const listCatalog = async ({
   selected: SelectedFilters
   /** Doar produsele bifate „La ofertă" în admin. */
   sale?: boolean
-  /** Împreună cu `sale`: adaugă produsele din acest price list cât timp e în desfășurare. */
+  /** Doar produsele din acest price list, cât timp e în desfășurare. */
   livePriceList?: string
   /** Doar produsele care poartă tagul dat (ex. `recomandat`). */
   tag?: string

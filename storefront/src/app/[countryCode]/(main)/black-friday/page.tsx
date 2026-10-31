@@ -42,21 +42,27 @@ type Props = {
 }
 
 /**
- * Selecția e cea de pe /oferte, bifa „La ofertă" din admin, plus produsele din
- * price list-ul campaniei cât timp acesta e în desfășurare. Totul e restrâns la
- * produsele în stoc: într-o campanie, un card „Stoc epuizat" doar ocupă loc.
+ * Produsele vin din price list-ul campaniei, restrânse la cele în stoc: într-o
+ * campanie, un card „Stoc epuizat" doar ocupă loc. În afara campaniei lista nu e
+ * în desfășurare, deci pagina rămâne doar cu hero-ul.
  */
 export default async function BlackFridayPage(props: Props) {
   const { countryCode } = await props.params
   const { category, page: pageParam } = await props.searchParams
   const page = Math.max(1, parseInt(pageParam ?? "1") || 1)
   const now = Date.now()
-  const phase = getBlackFridayPhase(now)
+
+  if (getBlackFridayPhase(now) !== "live") {
+    return (
+      <main className={`bf-page ${display.variable}`}>
+        <BlackFridayHero now={now} />
+      </main>
+    )
+  }
 
   const [{ products, count }, all] = await Promise.all([
     listCatalog({
       countryCode,
-      sale: true,
       livePriceList: BLACK_FRIDAY.priceList,
       selected: {
         ...emptySelectedFilters(),
@@ -70,7 +76,6 @@ export default async function BlackFridayPage(props: Props) {
     // și după ce clientul a ales una.
     listCatalog({
       countryCode,
-      sale: true,
       livePriceList: BLACK_FRIDAY.priceList,
       selected: { ...emptySelectedFilters(), stock: true },
       limit: 1,
@@ -86,7 +91,7 @@ export default async function BlackFridayPage(props: Props) {
 
       <section id="oferte" className="bf-deals">
         <h2 className="bf-display bf-deals-title">
-          {phase === "live" ? "Ofertele de Black Friday" : "Ofertele de acum"}
+          Ofertele de Black Friday
         </h2>
         <p className="bf-deals-note">
           Garanție 24 de luni, plată cu cardul sau în rate, retur gratuit în 14
