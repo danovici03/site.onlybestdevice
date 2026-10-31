@@ -3289,7 +3289,7 @@ __metadata:
 
 "@medusajs/dashboard@patch:@medusajs/dashboard@npm%3A2.13.6#~/.yarn/patches/@medusajs-dashboard-npm-2.13.6-5bf6d3a51c.patch":
   version: 2.13.6
-  resolution: "@medusajs/dashboard@patch:@medusajs/dashboard@npm%3A2.13.6#~/.yarn/patches/@medusajs-dashboard-npm-2.13.6-5bf6d3a51c.patch::version=2.13.6&hash=a5bca6"
+  resolution: "@medusajs/dashboard@patch:@medusajs/dashboard@npm%3A2.13.6#~/.yarn/patches/@medusajs-dashboard-npm-2.13.6-5bf6d3a51c.patch::version=2.13.6&hash=0271d6"
   dependencies:
     "@ariakit/react": "npm:^0.4.15"
     "@babel/runtime": "npm:^7.26.10"
@@ -3330,7 +3330,7 @@ __metadata:
     react-jwt: "npm:^1.2.0"
     react-router-dom: "npm:6.30.3"
     zod: "npm:3.25.76"
-  checksum: 10c0/752d3bfe362a7dafef7a519278b734050ff33102ffa766de85387a05cf2292bcdcc5d59f19c818fc25892fc8bb5109d26a160241b5fc64fc0ba6c3673a16f9ad
+  checksum: 10c0/ddf0772aa2b1442afffb959c900e49c66a9d43c5e96a3ef1e34c110f8b58d128ea2ed85558c4dd800e6d71a40dc7ca4e2cb5ec8c53c0248d631932bba29eb9b6
   languageName: node
   linkType: hard
 

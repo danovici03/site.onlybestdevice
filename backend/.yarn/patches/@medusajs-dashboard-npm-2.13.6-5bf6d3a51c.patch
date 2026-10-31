@@ -1,5 +1,5 @@
 diff --git a/dist/app.js b/dist/app.js
-index b7de0a149c86fe936d464b603767a77372aa7f0c..92929f2db99afa0a0c0b9d60f7778bf5162bb88b 100644
+index b7de0a149c86fe936d464b603767a77372aa7f0c..cc664ea8a44d748656656bba64c63b87675ad8ed 100644
 --- a/dist/app.js
 +++ b/dist/app.js
 @@ -111023,6 +111023,7 @@ var init_upload_media_form_item = __esm({
@@ -18,6 +18,79 @@ index b7de0a149c86fe936d464b603767a77372aa7f0c..92929f2db99afa0a0c0b9d60f7778bf5
        ".svg"
      ];
      UploadMediaFormItem = ({
+@@ -156497,6 +156499,20 @@ var init_use_price_list_grid_columns = __esm({
+             },
+             disableHiding: true
+           }),
++          columnHelper36.column({
++            id: "current_price",
++            header: "Preț actual",
++            cell: (context) => {
++              const entity = context.row.original;
++              if (isProductRow(entity)) {
++                return /* @__PURE__ */ (0, import_jsx_runtime368.jsx)(DataGrid.ReadonlyCell, { context });
++              }
++              const currency = currencies2[0]?.currency_code;
++              const price = entity.prices?.find((p) => p.currency_code === currency && !p.price_list_id);
++              return /* @__PURE__ */ (0, import_jsx_runtime368.jsx)(DataGrid.ReadonlyCell, { context, color: "normal", children: /* @__PURE__ */ (0, import_jsx_runtime368.jsx)("span", { className: "truncate", children: price ? new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 2 }).format(price.amount) + " lei" : "-" }) });
++            },
++            disableHiding: true
++          }),
+           ...createDataGridPriceColumns({
+             currencies: currencies2.map((c) => c.currency_code),
+             regions,
+@@ -156555,7 +156571,7 @@ var init_price_list_prices_form = __esm({
+         id: ids.map((id2) => id2.id),
+         limit: ids.length,
+         // TODO: Remove exclusion once we avoid including unnecessary relations by default in the query config
+-        fields: "title,thumbnail,*variants,-type,-collection,-options,-tags,-images,-sales_channels"
++        fields: "title,thumbnail,*variants,*variants.prices,-type,-collection,-options,-tags,-images,-sales_channels"
+       });
+       const { setCloseOnEscape } = useRouteModal();
+       const { setValue: setValue2 } = form;
+@@ -158405,7 +158421,7 @@ var init_price_list_prices_add_prices_form = __esm({
+         id: ids.map((id2) => id2.id),
+         limit: ids.length,
+         // TODO: Remove exclusion once we avoid including unnecessary relations by default in the query config
+-        fields: "title,thumbnail,*variants,-type,-collection,-options,-tags,-images,-sales_channels"
++        fields: "title,thumbnail,*variants,*variants.prices,-type,-collection,-options,-tags,-images,-sales_channels"
+       });
+       const { setValue: setValue2 } = form;
+       const { setCloseOnEscape } = useRouteModal();
+@@ -159228,7 +159244,7 @@ var init_price_list_prices_edit = __esm({
+         // Temporary until we support lazy loading in the DataGrid
+         price_list_id: [id2],
+         // TODO: Remove exclusion once we avoid including unnecessary relations by default in the query config
+-        fields: "title,thumbnail,*variants,-type,-collection,-options,-tags,-images,-sales_channels"
++        fields: "title,thumbnail,*variants,*variants.prices,-type,-collection,-options,-tags,-images,-sales_channels"
+       });
+       const { isReady, regions, currencies: currencies2, pricePreferences } = usePriceListCurrencyData();
+       const ready = !isLoading && !!price_list && !isProductsLoading && !!products && isReady;
+diff --git a/dist/chunk-IMBI6H2L.mjs b/dist/chunk-IMBI6H2L.mjs
+index 4aba32dbfe4904be99ba0eb6e1d22d74ab2a1f00..5502317efc028d8d7a1de1cf6eeb594c2d7ce117 100644
+--- a/dist/chunk-IMBI6H2L.mjs
++++ b/dist/chunk-IMBI6H2L.mjs
+@@ -94,6 +94,20 @@ var usePriceListGridColumns = ({
+         },
+         disableHiding: true
+       }),
++      columnHelper.column({
++        id: "current_price",
++        header: "Preț actual",
++        cell: (context) => {
++          const entity = context.row.original;
++          if (isProductRow(entity)) {
++            return /* @__PURE__ */ jsx(DataGrid.ReadonlyCell, { context });
++          }
++          const currency = currencies[0]?.currency_code;
++          const price = entity.prices?.find((p) => p.currency_code === currency && !p.price_list_id);
++          return /* @__PURE__ */ jsx(DataGrid.ReadonlyCell, { context, color: "normal", children: /* @__PURE__ */ jsx("span", { className: "truncate", children: price ? new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 2 }).format(price.amount) + " lei" : "-" }) });
++        },
++        disableHiding: true
++      }),
+       ...createDataGridPriceColumns({
+         currencies: currencies.map((c) => c.currency_code),
+         regions,
 diff --git a/dist/chunk-UQZ37AO7.mjs b/dist/chunk-UQZ37AO7.mjs
 index 9a0dd6e15d0a30f2b965cf9123ecb840d4cb36bd..e050ea75c7a7a5a5f01c65a9040057a409a36616 100644
 --- a/dist/chunk-UQZ37AO7.mjs
@@ -38,3 +111,42 @@ index 9a0dd6e15d0a30f2b965cf9123ecb840d4cb36bd..e050ea75c7a7a5a5f01c65a9040057a4
    ".svg"
  ];
  var UploadMediaFormItem = ({
+diff --git a/dist/price-list-create-65KQJN5J.mjs b/dist/price-list-create-65KQJN5J.mjs
+index 96c6db058900919cb4e4605b535599ff86d954bc..82a81e22f375bace22fd2cc29af5c44e9e7713d2 100644
+--- a/dist/price-list-create-65KQJN5J.mjs
++++ b/dist/price-list-create-65KQJN5J.mjs
+@@ -432,7 +432,7 @@ var PriceListPricesForm = ({
+     id: ids.map((id) => id.id),
+     limit: ids.length,
+     // TODO: Remove exclusion once we avoid including unnecessary relations by default in the query config
+-    fields: "title,thumbnail,*variants,-type,-collection,-options,-tags,-images,-sales_channels"
++    fields: "title,thumbnail,*variants,*variants.prices,-type,-collection,-options,-tags,-images,-sales_channels"
+   });
+   const { setCloseOnEscape } = useRouteModal();
+   const { setValue } = form;
+diff --git a/dist/price-list-prices-add-QTFYAOJK.mjs b/dist/price-list-prices-add-QTFYAOJK.mjs
+index f74e91a5ca22e423b4de237f6a83a6bff8a31deb..fe59acb7dac719c1f53173a71352def808ee3740 100644
+--- a/dist/price-list-prices-add-QTFYAOJK.mjs
++++ b/dist/price-list-prices-add-QTFYAOJK.mjs
+@@ -124,7 +124,7 @@ var PriceListPricesAddPricesForm = ({
+     id: ids.map((id) => id.id),
+     limit: ids.length,
+     // TODO: Remove exclusion once we avoid including unnecessary relations by default in the query config
+-    fields: "title,thumbnail,*variants,-type,-collection,-options,-tags,-images,-sales_channels"
++    fields: "title,thumbnail,*variants,*variants.prices,-type,-collection,-options,-tags,-images,-sales_channels"
+   });
+   const { setValue } = form;
+   const { setCloseOnEscape } = useRouteModal();
+diff --git a/dist/price-list-prices-edit-7XJQUM2F.mjs b/dist/price-list-prices-edit-7XJQUM2F.mjs
+index 52c53273dd940f6730e7c9000088853d65f13978..d11513ecb27ebe3ac1f5d75f62df4140ab625bcd 100644
+--- a/dist/price-list-prices-edit-7XJQUM2F.mjs
++++ b/dist/price-list-prices-edit-7XJQUM2F.mjs
+@@ -283,7 +283,7 @@ var PriceListPricesEdit = () => {
+     // Temporary until we support lazy loading in the DataGrid
+     price_list_id: [id],
+     // TODO: Remove exclusion once we avoid including unnecessary relations by default in the query config
+-    fields: "title,thumbnail,*variants,-type,-collection,-options,-tags,-images,-sales_channels"
++    fields: "title,thumbnail,*variants,*variants.prices,-type,-collection,-options,-tags,-images,-sales_channels"
+   });
+   const { isReady, regions, currencies, pricePreferences } = usePriceListCurrencyData();
+   const ready = !isLoading && !!price_list && !isProductsLoading && !!products && isReady;
