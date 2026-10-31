@@ -7,7 +7,6 @@ import CartButton from "@modules/layout/components/cart-button"
 import SideMenu from "@modules/layout/components/side-menu"
 import SideMenuCartCount from "@modules/layout/components/side-menu/cart-count"
 import { User } from "@phosphor-icons/react/dist/ssr"
-import { resolveMegaMenu } from "@modules/layout/components/mega-menu/resolve"
 import { SearchSheetTrigger } from "@modules/search/components/search-sheet"
 import NavInteractive from "./nav-interactive"
 
@@ -18,7 +17,9 @@ import NavInteractive from "./nav-interactive"
  * `SessionProvider`.
  */
 export default async function Nav({ countryCode }: { countryCode: string }) {
-  const [regions, locales, megaMenu] = await Promise.all([
+  // Produsele din mega-meniu nu se mai aduc aici: ar intra în payload-ul
+  // fiecărei pagini. Le cere panoul, la deschidere (`/api/mega-menu`).
+  const [regions, locales] = await Promise.all([
     // O eroare aici scoate tot site-ul, nu doar selectorul de țară. Cât
     // backend-ul repornește la un deploy, lista de regiuni lipsește pentru
     // câteva secunde — SideMenu are gardă pe `regions`, așa că degradăm la
@@ -30,7 +31,6 @@ export default async function Nav({ countryCode }: { countryCode: string }) {
         return [] as StoreRegion[]
       }),
     listLocales(),
-    resolveMegaMenu(countryCode),
   ])
 
   const left = (
@@ -46,7 +46,7 @@ export default async function Nav({ countryCode }: { countryCode: string }) {
         href="/"
         className="flex items-center shrink-0"
         data-testid="nav-store-link"
-        aria-label="onlybestdevice — Acasă"
+        aria-label="Onlybestdevice — Acasă"
       >
         {/* Lățimea vine din `--logo-w`, setat de fiecare bară în parte
             (NavShell): bara de sus și pastila de la scroll au spații diferite.
@@ -75,5 +75,5 @@ export default async function Nav({ countryCode }: { countryCode: string }) {
     </>
   )
 
-  return <NavInteractive left={left} right={right} megaMenu={megaMenu} />
+  return <NavInteractive left={left} right={right} />
 }

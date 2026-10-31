@@ -46,17 +46,32 @@ export const getCacheTag = async (tag: string): Promise<string> => {
  * combinații necerute până atunci, deci neintrate încă în cache: fiecare
  * combinație de sortare, filtru și pagină e o intrare separată, așa că o
  * ratare lasă zeci de intrări stricate, nu una.
+ *
+ * 12 ore, nu una: pe Vercel fiecare expirare a unei pagini vizitate înseamnă o
+ * regenerare facturată (ISR Writes + CPU), iar crawlerele trec pe la fiecare
+ * produs de zeci de ori pe zi. Cu TTL-ul de o oră (și cel de 5 minute de la
+ * recenzii, care îl cobora pentru toată pagina) un produs se regenera la
+ * aproape fiecare vizită — ISR Writes era cea mai mare linie din factură.
+ * Revalidarea prin tag merge acum (vezi redirectul apex→www din backend), deci
+ * plasa de siguranță poate fi rară.
+ *
+ * ATENȚIE: cel mai mic `revalidate` dintre fetch-urile unei pagini devine TTL-ul
+ * întregii pagini. Un fetch nou cu TTL scurt, pus în layout sau pe pagina de
+ * produs, aduce înapoi exact costul de mai sus.
  */
-const CACHE_TTL_SECONDS = 3600
+const CACHE_TTL_SECONDS = 12 * 60 * 60
 
 export const getCacheOptions = async (
-  tag: string
+  tag: string | string[]
 ): Promise<{ tags: string[]; revalidate: number } | {}> => {
   if (typeof window !== "undefined") {
     return {}
   }
 
-  return { tags: [tag], revalidate: CACHE_TTL_SECONDS }
+  return {
+    tags: Array.isArray(tag) ? tag : [tag],
+    revalidate: CACHE_TTL_SECONDS,
+  }
 }
 
 /**

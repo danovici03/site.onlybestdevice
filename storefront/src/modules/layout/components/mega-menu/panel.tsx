@@ -1,32 +1,48 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react"
+import { useParams } from "next/navigation"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { ArrowRight, Package } from "@phosphor-icons/react/dist/ssr"
+import {
+  ArrowRight,
+  CaretDown,
+  CaretUp,
+  Package,
+} from "@phosphor-icons/react/dist/ssr"
 import Image from "next/image"
 import { unsplashLoader } from "@lib/util/unsplash-loader"
 import {
+  MEGA_MENU,
+  MegaMenuData,
+  MegaMenuItem,
+  MegaMenuItemData,
   MegaMenuProduct,
-  ResolvedMegaItem,
-  ResolvedMegaRoot,
+  MegaMenuRoot,
 } from "./data"
 import { getCategoryIcon } from "./category-icons"
+import { useMegaMenuData } from "./use-mega-menu-data"
+
+// `undefined` cât se încarcă, `null` dacă n-a venit — vezi `useMegaMenuData`.
+type RootData = MegaMenuData[string] | null | undefined
 
 type Props = {
-  roots: ResolvedMegaRoot[]
   active: string | null
   onActivate: (key: string) => void
   onDismiss: () => void
 }
 
 export default function MegaMenuPanel({
-  roots,
   active,
   onActivate,
   onDismiss,
 }: Props) {
+  const roots = MEGA_MENU
   const visible = !!active
   const activeRoot = roots.find((r) => r.key === active)
+  const { countryCode } = useParams<{ countryCode: string }>()
+  // Produsele vin abia la prima deschidere: în HTML-ul paginilor rămân doar
+  // linkurile categoriilor.
+  const data = useMegaMenuData(countryCode, visible)
   // Which left category is currently highlighted (drives the center products).
   const [selectedHref, setSelectedHref] = useState<string | null>(null)
 
@@ -63,6 +79,9 @@ export default function MegaMenuPanel({
             {activeRoot ? (
               <PanelLayout
                 root={activeRoot}
+                // Odată venite datele, o rădăcină lipsă din JSON e „fără
+                // date", nu „se încarcă" — altfel scheletul ar pulsa la nesfârșit.
+                data={data === undefined ? undefined : data?.[activeRoot.key] ?? null}
                 selectedHref={selectedHref}
                 onSelect={setSelectedHref}
               />
@@ -71,6 +90,7 @@ export default function MegaMenuPanel({
               <div className="invisible">
                 <PanelLayout
                   root={roots[0]}
+                  data={undefined}
                   selectedHref={null}
                   onSelect={() => {}}
                 />
@@ -85,10 +105,12 @@ export default function MegaMenuPanel({
 
 function PanelLayout({
   root,
+  data,
   selectedHref,
   onSelect,
 }: {
-  root: ResolvedMegaRoot
+  root: MegaMenuRoot
+  data: RootData
   selectedHref: string | null
   onSelect: (href: string) => void
 }) {
@@ -101,12 +123,9 @@ function PanelLayout({
     <div className="grid grid-cols-12 gap-8 items-stretch">
       {/* Left: every category, hover to swap the center products. */}
       <nav className="col-span-3 border-r border-brand-dark/5 pr-6 flex flex-col">
-        <span className="text-xs uppercase tracking-[0.2em] font-bold text-brand-dark/40">
-          Toate categoriile
-        </span>
-        <ul className="mt-4 flex-1">
+        <CategoryScroller>
           {root.items.map((item) => (
-            <li key={item.href}>
+            <li key={item.href} className="snap-start">
               <CategoryListItem
                 item={item}
                 isSelected={selected?.href === item.href}
@@ -114,7 +133,7 @@ function PanelLayout({
               />
             </li>
           ))}
-        </ul>
+        </CategoryScroller>
         <LocalizedClientLink
           href={root.href}
           className="group/all inline-flex items-center gap-2 mt-4 text-sm font-bold text-brand-dark hover:text-brand-accent transition-colors"
@@ -130,16 +149,128 @@ function PanelLayout({
 
       {/* Center: the selected category's real products. */}
       {selected ? (
-        <CenterPanel item={selected} />
+        <CenterPanel
+          item={selected}
+          entry={data === undefined ? undefined : data?.items[selected.href] ?? null}
+        />
       ) : (
         <div className="col-span-6" />
       )}
 
       {/* Right: promo banner. */}
       <div className="col-span-3 flex">
-        <PromoCard root={root} />
+        <PromoCard root={root} data={data} />
       </div>
     </div>
+  )
+}
+
+// Un rând din listă: `py-2` + iconița de 32px.
+const ROW_PX = 48
+
+/**
+ * Lista de categorii, derulabilă. Minimum 7,5 rânduri: rândul tăiat jos
+ * spune, fără niciun text, că mai sunt categorii dedesubt.
+ * Gradientele și săgețile apar doar spre capătul în care mai e ceva de văzut.
+ *
+ * Fără bibliotecă de carusel: e scroll nativ (rotiță, trackpad, tastatură —
+ * focusul pe un link îl aduce singur în vedere), plus `scrollBy` pe săgeți.
+ */
+function CategoryScroller({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLUListElement>(null)
+  const [edges, setEdges] = useState({ top: false, bottom: false })
+
+  const update = useCallback(() => {
+    const el = ref.current
+    if (!el) return
+    const top = el.scrollTop > 1
+    const bottom = el.scrollTop + el.clientHeight < el.scrollHeight - 1
+    setEdges((prev) =>
+      prev.top === top && prev.bottom === bottom ? prev : { top, bottom }
+    )
+  }, [])
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [update])
+
+  const page = (direction: 1 | -1) => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ref.current?.scrollBy({
+      top: direction * ROW_PX * 3,
+      behavior: reduce ? "auto" : "smooth",
+    })
+  }
+
+  // Săgețile dublează doar ce fac deja rotița și tastatura, deci rămân în
+  // afara ordinii de tab și a cititorului de ecran.
+  const arrow =
+    "w-7 h-7 rounded-full flex items-center justify-center text-brand-dark/60 hover:text-brand-dark hover:bg-brand-light transition disabled:opacity-0 disabled:pointer-events-none"
+
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <span className="text-xs uppercase tracking-[0.2em] font-bold text-brand-dark/40">
+          Toate categoriile
+        </span>
+        <div
+          aria-hidden
+          className={`flex items-center gap-0.5 -my-1.5 transition-opacity ${
+            edges.top || edges.bottom ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => page(-1)}
+            disabled={!edges.top}
+            className={arrow}
+          >
+            <CaretUp size={14} weight="bold" />
+          </button>
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => page(1)}
+            disabled={!edges.bottom}
+            className={arrow}
+          >
+            <CaretDown size={14} weight="bold" />
+          </button>
+        </div>
+      </div>
+
+      {/* Lista e scoasă din flux (`absolute`), deci nu dictează înălțimea
+          rândului: umple ce lasă centrul și bannerul, dar nu sub 7,5 rânduri. */}
+      <div className="relative mt-4 flex-1" style={{ minHeight: ROW_PX * 7.5 }}>
+        {/* `-mx-3 px-3`: rândurile au `-mx-3` pentru fundalul de hover, iar
+            un container cu overflow le-ar tăia marginile. */}
+        <ul
+          ref={ref}
+          onScroll={update}
+          className="no-scrollbar absolute inset-0 overflow-y-auto overscroll-contain snap-y snap-proximity -mx-3 px-3"
+        >
+          {children}
+        </ul>
+        <div
+          aria-hidden
+          className={`pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-white to-transparent transition-opacity duration-200 ${
+            edges.top ? "opacity-100" : "opacity-0"
+          }`}
+        />
+        <div
+          aria-hidden
+          className={`pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent transition-opacity duration-200 ${
+            edges.bottom ? "opacity-100" : "opacity-0"
+          }`}
+        />
+      </div>
+    </>
   )
 }
 
@@ -148,7 +279,7 @@ function CategoryListItem({
   isSelected,
   onSelect,
 }: {
-  item: ResolvedMegaItem
+  item: MegaMenuItem
   isSelected: boolean
   onSelect: () => void
 }) {
@@ -159,7 +290,10 @@ function CategoryListItem({
   return (
     <LocalizedClientLink
       href={item.href}
-      onMouseEnter={onSelect}
+      // `pointermove`, nu `mouseenter`: lista se derulează, iar la scroll cu
+      // rotița rândurile trec pe sub cursorul nemișcat și fiecare ar deveni
+      // selectat, cu centrul pâlpâind prin toate categoriile.
+      onPointerMove={onSelect}
       onFocus={onSelect}
       className={`group/row flex items-center gap-3 rounded-xl px-3 py-2 -mx-3 transition-colors ${
         isSelected ? "bg-brand-light" : "hover:bg-brand-light"
@@ -200,7 +334,15 @@ function CategoryListItem({
   )
 }
 
-function CenterPanel({ item }: { item: ResolvedMegaItem }) {
+function CenterPanel({
+  item,
+  entry,
+}: {
+  item: MegaMenuItem
+  /** `undefined` cât se încarcă; `null` dacă n-avem date pentru intrare. */
+  entry: MegaMenuItemData | null | undefined
+}) {
+  const count = entry?.count
   return (
     <div className="col-span-6 flex flex-col">
       <div className="flex items-baseline justify-between mb-4">
@@ -211,7 +353,7 @@ function CenterPanel({ item }: { item: ResolvedMegaItem }) {
           href={item.href}
           className="group/all inline-flex items-center gap-1.5 text-sm font-bold text-brand-dark hover:text-brand-accent transition-colors"
         >
-          Vezi toate{item.count ? ` (${item.count})` : ""}
+          Vezi toate{count ? ` (${count})` : ""}
           <ArrowRight
             size={14}
             weight="bold"
@@ -220,9 +362,19 @@ function CenterPanel({ item }: { item: ResolvedMegaItem }) {
         </LocalizedClientLink>
       </div>
 
-      {item.products.length > 0 ? (
+      {entry === undefined ? (
+        <div className="grid grid-cols-3 gap-5" aria-hidden>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex flex-col">
+              <div className="aspect-square rounded-2xl bg-brand-light animate-pulse" />
+              <div className="mt-3 h-4 w-3/4 rounded bg-brand-light animate-pulse" />
+              <div className="mt-1.5 h-4 w-1/3 rounded bg-brand-light animate-pulse" />
+            </div>
+          ))}
+        </div>
+      ) : entry && entry.products.length > 0 ? (
         <div className="grid grid-cols-3 gap-5">
-          {item.products.slice(0, 3).map((product) => (
+          {entry.products.slice(0, 3).map((product) => (
             <ProductCard key={product.handle} product={product} />
           ))}
         </div>
@@ -265,7 +417,7 @@ function ProductCard({ product }: { product: MegaMenuProduct }) {
 }
 
 // Shown when a category has no products yet — links through to the category.
-function EmptyState({ item }: { item: ResolvedMegaItem }) {
+function EmptyState({ item }: { item: MegaMenuItem }) {
   return (
     <LocalizedClientLink
       href={item.href}
@@ -302,15 +454,17 @@ function EmptyState({ item }: { item: ResolvedMegaItem }) {
   )
 }
 
-function PromoCard({ root }: { root: ResolvedMegaRoot }) {
-  const product = root.feature.product
+function PromoCard({ root, data }: { root: MegaMenuRoot; data: RootData }) {
+  const product = data?.feature ?? null
 
   return (
     <LocalizedClientLink
       href={root.feature.href ?? root.href}
       className="group/promo flex w-full min-h-[300px] flex-col rounded-2xl overflow-hidden bg-brand-dark p-5"
     >
-      {product?.thumbnail && (
+      {data === undefined ? (
+        <div className="flex-1 min-h-[132px] rounded-xl bg-white/10 animate-pulse" />
+      ) : product?.thumbnail && (
         // Pozele de catalog sunt decupaje pe fundal alb, deci stau pe o plăcuță
         // deschisă și `object-contain`, ca în cardurile din centru. Peste un
         // fundal închis, `object-cover` ar tăia produsul și l-ar lăsa într-un

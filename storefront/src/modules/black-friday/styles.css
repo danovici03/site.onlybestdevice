@@ -1,0 +1,347 @@
+/*
+ * Pagina Black Friday: un ecran OLED stins, negru pur. Lumina vine doar de la
+ * titlurile în portocaliul brandului și de la pozele produselor pe fond alb.
+ * Portocaliul și rozul sunt capetele gradientului din pastila logo-ului.
+ */
+
+.bf-page {
+  --bf-orange: #f6921e;
+  --bf-pink: #d91c5c;
+  --bf-muted: rgb(255 255 255 / 0.62);
+  --bf-line: rgb(255 255 255 / 0.18);
+  --bf-gutter: clamp(1rem, 3.2vw, 3rem);
+  background: #000;
+  color: #fff;
+}
+
+.bf-display {
+  font-family: var(--font-bf-display), sans-serif;
+  font-variation-settings: "wdth" 125;
+  font-weight: 800;
+}
+
+/* Hero */
+
+.bf-hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2.5rem;
+  min-height: calc(100svh - var(--topbar-h) - 5rem);
+  padding: 1rem var(--bf-gutter) 2.5rem;
+}
+
+.bf-wordmark {
+  /* „Friday" umple lățimea pe ecrane înguste; pe cele late plafonul de înălțime
+     păstrează numărătoarea în primul ecran. */
+  font-size: min(26vw, 28svh);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+  margin-left: -0.05em;
+  padding-bottom: 0.14em;
+  color: transparent;
+  background: linear-gradient(100deg, var(--bf-orange) 44%, #161616 56%);
+  background-size: 260% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: bf-wake 1.5s cubic-bezier(0.65, 0, 0.2, 1) 0.15s forwards;
+}
+
+@keyframes bf-wake {
+  to {
+    background-position: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bf-wordmark {
+    animation: none;
+    background-position: 0 0;
+  }
+}
+
+/* Pe mobil numărătoarea urcă deasupra butonului, ca să rămână în primul ecran. */
+.bf-hero-footer {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2rem;
+}
+
+.bf-lead {
+  max-width: 30rem;
+  margin-bottom: 1.25rem;
+  color: var(--bf-muted);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* Butonul preia pastila „BEST" din logo: colțuri mari, gradient portocaliu-roz.
+   La hover gradientul alunecă spre roz, iar săgeata arată încotro duce. */
+.bf-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.25rem;
+  min-height: 3.75rem;
+  padding: 0.5rem 0.5rem 0.5rem 1.75rem;
+  border-radius: 1.125rem;
+  background: linear-gradient(100deg, var(--bf-orange) 55%, var(--bf-pink));
+  background-size: 180% 100%;
+  color: #000;
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  box-shadow: 0 0 48px -8px rgb(246 146 30 / 0.55);
+  transition:
+    background-position 300ms ease-out,
+    box-shadow 300ms ease-out;
+}
+
+.bf-cta-icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  background: #000;
+  color: var(--bf-orange);
+  transition: transform 300ms ease-out;
+}
+
+.bf-cta:hover {
+  background-position: 45% 0;
+  box-shadow: 0 0 64px -4px rgb(246 146 30 / 0.75);
+}
+
+.bf-cta:hover .bf-cta-icon {
+  transform: translateY(3px);
+}
+
+.bf-countdown-label {
+  margin-bottom: 0.5rem;
+  color: var(--bf-muted);
+  font-size: 0.875rem;
+}
+
+.bf-countdown {
+  display: flex;
+  gap: clamp(1rem, 3vw, 2.5rem);
+}
+
+.bf-countdown dd {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.bf-countdown dt {
+  margin-top: 0.375rem;
+  color: var(--bf-muted);
+  font-size: 0.8125rem;
+}
+
+/* Lista de oferte */
+
+.bf-deals {
+  padding: 3rem var(--bf-gutter) 0;
+  border-top: 1px solid var(--bf-line);
+  scroll-margin-top: 5.5rem;
+}
+
+.bf-deals-title {
+  font-size: clamp(1.75rem, 4.5vw, 3.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--bf-orange);
+}
+
+.bf-deals-note {
+  margin-top: 0.625rem;
+  color: var(--bf-muted);
+}
+
+.bf-filters {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1.75rem calc(var(--bf-gutter) * -1) 2rem;
+  padding: 0 var(--bf-gutter);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.bf-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.bf-filter {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border: 1px solid var(--bf-line);
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: border-color 150ms;
+}
+
+.bf-filter:hover {
+  border-color: #fff;
+}
+
+.bf-filter[aria-current="true"] {
+  background: var(--bf-orange);
+  border-color: var(--bf-orange);
+  color: #000;
+}
+
+.bf-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2rem 0.875rem;
+}
+
+@media (min-width: 640px) {
+  .bf-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2.5rem 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .bf-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .bf-hero-footer {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+}
+
+.bf-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.bf-card-image {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 0.875rem;
+  background: #fff;
+}
+
+.bf-card-discount {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0.3rem 0.7rem 0.35rem 0.6rem;
+  border-bottom-right-radius: 0.875rem;
+  background: #000;
+  color: #fff;
+  font-size: clamp(1rem, 2.4vw, 1.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.bf-card-title {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.35;
+  min-height: 2.7em; /* două rânduri, ca prețurile să stea pe aceeași linie */
+  color: var(--bf-muted);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.bf-card:hover .bf-card-title {
+  color: #fff;
+}
+
+.bf-card-prices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.bf-card-price {
+  font-size: clamp(1.0625rem, 2vw, 1.375rem);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.bf-card-old-price {
+  color: var(--bf-muted);
+  font-size: 0.8125rem;
+  text-decoration: line-through;
+  white-space: nowrap;
+}
+
+.bf-card-installment {
+  margin-top: 0.125rem;
+  color: var(--bf-muted);
+  font-size: 0.75rem;
+}
+
+.bf-empty {
+  padding: 2rem 0 1rem;
+}
+
+.bf-empty a,
+.bf-pages a {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.bf-pages {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 3rem;
+  color: var(--bf-muted);
+  font-size: 0.9375rem;
+}
+
+.bf-pages a {
+  color: #fff;
+  font-weight: 600;
+}
+
+.bf-page a:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+/* Restul site-ului din jurul paginii: negru și el cât timp pagina e deschisă. */
+
+html:has(.bf-page),
+body:has(.bf-page) {
+  background: #000;
+}
+
+body:has(.bf-page) .bf-topbar,
+body:has(.bf-page) .bf-bottom-nav,
+body:has(.bf-page) footer {
+  background: #000;
+}
+
+body:has(.bf-page) .bf-bottom-nav {
+  border-top: 1px solid rgb(255 255 255 / 0.18);
+}
+
+body:has(.bf-page) footer {
+  margin-top: 4rem;
+  border-radius: 0;
+  border-top: 1px solid rgb(255 255 255 / 0.18);
+}

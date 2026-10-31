@@ -1,0 +1,164 @@
+{
+  "apple-laptop": {
+    "parentHandle": "laptop",
+    "parentPath": "laptop",
+    "path": "laptop/apple",
+    "brandSlug": "apple"
+  },
+  "apple": {
+    "parentHandle": "telefoane-mobile",
+    "parentPath": "telefoane-mobile",
+    "path": "telefoane-mobile/apple",
+    "brandSlug": "apple"
+  },
+  "apple-tablete": {
+    "parentHandle": "tablete",
+    "parentPath": "tablete",
+    "path": "tablete/apple",
+    "brandSlug": "apple"
+  },
+  "blackview": {
+    "parentHandle": "tablete",
+    "parentPath": "tablete",
+    "path": "tablete/blackview",
+    "brandSlug": "blackview"
+  },
+  "google": {
+    "parentHandle": "telefoane-mobile",
+    "parentPath": "telefoane-mobile",
+    "path": "telefoane-mobile/google",
+    "brandSlug": "google"
+  },
+  "honor": {
+    "parentHandle": "telefoane-mobile",
+    "parentPath": "telefoane-mobile",
+    "path": "telefoane-mobile/honor",
+    "brandSlug": "honor"
+  },
+  "motorola": {
+    "parentHandle": "telefoane-mobile",
+    "parentPath": "telefoane-mobile",
+    "path": "telefoane-mobile/motorola",
+    "brandSlug": "motorola"
+  },
+  "msi": {
+    "parentHandle": "laptop",
+    "parentPath": "laptop",
+    "path": "laptop/msi",
+    "brandSlug": "msi"
+  },
+  "nothing-phone": {
+    "parentHandle": "telefoane-mobile",
+    "parentPath": "telefoane-mobile",
+    "path": "telefoane-mobile/nothing-phone",
+    "brandSlug": "nothing"
+  },
+  "oneplus": {
+    "parentHandle": "telefoane-mobile",
+    "parentPath": "telefoane-mobile",
+    "path": "telefoane-mobile/oneplus",
+    "brandSlug": "oneplus"
+  },
+  "oppo": {
+    "parentHandle": "telefoane-mobile",
+    "parentPath": "telefoane-mobile",
+    "path": "telefoane-mobile/oppo",
+    "brandSlug": "oppo"
+  },
+  "oukitel": {
+    "parentHandle": "telefoane-mobile",
+    "parentPath": "telefoane-mobile",
+    "path": "telefoane-mobile/oukitel",
+    "brandSlug": "oukitel"
+  },
+  "poco": {
+    "parentHandle": "telefoane-mobile",
+    "parentPath": "telefoane-mobile",
+    "path": "telefoane-mobile/poco",
+    "brandSlug": "xiaomi"
+  },
+  "realme": {
+    "parentHandle": "telefoane-mobile",
+    "parentPath": "telefoane-mobile",
+    "path": "telefoane-mobile/realme",
+    "brandSlug": "realme"
+  },
+  "samsung-laptop": {
+    "parentHandle": "laptop",
+    "parentPath": "laptop",
+    "path": "laptop/samsung",
+    "brandSlug": "samsung"
+  },
+  "samsung": {
+    "parentHandle": "telefoane-mobile",
+    "parentPath": "telefoane-mobile",
+    "path": "telefoane-mobile/samsung",
+    "brandSlug": "samsung"
+  },
+  "samsung-tablete": {
+    "parentHandle": "tablete",
+    "parentPath": "tablete",
+    "path": "tablete/samsung",
+    "brandSlug": "samsung"
+  },
+  "xiaomi": {
+    "parentHandle": "tablete",
+    "parentPath": "tablete",
+    "path": "tablete/xiaomi",
+    "brandSlug": "xiaomi"
+  },
+  "xiaomi-telefoane-mobile": {
+    "parentHandle": "telefoane-mobile",
+    "parentPath": "telefoane-mobile",
+    "path": "telefoane-mobile/xiaomi",
+    "brandSlug": "xiaomi"
+  },
+  "doogee": {
+    "parentHandle": "tablete",
+    "parentPath": "tablete",
+    "path": "tablete/doogee",
+    "brandSlug": "doogee"
+  },
+  "apple-smartatch-si-wearables": {
+    "parentHandle": "smartwatch-wearables",
+    "parentPath": "smartwatch-wearables",
+    "path": "smartwatch-wearables/apple",
+    "brandSlug": "apple"
+  },
+  "garmin": {
+    "parentHandle": "smartwatch-wearables",
+    "parentPath": "smartwatch-wearables",
+    "path": "smartwatch-wearables/garmin",
+    "brandSlug": "garmin"
+  },
+  "samsung-desktop-pc-periferice": {
+    "parentHandle": "desktop-pc-periferice",
+    "parentPath": "desktop-pc-periferice",
+    "path": "desktop-pc-periferice/samsung",
+    "brandSlug": "samsung"
+  },
+  "xiaomi-smartatch-si-wearables": {
+    "parentHandle": "smartwatch-wearables",
+    "parentPath": "smartwatch-wearables",
+    "path": "smartwatch-wearables/xiaomi",
+    "brandSlug": "xiaomi"
+  },
+  "honor-2": {
+    "parentHandle": "telefoane-mobile",
+    "parentPath": "telefoane-mobile",
+    "path": "honor",
+    "brandSlug": "honor"
+  },
+  "incarcatoare-acccesorii": {
+    "parentHandle": "incarcatoare-accesorii",
+    "parentPath": "incarcatoare-accesorii",
+    "path": "incarcatoare-acccesorii",
+    "brandSlug": null
+  },
+  "smartatch-si-wearables": {
+    "parentHandle": "smartwatch-wearables",
+    "parentPath": "smartwatch-wearables",
+    "path": "smartatch-si-wearables",
+    "brandSlug": null
+  }
+}

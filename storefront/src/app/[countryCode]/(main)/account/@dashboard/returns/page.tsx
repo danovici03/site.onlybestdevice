@@ -8,7 +8,7 @@ import { account as t } from "@lib/i18n/account.it"
 
 export const metadata: Metadata = {
   title: "Retururi",
-  description: "Cererile tale de retur pe onlybestdevice.",
+  description: "Cererile tale de retur pe Onlybestdevice.",
 }
 
 type ReturnRequest = {

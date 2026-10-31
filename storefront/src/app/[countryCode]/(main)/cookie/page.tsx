@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { canonical } from "@lib/util/canonical"
 import InfoPageLayout from "@modules/suport/components/info-page-layout"
 import ManagePreferencesLink from "@modules/layout/components/cookie-consent/manage-preferences-link"
 
@@ -6,6 +7,7 @@ export const metadata: Metadata = {
   title: "Politica de cookie-uri",
   description:
     "Informații despre utilizarea cookie-urilor și a altor instrumente de urmărire, conform Legii 506/2004 și GDPR.",
+  alternates: canonical("/cookie"),
 }
 
 const REVISION_DATE = "iunie 2026"

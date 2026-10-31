@@ -5,12 +5,16 @@ import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import {
-  FILTER_KEYS,
   emptyFacets,
   serializePrice,
   type Facets,
   type SelectedFilters,
 } from "@lib/util/product-filters"
+import {
+  MAX_PRODUCT_TAGS,
+  PRODUCT_LISTS_TAG,
+  productTag,
+} from "@lib/util/cache-tags"
 import { getCacheOptions } from "./cookies"
 import { getRegion, retrieveRegion } from "./regions"
 
@@ -19,11 +23,18 @@ export const listProducts = async ({
   queryParams,
   countryCode,
   regionId,
+  listTag = true,
 }: {
   pageParam?: number
   queryParams?: HttpTypes.FindParams & HttpTypes.StoreProductListParams
   countryCode?: string
   regionId?: string
+  /**
+   * Doar pentru listări (fără `handle`/`id`): `false` le scoate din tagul
+   * `product-lists`, revalidat la fiecare produs intrat/ieșit din stoc. Pentru
+   * listările randate pe fiecare pagină de produs — vezi `cache-tags.ts`.
+   */
+  listTag?: boolean
 }): Promise<{
   response: { products: HttpTypes.StoreProduct[]; count: number }
   nextPage: number | null
@@ -59,7 +70,7 @@ export const listProducts = async ({
   const headers = {}
 
   const next = {
-    ...(await getCacheOptions("products")),
+    ...(await getCacheOptions(productCacheTags(queryParams, listTag))),
   }
 
   return sdk.client
@@ -105,6 +116,25 @@ export const listProducts = async ({
         queryParams,
       }
     })
+}
+
+/**
+ * Tagurile unei cereri `/store/products` (vezi `cache-tags.ts`): cererile
+ * directe primesc tagul fiecărui produs cerut, listările `product-lists`.
+ */
+function productCacheTags(
+  queryParams: HttpTypes.StoreProductListParams | undefined,
+  listTag: boolean
+): string[] {
+  const keys = [queryParams?.handle, queryParams?.id]
+    .flat()
+    .filter((k): k is string => typeof k === "string" && k.length > 0)
+
+  if (keys.length && keys.length <= MAX_PRODUCT_TAGS) {
+    return ["products", ...keys.map(productTag)]
+  }
+
+  return listTag || keys.length ? ["products", PRODUCT_LISTS_TAG] : ["products"]
 }
 
 /**
@@ -172,10 +202,12 @@ export const listCatalog = async ({
   selected,
   q,
   sale,
+  livePriceList,
   tag,
   sortBy = "created_at",
   page = 1,
   limit = 12,
+  listTag = true,
 }: {
   countryCode: string
   categoryIds?: string[]
@@ -184,6 +216,8 @@ export const listCatalog = async ({
   selected: SelectedFilters
   /** Doar produsele bifate „La ofertă" în admin. */
   sale?: boolean
+  /** Doar produsele din acest price list, cât timp e în desfășurare. */
+  livePriceList?: string
   /** Doar produsele care poartă tagul dat (ex. `recomandat`). */
   tag?: string
   /** Căutare liberă; îngustează și fațetele, nu doar lista de produse. */
@@ -191,6 +225,8 @@ export const listCatalog = async ({
   sortBy?: SortOptions
   page?: number
   limit?: number
+  /** `false` pentru listările de pe fiecare pagină (mega-meniul) — vezi `cache-tags.ts`. */
+  listTag?: boolean
 }): Promise<{ products: HttpTypes.StoreProduct[]; count: number; facets: Facets }> => {
   const region = await getRegion(countryCode)
   if (!region) {
@@ -202,10 +238,16 @@ export const listCatalog = async ({
     sort: sortBy,
     page,
     limit,
+    // Versiunea formei răspunsului. Face parte din cheia de cache: răspunsurile
+    // păstrate în Data Cache cu forma veche a fațetelor (care supraviețuiește
+    // unui deploy) nu mai pot fi servite codului nou. Se crește la orice
+    // schimbare incompatibilă a lui `facets`. Backendul ignoră parametrul.
+    facets_v: 2,
   }
   if (categoryIds?.length) query.category_id = categoryIds
   if (collectionId) query.collection_id = collectionId
   if (sale) query.sale = "true"
+  if (livePriceList) query.live_price_list = livePriceList
   if (tag) query.tag = tag
   // Peste 120 de caractere `/store/catalog` respinge cererea cu 400, iar
   // clientul ar vedea „niciun rezultat" fără să înțeleagă de ce — un titlu de
@@ -215,15 +257,23 @@ export const listCatalog = async ({
   // Absent = fațeta de categorie oferă nivelul de top.
   if (facetParentId) query.facet_parent_id = facetParentId
 
-  for (const key of FILTER_KEYS) {
-    // Array, nu CSV: valorile pot conține virgule (numele de categorii).
-    if (selected[key].length) query[key] = selected[key]
+  if (selected.category.length) query.category = selected.category
+  // Filtrele de atribut pleacă așa cum sunt în URL; backendul le potrivește pe
+  // filtrele care se aplică aici și le ignoră pe celelalte. Array, nu CSV:
+  // valorile pot conține virgule.
+  for (const [key, values] of Object.entries(selected.attrs)) {
+    if (values.length) query[key] = values
   }
   const price = serializePrice(selected.price)
   if (price) query.price = price
+  if (selected.stock) query.stock = "1"
 
   const headers = {}
-  const next = { ...(await getCacheOptions("products")) }
+  const next = {
+    ...(await getCacheOptions(
+      listTag ? ["products", PRODUCT_LISTS_TAG] : ["products"]
+    )),
+  }
 
   return sdk.client
     .fetch<{
@@ -237,6 +287,9 @@ export const listCatalog = async ({
       next,
       cache: "force-cache",
     })
+    // Plasă de siguranță pentru un răspuns fără câmpurile noi (backend vechi în
+    // timpul unui deploy): panoul de filtre citește `attributes` și `stock`.
+    .then((r) => ({ ...r, facets: { ...emptyFacets(), ...(r.facets ?? {}) } }))
     .catch((e) => {
       // Fără log, un catalog picat arată exact ca „niciun produs găsit".
       console.error("[catalog] cererea a eșuat:", e?.message ?? e)

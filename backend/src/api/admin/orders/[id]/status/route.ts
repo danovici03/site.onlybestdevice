@@ -5,6 +5,7 @@ import { z } from "zod"
 
 import { hasBankAccount } from "../../../../../lib/company/bank-account"
 import { ORDER_EMAIL_FIELDS } from "../../../../../lib/orders/order-emails"
+import { describeOrderPayment } from "../../../../../lib/orders/payment-method"
 import {
   ORDER_STATUS_CODES,
   ORDER_STATUS_FIELDS,
@@ -79,6 +80,9 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       payment_status: (order as any).payment_status ?? null,
       fulfillment_status: (order as any).fulfillment_status ?? null,
     },
+    // Pagina comenzii nu încarcă sesiunile de plată, deci widget-ul n-ar
+    // vedea providerul la un card neachitat; îl dăm gata descris de aici.
+    payment_method: describeOrderPayment(order),
     can_send_payment_link: canSendPaymentLink(order),
     payment_link_blocked_reason: linkBlockedReason,
     payment_link: metadata.payment_link ?? null,
@@ -188,20 +192,29 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     at: new Date().toISOString(),
     by: (req as any).auth_context?.actor_id ?? null,
     snapshot: orderStateSnapshot(order),
+    /**
+     * Dacă a plecat email la schimbarea asta. Fără el, din istoric nu se poate
+     * spune dacă clientul a aflat — bifa se debifează după fiecare salvare și
+     * a doua salvare pleacă ușor fără email.
+     */
+    notified: false,
   }
 
   const history = Array.isArray(metadata.order_status_history)
     ? metadata.order_status_history
     : []
 
-  await orderModule.updateOrders(order.id, {
-    metadata: {
-      ...metadata,
-      order_status: entry,
-      // Ultimele 20 de schimbări; mai mult n-ar face decât să umfle metadata.
-      order_status_history: [...history, entry].slice(-20),
-    },
-  })
+  const writeStatus = () =>
+    orderModule.updateOrders(order.id, {
+      metadata: {
+        ...metadata,
+        order_status: entry,
+        // Ultimele 20 de schimbări; mai mult n-ar face decât să umfle metadata.
+        order_status_history: [...history, entry].slice(-20),
+      },
+    })
+
+  await writeStatus()
 
   let notified = false
   if (notify && order.email) {
@@ -236,6 +249,11 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         `[status] Nu am putut trimite emailul de status pentru ${order.id}: ${e?.message}`
       )
     }
+  }
+
+  if (notified) {
+    entry.notified = true
+    await writeStatus()
   }
 
   logger.info(

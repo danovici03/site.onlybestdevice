@@ -57,6 +57,9 @@ const NavShell = ({ left, center, right, menuOpen = false }: Props) => {
   // Home = doar segmentul de country-code în path (ex. "/ro"). Doar acolo
   // navul stă peste hero-ul întunecat, deci doar acolo activăm overlay-ul alb.
   const isHome = pathname.split("/").filter(Boolean).length <= 1
+  // Pagina Black Friday e neagră de sus până jos, deci rămâne albă pe negru și
+  // după scroll, inclusiv în pastilă.
+  const isBlackFriday = pathname.split("/").filter(Boolean)[1] === "black-friday"
 
   useEffect(() => {
     let ticking = false
@@ -103,7 +106,8 @@ const NavShell = ({ left, center, right, menuOpen = false }: Props) => {
   // Suprapus peste hero: doar pe home, sus de tot, cu mega-meniul închis.
   // Culoarea de bază (text-white / text-brand-dark) e setată pe fiecare <nav>
   // în parte, iar conținutul (logo, linkuri, iconițe) o moștenește prin currentColor.
-  const overlay = isHome && !scrolled && !menuOpen
+  const overlay = ((isHome && !scrolled) || isBlackFriday) && !menuOpen
+  const darkPill = isBlackFriday && !menuOpen
 
   /**
    * Cele două bare (cea de sus și pastila de la scroll) randează același
@@ -174,9 +178,13 @@ const NavShell = ({ left, center, right, menuOpen = false }: Props) => {
         aria-hidden={!scrolled}
         inert={!scrolled}
         style={fadeStyle(scrolled)}
-        className={`absolute left-1/2 -translate-x-1/2 top-3 w-[calc(100%-2rem)] sm:w-[calc(100%-4rem)] max-w-6xl h-14 px-6 sm:px-8 flex items-center justify-between bg-white/85 backdrop-blur-md border border-white/60 rounded-full shadow-xl text-brand-dark ${PILL_LOGO}`}
+        className={`absolute left-1/2 -translate-x-1/2 top-3 w-[calc(100%-2rem)] sm:w-[calc(100%-4rem)] max-w-6xl h-14 px-6 sm:px-8 flex items-center justify-between backdrop-blur-md border rounded-full shadow-xl ${
+          darkPill
+            ? "bg-black/85 border-white/20 text-white"
+            : "bg-white/85 border-white/60 text-brand-dark"
+        } ${PILL_LOGO}`}
       >
-        {inner({ overlay: false, compact: true }, PILL_CENTER)}
+        {inner({ overlay: darkPill, compact: true }, PILL_CENTER)}
       </nav>
     </header>
   )

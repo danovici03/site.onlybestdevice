@@ -21,15 +21,3 @@ export function descriptionText(description?: string | null): string {
     .replace(/\s+/g, " ")
     .trim()
 }
-
-/** Text scurtat pentru meta description (fără să taie un cuvânt în două). */
-export function descriptionSnippet(
-  description?: string | null,
-  max = 160
-): string {
-  const text = descriptionText(description)
-  if (text.length <= max) return text
-  const cut = text.slice(0, max)
-  const lastSpace = cut.lastIndexOf(" ")
-  return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd() + "…"
-}

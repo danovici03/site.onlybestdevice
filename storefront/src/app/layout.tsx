@@ -21,8 +21,8 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseURL()),
   title: {
-    default: "onlybestdevice | Gadgeturi și electronice premium",
-    template: "%s | onlybestdevice",
+    default: "Onlybestdevice | Gadgeturi și electronice premium",
+    template: "%s | Onlybestdevice",
   },
 }
 

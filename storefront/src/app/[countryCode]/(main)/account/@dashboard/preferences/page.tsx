@@ -7,7 +7,7 @@ import { retrieveCustomer } from "@lib/data/customer"
 export const metadata: Metadata = {
   title: "Preferințe",
   description:
-    "Alege cum și când primești comunicări de la onlybestdevice.",
+    "Alege cum și când primești comunicări de la Onlybestdevice.",
 }
 
 export default async function PreferencesPage() {

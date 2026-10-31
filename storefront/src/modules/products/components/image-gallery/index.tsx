@@ -125,7 +125,9 @@ const GalleryInner = ({
                     priority={index === 0}
                     alt={`${product.title ?? "Product"} — ${index + 1}`}
                     fill
-                    sizes="100vw"
+                    // Sursele au ~720px; peste 640px CSS ar cere treptele de
+                    // 1920/2560, făcute doar pentru hero.
+                    sizes="(min-width: 640px) 640px, 85vw"
                     draggable={false}
                     className="object-contain p-4"
                   />

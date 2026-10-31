@@ -4,7 +4,7 @@ import ForgotPasswordForm from "@modules/account/components/forgot-password"
 
 export const metadata: Metadata = {
   title: "Ai uitat parola",
-  description: "Recuperează accesul la contul tău onlybestdevice.",
+  description: "Recuperează accesul la contul tău Onlybestdevice.",
 }
 
 export default function ForgotPasswordPage() {

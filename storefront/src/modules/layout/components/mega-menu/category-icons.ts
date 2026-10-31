@@ -11,6 +11,8 @@ import {
   ShieldCheck,
   Package,
   Tag,
+  Clock,
+  House,
 } from "@phosphor-icons/react/dist/ssr"
 
 // Iconița fiecărei categorii, după href. Ținută separat pentru că o folosesc
@@ -28,6 +30,8 @@ export const CATEGORY_ICONS: Record<string, React.ElementType> = {
   "/categories/tv-audio-video-si-foto": Television,
   "/categories/huse-telefoane": Shield,
   "/categories/folii-de-protectie": ShieldCheck,
+  "/categories/ceasuri-analogice": Clock,
+  "/categories/pentru-casa": House,
   "/categories/diverse": Package,
 }
 
