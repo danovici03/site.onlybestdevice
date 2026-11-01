@@ -34,9 +34,9 @@ import {
 } from "@medusajs/medusa/core-flows"
 
 const TITLE = "Black Friday"
-const DESCRIPTION = "Reducerile de Black Friday, 1–7 noiembrie 2026."
+const DESCRIPTION = "Reducerile de Black Friday, 1–8 noiembrie 2026."
 const STARTS_AT = "2026-11-01T00:00:00+02:00"
-const ENDS_AT = "2026-11-07T23:59:59+02:00"
+const ENDS_AT = "2026-11-08T23:59:59+02:00"
 
 const DRY_RUN = /^(1|true|yes)$/i.test(process.env.DRY_RUN ?? "")
 

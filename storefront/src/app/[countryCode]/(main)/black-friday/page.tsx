@@ -24,6 +24,12 @@ export const metadata: Metadata = {
   description:
     "Black Friday la Onlybestdevice: telefoane, laptopuri, tablete și accesorii la preț redus, cu garanție 24 de luni și plată cu cardul sau în rate.",
   alternates: canonical("/black-friday"),
+  openGraph: {
+    type: "website",
+    siteName: "Onlybestdevice",
+    locale: "ro_RO",
+    url: canonical("/black-friday").canonical,
+  },
 }
 
 export const viewport: Viewport = { themeColor: "#000000" }

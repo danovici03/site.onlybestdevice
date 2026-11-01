@@ -10,8 +10,8 @@
  */
 export const BLACK_FRIDAY = {
   start: new Date("2026-11-01T00:00:00+02:00").getTime(),
-  end: new Date("2026-11-07T23:59:59+02:00").getTime(),
-  dates: "1–7 noiembrie",
+  end: new Date("2026-11-08T23:59:59+02:00").getTime(),
+  dates: "1–8 noiembrie",
   startDate: "1 noiembrie",
   priceList: "Black Friday",
 }
