@@ -69,6 +69,7 @@ const Hero = async () => {
         image: s.image_url,
         video: s.video_url ?? undefined,
         videoMobile: s.video_url_mobile ?? undefined,
+        imageMobile: s.image_url_mobile ?? undefined,
         alt: s.alt,
         titleLine1: sentenceCase(s.title_line_1),
         titleLine2: continuationCase(s.title_line_2 ?? ""),

@@ -3,9 +3,12 @@
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react/dist/ssr"
 import Autoplay from "embla-carousel-autoplay"
 import useEmblaCarousel from "embla-carousel-react"
+import { getImageProps } from "next/image"
 import Image from "@modules/common/components/image"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { preload } from "react-dom"
 
+import { isPreOptimizedImage } from "@lib/util/image-source"
 import { unsplashLoader } from "@lib/util/unsplash-loader"
 import {
   useDotButton,
@@ -19,6 +22,8 @@ export type Slide = {
   video?: string
   /** Varianta verticală, pentru ecranele ținute în picioare. */
   videoMobile?: string
+  /** Poza pentru ecranele ținute în picioare. Înlocuiește și videoul orizontal. */
+  imageMobile?: string
   alt: string
   titleLine1: string
   titleLine2: string
@@ -50,6 +55,88 @@ const VIDEO_STUCK_FALLBACK_MS = 20000
 // params). Cele administrate din admin vin din storage-ul propriu (S3/local)
 // și folosesc optimizatorul implicit Next.
 const isUnsplash = (src: string) => src.includes("images.unsplash.com")
+
+// Aceeași condiție pentru poza și pentru videoul vertical, ca un slide să nu
+// amestece varianta orizontală a uneia cu varianta verticală a celuilalt.
+const PORTRAIT_QUERY = "(orientation: portrait)"
+const LANDSCAPE_QUERY = "(orientation: landscape)"
+
+/**
+ * Imaginea unui slide.
+ *
+ * Varianta verticală o alege browserul, din `<picture>`: serverul nu știe
+ * orientarea ecranului, iar alegerea din JS ar însemna ca telefonul să
+ * descarce întâi poza orizontală, adică LCP-ul paginii, doar ca s-o arunce.
+ */
+const SlideImage = ({
+  slide,
+  index,
+  className,
+}: {
+  slide: Slide
+  index: number
+  className: string
+}) => {
+  const shared = {
+    alt: slide.alt,
+    fill: true,
+    sizes: "100vw",
+    priority: index === 0,
+    // `priority` nu ajunge singur pe `<img>`, trebuie dat explicit.
+    fetchPriority: index === 0 ? "high" : "auto",
+    draggable: false,
+    className,
+  } as const
+
+  const withSource = (src: string) => ({
+    ...shared,
+    src,
+    loader: isUnsplash(src) ? unsplashLoader : undefined,
+  })
+
+  if (!slide.imageMobile) {
+    return <Image {...withSource(slide.image)} />
+  }
+
+  const variantProps = (src: string) =>
+    getImageProps({
+      ...withSource(src),
+      unoptimized: isPreOptimizedImage(src),
+    }).props
+
+  const landscape = variantProps(slide.image)
+  const portrait = variantProps(slide.imageMobile)
+
+  // `getImageProps` nu emite preload-ul pe care îl face `<Image priority>`, iar
+  // fără `media` telefonul ar descărca degeaba și varianta orizontală.
+  if (index === 0) {
+    const preloadVariant = (image: typeof portrait, media: string) =>
+      preload(image.src, {
+        as: "image",
+        imageSrcSet: image.srcSet,
+        imageSizes: image.sizes,
+        fetchPriority: "high",
+        // @ts-expect-error React acceptă `media`, @types/react-dom încă nu îl declară.
+        media,
+      })
+
+    preloadVariant(portrait, PORTRAIT_QUERY)
+    preloadVariant(landscape, LANDSCAPE_QUERY)
+  }
+
+  return (
+    <picture>
+      <source
+        media={PORTRAIT_QUERY}
+        // Sursele neoptimizate (SVG) n-au `srcSet`, doar `src`.
+        srcSet={portrait.srcSet ?? portrait.src}
+        sizes={portrait.sizes}
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
+      <img {...landscape} />
+    </picture>
+  )
+}
 
 /**
  * Videoul unui slide, peste imaginea lui.
@@ -202,14 +289,17 @@ const SlideVideo = ({
 
 /**
  * Fișierul potrivit orientării ecranului, cu retragere pe cel orizontal când
- * slide-ul n-are variantă verticală.
+ * slide-ul n-are variantă verticală. O poză verticală înseamnă fără video pe
+ * ecranele în picioare: clipul lat ar acoperi-o exact acolo unde a fost pusă.
  *
  * Atenție: alegerea se face aici, în JS, nu cu `<source media="…">` — atributul
  * `media` merge doar în `<picture>`, iar browserele îl ignoră tăcut pe
  * `<source>`-urile dintr-un `<video>`, deci ar fi redat mereu prima sursă.
  */
-const videoSrc = (slide: Slide, portrait: boolean): string | undefined =>
-  (portrait && slide.videoMobile) || slide.video
+const videoSrc = (slide: Slide, portrait: boolean): string | undefined => {
+  if (!portrait) return slide.video
+  return slide.videoMobile || (slide.imageMobile ? undefined : slide.video)
+}
 
 const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
   const [emblaRef, emblaApi] = useEmblaCarousel(
@@ -300,7 +390,7 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
 
     setReducedMotion(false)
 
-    const portraitQuery = window.matchMedia("(orientation: portrait)")
+    const portraitQuery = window.matchMedia(PORTRAIT_QUERY)
     setPortrait(portraitQuery.matches)
     const onOrientationChange = (e: MediaQueryListEvent) =>
       setPortrait(e.matches)
@@ -339,15 +429,9 @@ const HeroCarousel = ({ slides }: { slides: Slide[] }) => {
                 {/* Imaginea rămâne mereu randată: e LCP-ul paginii și fundalul
                     de sub video cât timp acesta se încarcă (sau dacă browserul
                     refuză autoplay-ul). */}
-                <Image
-                  loader={isUnsplash(slide.image) ? unsplashLoader : undefined}
-                  src={slide.image}
-                  alt={slide.alt}
-                  fill
-                  sizes="100vw"
-                  priority={index === 0}
-                  fetchPriority={index === 0 ? "high" : "auto"}
-                  draggable={false}
+                <SlideImage
+                  slide={slide}
+                  index={index}
                   className={`object-cover ${
                     intro && index === 0
                       ? "animate-hero-intro-zoom motion-reduce:animate-none"

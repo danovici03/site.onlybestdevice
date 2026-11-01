@@ -12,6 +12,9 @@ const HeroSlide = model
     // tabletă în portret). Fără ea, un banner ultra-wide se vede pe mobil
     // doar cu fâșia din mijloc, mărită de câteva ori de `object-cover`.
     video_url_mobile: model.text().nullable(),
+    // Poza pentru aceleași ecrane în picioare. E o alegere explicită: cât timp
+    // e setată, pe vertical nu mai rulează nici videoul orizontal.
+    image_url_mobile: model.text().nullable(),
     alt: model.text(),
     title_line_1: model.text(),
     title_line_2: model.text().nullable(),

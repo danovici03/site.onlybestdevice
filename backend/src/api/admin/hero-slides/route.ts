@@ -8,6 +8,7 @@ const CreateSlideSchema = z.object({
   image_url: z.string().min(1, "Imaginea este obligatorie"),
   video_url: z.string().nullable().optional(),
   video_url_mobile: z.string().nullable().optional(),
+  image_url_mobile: z.string().nullable().optional(),
   alt: z.string().min(1, "Textul alternativ este obligatoriu"),
   title_line_1: z.string().min(1, "Primul rând al titlului este obligatoriu"),
   title_line_2: z.string().nullable().optional(),

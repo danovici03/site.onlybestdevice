@@ -70,6 +70,22 @@
           "enumItems": [],
           "mappedType": "text"
         },
+        "image_url_mobile": {
+          "name": "image_url_mobile",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
         "alt": {
           "name": "alt",
           "type": "text",

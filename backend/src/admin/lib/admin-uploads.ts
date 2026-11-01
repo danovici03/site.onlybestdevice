@@ -24,6 +24,26 @@ const MAX_VIDEO_BYTES = 20 * 1024 * 1024
 /** Formatele pe care le redă orice browser modern din `<video>`. */
 const VIDEO_TYPES = ["video/mp4", "video/webm"]
 
+/**
+ * Allowlist, nu blocklist: orice alt `image/*` (HEIC de pe iPhone, JXL, PSD,
+ * DNG, TIFF) nu se vede în Chrome, deci ar rămâne o imagine spartă pe site.
+ * Nici BMP nu e aici: se afișează, dar optimizatorul îl trimite necomprimat.
+ */
+const IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+  "image/gif",
+  "image/svg+xml",
+]
+
+export const isSupportedImage = (file: File) => IMAGE_TYPES.includes(file.type)
+
+export const unsupportedImageMessage = (files: File[]) =>
+  `Format neacceptat: ${files.map((f) => `„${f.name}"`).join(", ")}. ` +
+  "Exportă ca JPG, PNG, WebP, AVIF, GIF sau SVG."
+
 export const isSanitizerSafeUrl = isUsableUrl
 
 const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`
@@ -37,10 +57,9 @@ const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`
  * editor și ar dispărea tăcut la prima salvare.
  */
 export async function uploadImages(files: File[]): Promise<string[]> {
-  for (const file of files) {
-    if (!file.type.startsWith("image/")) {
-      throw new Error(`„${file.name}" nu e o imagine`)
-    }
+  const unsupported = files.filter((file) => !isSupportedImage(file))
+  if (unsupported.length) {
+    throw new Error(unsupportedImageMessage(unsupported))
   }
   return uploadFiles(files, MAX_BYTES)
 }
@@ -95,7 +114,10 @@ async function uploadFiles(
   const form = new FormData()
   // Nu setăm Content-Type — browserul adaugă boundary-ul corect pentru FormData.
   for (const file of files) {
-    form.append("files", file)
+    // Extensia ajunge neschimbată în URL, iar Next recunoaște doar `.svg`: un
+    // `BANNER.SVG` ar intra prin optimizator, care refuză SVG-urile.
+    const name = file.name.replace(/\.[^.]+$/, (ext) => ext.toLowerCase())
+    form.append("files", file, name)
   }
 
   const res = await fetch("/admin/uploads", {

@@ -19,7 +19,12 @@ import {
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { isSanitizerSafeUrl, uploadImages } from "../lib/admin-uploads"
+import {
+  isSanitizerSafeUrl,
+  isSupportedImage,
+  unsupportedImageMessage,
+  uploadImages,
+} from "../lib/admin-uploads"
 import { buildExtensions } from "./rich-text-editor-extensions"
 
 /**
@@ -110,10 +115,17 @@ const RichTextEditor = ({
 
   const uploadAndInsert = useCallback(
     async (files: File[], mode: "insert" | "replace") => {
-      if (!editor || !files.length) return
+      if (!editor) return
+      // O poză în format greșit nu trebuie să le oprească pe restul din lot.
+      const unsupported = files.filter((file) => !isSupportedImage(file))
+      if (unsupported.length) {
+        toast.error(unsupportedImageMessage(unsupported))
+      }
+      const supported = files.filter(isSupportedImage)
+      if (!supported.length) return
       setUploading(true)
       try {
-        const urls = await uploadImages(files)
+        const urls = await uploadImages(supported)
         if (mode === "replace" && editor.isActive("image")) {
           editor.chain().focus().updateAttributes("image", {
             src: urls[0],
