@@ -18,6 +18,8 @@ import {
 import { getCacheOptions } from "./cookies"
 import { getRegion, retrieveRegion } from "./regions"
 
+const LIVE_PRICE_LIST_TTL_SECONDS = 60
+
 export const listProducts = async ({
   pageParam = 1,
   queryParams,
@@ -273,6 +275,10 @@ export const listCatalog = async ({
     ...(await getCacheOptions(
       listTag ? ["products", PRODUCT_LISTS_TAG] : ["products"]
     )),
+    // Adăugarea sau scoaterea unui produs din price list nu emite niciun
+    // eveniment, deci nimic nu invalidează cache-ul, iar cu TTL-ul obișnuit
+    // pagina campaniei ar arăta ore întregi produse scoase din listă.
+    ...(livePriceList ? { revalidate: LIVE_PRICE_LIST_TTL_SECONDS } : {}),
   }
 
   return sdk.client
