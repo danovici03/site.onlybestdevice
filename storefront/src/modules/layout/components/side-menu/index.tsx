@@ -6,6 +6,7 @@ import { ArrowRightMini } from "@medusajs/icons"
 import {
   ArrowRight,
   CaretRight,
+  Lightning,
   List,
   Handbag,
   User,
@@ -13,6 +14,8 @@ import {
 } from "@phosphor-icons/react/dist/ssr"
 import { ReactNode, useState } from "react"
 
+import { useBlackFridayLive } from "@lib/hooks/use-black-friday-live"
+import { BLACK_FRIDAY } from "@lib/util/black-friday"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import CountrySelect from "../country-select"
 import LanguageSelect from "../language-select"
@@ -40,6 +43,7 @@ const SideMenu = ({ regions, locales, cartIndicator }: SideMenuProps) => {
   const [open, setOpen] = useState(false)
   const countryToggleState = useToggleState()
   const languageToggleState = useToggleState()
+  const blackFridayLive = useBlackFridayLive()
 
   const close = () => setOpen(false)
 
@@ -92,6 +96,33 @@ const SideMenu = ({ regions, locales, cartIndicator }: SideMenuProps) => {
           </div>
 
           <nav className="flex-1 overflow-y-auto overscroll-contain px-7 pt-6 pb-6">
+            {blackFridayLive && (
+              <LocalizedClientLink
+                href="/black-friday"
+                prefetch={false}
+                onClick={close}
+                data-testid="black-friday-link"
+                className="mb-8 flex items-center gap-3.5 rounded-2xl bg-black px-4 py-3.5 text-white"
+              >
+                <span className="w-9 h-9 shrink-0 rounded-xl bg-[#f6921e] text-black flex items-center justify-center">
+                  <Lightning size={18} weight="fill" aria-hidden />
+                </span>
+                <span className="flex-1">
+                  <span className="block text-base font-bold tracking-[-0.01em]">
+                    Black Friday
+                  </span>
+                  <span className="block text-xs text-white/60">
+                    Reduceri, {BLACK_FRIDAY.dates}
+                  </span>
+                </span>
+                <CaretRight
+                  size={14}
+                  weight="bold"
+                  className="shrink-0 text-white/50"
+                />
+              </LocalizedClientLink>
+            )}
+
             {/* Categoriile sunt singurul motiv pentru care se deschide meniul,
                 deci se văd direct: acordeonul cu un singur grup punea un titlu
                 uriaș și un click în plus peste exact aceeași listă. */}

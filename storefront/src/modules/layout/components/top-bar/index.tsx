@@ -10,12 +10,16 @@ import {
   GlobeHemisphereWest,
   Headset,
   InstagramLogo,
+  Lightning,
   Tag,
   TiktokLogo,
 } from "@phosphor-icons/react/dist/ssr"
 import { useEffect, useState } from "react"
 
+import { useBlackFridayLive } from "@lib/hooks/use-black-friday-live"
+import { BLACK_FRIDAY } from "@lib/util/black-friday"
 import { COMPANY } from "@lib/util/company-info"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 const messages = [
   {
@@ -36,13 +40,15 @@ const ROTATION_MS = 5000
 
 const TopBar = () => {
   const [index, setIndex] = useState(0)
+  const blackFridayLive = useBlackFridayLive()
 
   useEffect(() => {
+    if (blackFridayLive) return
     const id = setInterval(() => {
       setIndex((i) => (i + 1) % messages.length)
     }, ROTATION_MS)
     return () => clearInterval(id)
-  }, [])
+  }, [blackFridayLive])
 
   const prev = () =>
     setIndex((i) => (i - 1 + messages.length) % messages.length)
@@ -82,29 +88,45 @@ const TopBar = () => {
         </a>
       </div>
 
-      <div className="flex-1 flex items-center justify-center gap-4">
-        <button
-          onClick={prev}
-          aria-label="Mesaj anterior"
-          className="hover:text-white transition-colors"
+      {/* Cât ține campania, mesajul e fix: un link care dispare după 5 secunde
+          ar fi ratat tocmai pe mobil, unde aici e primul lucru de pe pagină. */}
+      {blackFridayLive ? (
+        <LocalizedClientLink
+          href="/black-friday"
+          // Pagina e dinamică, iar linkul e pe orice pagină: prefetch-ul ar
+          // însemna câte o cerere la server pentru fiecare vizitator.
+          prefetch={false}
+          className="flex-1 flex items-center justify-center gap-2 tracking-wide font-bold text-white hover:text-[#f6921e] transition-colors"
         >
-          <ArrowLeft size={14} />
-        </button>
-        <span
-          key={index}
-          className="tracking-wide flex items-center gap-2 text-center transition-opacity duration-300"
-        >
-          <Icon size={16} className="hidden sm:inline-block" />
-          {text}
-        </span>
-        <button
-          onClick={next}
-          aria-label="Mesaj următor"
-          className="hover:text-white transition-colors"
-        >
-          <ArrowRight size={14} />
-        </button>
-      </div>
+          <Lightning size={14} weight="fill" aria-hidden className="text-[#f6921e]" />
+          Black Friday, {BLACK_FRIDAY.dates}
+          <ArrowRight size={14} aria-hidden />
+        </LocalizedClientLink>
+      ) : (
+        <div className="flex-1 flex items-center justify-center gap-4">
+          <button
+            onClick={prev}
+            aria-label="Mesaj anterior"
+            className="hover:text-white transition-colors"
+          >
+            <ArrowLeft size={14} />
+          </button>
+          <span
+            key={index}
+            className="tracking-wide flex items-center gap-2 text-center transition-opacity duration-300"
+          >
+            <Icon size={16} className="hidden sm:inline-block" />
+            {text}
+          </span>
+          <button
+            onClick={next}
+            aria-label="Mesaj următor"
+            className="hover:text-white transition-colors"
+          >
+            <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
 
       <div className="hidden md:flex items-center gap-6">
         <button className="flex items-center gap-1.5 hover:text-white transition-colors">

@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useRef, useState } from "react"
 import { usePathname } from "next/navigation"
 
+import BlackFridayLink from "@modules/layout/components/black-friday-link"
 import MegaMenuPanel from "@modules/layout/components/mega-menu/panel"
 import MegaMenuTriggers from "@modules/layout/components/mega-menu/triggers"
 import SearchInput from "@modules/search/components/search-input"
@@ -103,7 +104,12 @@ function NavBody({ left, right }: Props) {
             <SearchInput overlay={overlay} bindSlashShortcut />
           </div>
         )}
-        right={right}
+        right={({ overlay }) => (
+          <>
+            <BlackFridayLink overlay={overlay} />
+            {right}
+          </>
+        )}
         menuOpen={panelOpen}
       />
 

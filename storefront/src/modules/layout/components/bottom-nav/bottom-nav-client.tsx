@@ -5,6 +5,7 @@ import { useParams, usePathname } from "next/navigation"
 import {
   House,
   Handbag,
+  Lightning,
   Storefront,
   User,
 } from "@phosphor-icons/react/dist/ssr"
@@ -13,6 +14,7 @@ import { clx } from "@medusajs/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { useConsent } from "@lib/context/consent-context"
+import { useBlackFridayLive } from "@lib/hooks/use-black-friday-live"
 import { useFooterInView } from "@lib/hooks/use-footer-in-view"
 import { useScrolledPast } from "@lib/hooks/use-scrolled-past"
 
@@ -24,6 +26,8 @@ type Item = {
   badge?: ReactNode
   /** Când e setat, tab-ul deschide un panou în loc să navigheze. */
   onSelect?: () => void
+  /** Tab de campanie: portocaliu și plin și când nu e pagina curentă. */
+  highlight?: boolean
 }
 
 type Props = {
@@ -37,6 +41,7 @@ export default function BottomNavClient({ cartIndicator }: Props) {
   const { open: openCart } = useCartDrawer()
   const { decided } = useConsent()
   const footerInView = useFooterInView()
+  const blackFridayLive = useBlackFridayLive()
   const visible = scrolled && decided && !footerInView
   const stripped = pathname.replace(new RegExp(`^/${countryCode}`), "") || "/"
 
@@ -51,6 +56,16 @@ export default function BottomNavClient({ cartIndicator }: Props) {
       icon: Storefront,
       matchPrefixes: ["/store", "/categories", "/collections", "/products"],
     },
+    ...(blackFridayLive
+      ? [
+          {
+            href: "/black-friday",
+            label: "Black Friday",
+            icon: Lightning,
+            highlight: true,
+          },
+        ]
+      : []),
     {
       href: "/cart",
       label: "Coș",
@@ -89,21 +104,26 @@ export default function BottomNavClient({ cartIndicator }: Props) {
       <ul className="flex items-stretch justify-around px-2 pt-2 pb-2">
         {items.map((item) => {
           const active = isActive(item)
+          const emphasized = active || item.highlight
           const Icon = item.icon
           const className = clx(
             "w-full flex flex-col items-center justify-center gap-1 py-2 rounded-2xl transition-colors",
-            active ? "text-brand-accent" : "text-white/70 hover:text-white"
+            item.highlight
+              ? "text-[#f6921e]"
+              : active
+                ? "text-brand-accent"
+                : "text-white/70 hover:text-white"
           )
           const content = (
             <>
               <span className="relative">
-                <Icon size={24} weight={active ? "fill" : "regular"} />
+                <Icon size={24} weight={emphasized ? "fill" : "regular"} />
                 {item.badge}
               </span>
               <span
                 className={clx(
-                  "text-[11px] leading-none tracking-wide",
-                  active ? "font-bold" : "font-medium"
+                  "text-[11px] leading-none tracking-wide whitespace-nowrap",
+                  emphasized ? "font-bold" : "font-medium"
                 )}
               >
                 {item.label}
@@ -126,6 +146,7 @@ export default function BottomNavClient({ cartIndicator }: Props) {
               ) : (
                 <LocalizedClientLink
                   href={item.href}
+                  prefetch={item.highlight ? false : undefined}
                   aria-current={active ? "page" : undefined}
                   tabIndex={visible ? 0 : -1}
                   className={className}
