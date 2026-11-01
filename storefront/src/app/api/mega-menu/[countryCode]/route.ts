@@ -8,7 +8,7 @@ import { resolveMegaMenuData } from "@modules/layout/components/mega-menu/resolv
  * Produsele din mega-meniu, ca JSON static pe CDN.
  *
  * Statică (ISR) intenționat: se regenerează pe tagurile fetch-urilor din
- * `resolveMegaMenuData` (`products`, `categories`) și pe TTL, o singură scriere
+ * `resolveMegaMenuData` (`product-shelves`, `categories`) și pe TTL, o singură scriere
  * pentru tot site-ul. Browserul o cere doar la prima deschidere a meniului, iar
  * răspunsul vine din cache-ul CDN, fără funcție.
  *

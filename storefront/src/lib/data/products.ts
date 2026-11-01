@@ -13,6 +13,7 @@ import {
 import {
   MAX_PRODUCT_TAGS,
   PRODUCT_LISTS_TAG,
+  PRODUCT_SHELVES_TAG,
   productTag,
 } from "@lib/util/cache-tags"
 import { getCacheOptions } from "./cookies"
@@ -26,6 +27,7 @@ export const listProducts = async ({
   countryCode,
   regionId,
   listTag = true,
+  noStore = false,
 }: {
   pageParam?: number
   queryParams?: HttpTypes.FindParams & HttpTypes.StoreProductListParams
@@ -37,6 +39,8 @@ export const listProducts = async ({
    * listările randate pe fiecare pagină de produs — vezi `cache-tags.ts`.
    */
   listTag?: boolean
+  /** Fără Data Cache, pentru răspunsurile ținute deja în cache-ul CDN. */
+  noStore?: boolean
 }): Promise<{
   response: { products: HttpTypes.StoreProduct[]; count: number }
   nextPage: number | null
@@ -92,8 +96,9 @@ export const listProducts = async ({
           ...queryParams,
         },
         headers,
-        next,
-        cache: "force-cache",
+        ...(noStore
+          ? { cache: "no-store" as const }
+          : { next, cache: "force-cache" as const }),
       }
     )
     .then(({ products, count }) => {
@@ -136,7 +141,9 @@ function productCacheTags(
     return ["products", ...keys.map(productTag)]
   }
 
-  return listTag || keys.length ? ["products", PRODUCT_LISTS_TAG] : ["products"]
+  return listTag || keys.length
+    ? ["products", PRODUCT_LISTS_TAG]
+    : ["products", PRODUCT_SHELVES_TAG]
 }
 
 /**
@@ -273,7 +280,9 @@ export const listCatalog = async ({
   const headers = {}
   const next = {
     ...(await getCacheOptions(
-      listTag ? ["products", PRODUCT_LISTS_TAG] : ["products"]
+      listTag
+        ? ["products", PRODUCT_LISTS_TAG]
+        : ["products", PRODUCT_SHELVES_TAG]
     )),
     // Adăugarea sau scoaterea unui produs din price list nu emite niciun
     // eveniment, deci nimic nu invalidează cache-ul, iar cu TTL-ul obișnuit

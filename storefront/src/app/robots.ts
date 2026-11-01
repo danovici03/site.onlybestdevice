@@ -8,7 +8,9 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: "/",
+      // `/api/related/` e excepția: de acolo vine raftul de produse, iar fără el
+      // paginile de produs ar pierde linkurile interne la randarea Google.
+      allow: ["/", "/api/related/"],
       // Căutarea internă și API-ul n-au conținut de indexat, dar fiecare cerere
       // e o funcție Vercel facturată (paginile sunt dinamice).
       disallow: [

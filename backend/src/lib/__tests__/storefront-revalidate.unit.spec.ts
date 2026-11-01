@@ -82,7 +82,8 @@ describe("productRevalidationTags", () => {
     expect(productRevalidationTags([], { carts: true })).toEqual([])
   })
 
-  it("tagurile amânate nu includ `categories`", () => {
+  it("tagurile amânate nu includ `products` și `categories`", () => {
+    expect(DEFERRED_PRODUCT_TAGS).not.toContain("products")
     expect(DEFERRED_PRODUCT_TAGS).not.toContain("categories")
   })
 })

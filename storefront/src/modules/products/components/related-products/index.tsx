@@ -1,64 +1,74 @@
-import { listProducts } from "@lib/data/products"
-import { getRegion } from "@lib/data/regions"
-import { isInStock } from "@lib/util/stock"
-import { WARRANTY_TAG } from "@lib/util/warranty"
+"use client"
+
 import { HttpTypes } from "@medusajs/types"
 import { ArrowRight } from "@phosphor-icons/react/dist/ssr"
+import { useEffect, useRef, useState } from "react"
+
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import SkeletonRelatedProducts from "@modules/skeletons/templates/skeleton-related-products"
 import ProductCard from "../product-card"
 
 type RelatedProductsProps = {
-  product: HttpTypes.StoreProduct
+  handle: string
   countryCode: string
 }
 
-export default async function RelatedProducts({
-  product,
+/** Pornește cererea cu puțin înainte ca raftul să intre în ecran. */
+const LOAD_MARGIN = "400px"
+
+/**
+ * Se încarcă din `/api/related`, doar când clientul ajunge aproape de raft.
+ * Motivul e în ruta respectivă: raftul nu are voie să țină paginile de produs
+ * legate de cache-ul lui.
+ */
+export default function RelatedProducts({
+  handle,
   countryCode,
 }: RelatedProductsProps) {
-  const region = await getRegion(countryCode)
+  const anchor = useRef<HTMLDivElement>(null)
+  const [near, setNear] = useState(false)
+  const [products, setProducts] = useState<HttpTypes.StoreProduct[]>()
 
-  if (!region) {
-    return null
-  }
+  useEffect(() => {
+    const element = anchor.current
+    if (!element) return
 
-  const queryParams: HttpTypes.StoreProductListParams = {}
-  if (region?.id) {
-    queryParams.region_id = region.id
-  }
-  if (product.collection_id) {
-    queryParams.collection_id = [product.collection_id]
-  }
-  // Doar tagurile editoriale („la ofertă", „recomandat") spun ceva despre ce
-  // seamănă cu ce. `garantie-extinsa` e o bifă de configurare, pusă pe sute de
-  // produse fără nicio legătură între ele — lăsată aici, ar dilua raftul până
-  // la o selecție aleatorie, fiindcă filtrul Medusa pe `tag_id` e un OR și
-  // niciun produs din catalog n-are `collection_id` care să restrângă altfel.
-  //
-  // Lista rămasă se trimite chiar dacă e goală: `tag_id[]=` gol întoarce zero
-  // produse, iar raftul dispare — exact ce se întâmpla înainte pentru produsele
-  // fără taguri. Sărind peste `tag_id` am fi cerut în schimb tot catalogul.
-  if (product.tags) {
-    queryParams.tag_id = product.tags
-      .filter((t) => (t.value ?? "").toLowerCase() !== WARRANTY_TAG)
-      .map((t) => t.id)
-      .filter(Boolean) as string[]
-  }
-  queryParams.is_giftcard = false
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setNear(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: LOAD_MARGIN }
+    )
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
 
-  const products = await listProducts({
-    queryParams,
-    countryCode,
-    // Raftul e pe fiecare pagină de produs: fără `product-lists`, altfel orice
-    // produs epuizat ar invalida toate paginile de produs (vezi `cache-tags.ts`).
-    listTag: false,
-  }).then(({ response }) => {
-    // Cele în stoc în față (sortarea e stabilă, restul ordinii rămâne):
-    // raftul arată doar primele 4, care nu trebuie să fie epuizate.
-    return response.products
-      .filter((responseProduct) => responseProduct.id !== product.id)
-      .sort((a, b) => Number(isInStock(b)) - Number(isInStock(a)))
-  })
+  useEffect(() => {
+    if (!near) return
+    let cancelled = false
+
+    fetch(`/api/related/${countryCode}/${encodeURIComponent(handle)}`)
+      .then((res) => (res.ok ? res.json() : { products: [] }))
+      .then(
+        (data) => !cancelled && setProducts(data.products),
+        () => !cancelled && setProducts([])
+      )
+
+    return () => {
+      cancelled = true
+    }
+  }, [near, handle, countryCode])
+
+  if (!products) {
+    return (
+      <div ref={anchor}>
+        <SkeletonRelatedProducts />
+      </div>
+    )
+  }
 
   if (!products.length) {
     return null
@@ -90,7 +100,7 @@ export default async function RelatedProducts({
         className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 w-full"
         data-testid="related-products-list"
       >
-        {products.slice(0, 4).map((p) => (
+        {products.map((p) => (
           <li key={p.id} className="h-full">
             <ProductCard product={p} />
           </li>

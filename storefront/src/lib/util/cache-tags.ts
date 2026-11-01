@@ -13,14 +13,17 @@
  *   homepage), doar când un produs intră în stoc sau iese din stoc — ordinea
  *   „în stoc primele" și filtrul de stoc depind doar de asta.
  *
- * Listările prezente pe TOATE paginile de produs (mega-meniul din header,
- * „S-ar putea să-ți placă") nu poartă `product-lists`: altfel orice produs
- * epuizat ar invalida iar întregul catalog. Ele rămân pe `products` și pe TTL.
+ * Mega-meniul nu poartă `product-lists`: altfel orice produs epuizat i-ar goli
+ * cache-ul. Poartă `product-shelves`, golit amânat de backend. E scos din HTML-ul
+ * paginilor (`/api/mega-menu`), deci golirea lui nu regenerează paginile de
+ * produs. „S-ar putea să-ți placă" stă doar pe CDN, vezi `/api/related`.
  *
  * Tagurile trebuie acceptate și de `/api/revalidate` (prefixul `product-`).
  */
 
 export const PRODUCT_LISTS_TAG = "product-lists"
+
+export const PRODUCT_SHELVES_TAG = "product-shelves"
 
 export const PRODUCT_TAG_PREFIX = "product-"
 

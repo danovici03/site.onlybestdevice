@@ -9,7 +9,6 @@ import ProductReviews from "@modules/products/components/product-reviews"
 import ProductTabs from "@modules/products/components/product-tabs"
 import RelatedProducts from "@modules/products/components/related-products"
 import ProductInfo from "@modules/products/templates/product-info"
-import SkeletonRelatedProducts from "@modules/skeletons/templates/skeleton-related-products"
 import { notFound } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
 import type { ReviewStatsDTO } from "@lib/data/reviews"
@@ -108,9 +107,11 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
         className="content-container my-16 lg:my-24"
         data-testid="related-products-container"
       >
-        <Suspense fallback={<SkeletonRelatedProducts />}>
-          <RelatedProducts product={product} countryCode={countryCode} />
-        </Suspense>
+        <RelatedProducts
+          key={product.handle}
+          handle={product.handle}
+          countryCode={countryCode}
+        />
       </section>
     </>
   )

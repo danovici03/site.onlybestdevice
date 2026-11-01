@@ -123,6 +123,7 @@ export const revalidateStorefront = async (
  * global: o singură invalidare în loc de sute de taguri.
  */
 export const PRODUCT_LISTS_TAG = "product-lists"
+export const PRODUCT_SHELVES_TAG = "product-shelves"
 export const productTag = (idOrHandle: string) => `product-${idOrHandle}`
 export const MAX_TARGETED_PRODUCTS = 50
 
@@ -163,9 +164,9 @@ export const stockRevalidationTags = (
  * `category.products` — folosit doar pentru câte carduri are scheletul de
  * încărcare. Lista reală vine din `/store/catalog` (`product-lists`), deci
  * `categories` rămâne doar pe evenimentele de categorie. Imediat pleacă pagina produsului, listările
- * (prețul, poza și titlul din carduri) și, la nevoie, coșurile. Ce depinde de
- * produs pe TOATE paginile (mega-meniul, „S-ar putea să-ți placă") stă sub
- * `products` și se împrospătează amânat, vezi `revalidateStorefrontLater`.
+ * (prețul, poza și titlul din carduri) și, la nevoie, coșurile. Mega-meniul și
+ * best-sellerii se împrospătează amânat, vezi `revalidateStorefrontLater`.
+ * „S-ar putea să-ți placă" stă pe CDN și expiră singur în cel mult 2 ore.
  */
 export const productRevalidationTags = (
   products: Array<{ id: string; handle?: string | null }>,
@@ -182,14 +183,16 @@ export const productRevalidationTags = (
 }
 
 /** Tagurile care se strâng și pleacă o singură dată pe fereastră. */
-export const DEFERRED_PRODUCT_TAGS = ["products", "best-sellers"]
+export const DEFERRED_PRODUCT_TAGS = [PRODUCT_SHELVES_TAG, "best-sellers"]
 
 /**
- * Cât așteaptă tagurile amânate. Fereastra e fixă (nu se prelungește la fiecare
+ * Cât așteaptă tagurile amânate. `products` nu mai pleacă de aici: îl poartă
+ * fiecare pagină de produs, iar golirea lui la fiecare fereastră era cea mai mare
+ * parte din ISR Writes. Fereastra e fixă (nu se prelungește la fiecare
  * eveniment), deci întârzierea maximă rămâne garantată și în zilele în care se
  * lucrează la catalog fără pauză.
  */
-export const DEFERRED_REVALIDATE_MS = 30 * 60 * 1000
+export const DEFERRED_REVALIDATE_MS = 6 * 60 * 60 * 1000
 
 let deferred: {
   tags: Set<string>
@@ -203,9 +206,9 @@ let deferred: {
  * Coada stă în memoria procesului: la un restart se pierde, iar ce era în ea se
  * împrospătează pe TTL-ul storefront-ului (12h). Pagina produsului modificat
  * nu depinde de coadă — ea pleacă imediat. Ce rămâne vechi în fereastră:
- * mega-meniul și „S-ar putea să-ți placă" (inclusiv un produs tocmai trecut pe
- * draft, care apare acolo încă până la trimitere) și pagina de sub un handle
- * vechi, după redenumire.
+ * mega-meniul (inclusiv un produs tocmai trecut pe draft, care apare acolo încă
+ * până la trimitere) și best-sellerii. Pagina de sub un handle vechi, după
+ * redenumire, rămâne până la TTL.
  */
 export const revalidateStorefrontLater = (
   logger: Logger,
