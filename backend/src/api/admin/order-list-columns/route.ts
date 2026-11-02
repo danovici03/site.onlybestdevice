@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
+import { listOrderProducts } from "../../../lib/orders/order-products"
 import {
   describeOrderPayment,
   type PaymentMethod,
@@ -11,17 +12,23 @@ const MAX_IDS = 100
 
 const ORDER_ID = /^order_[A-Za-z0-9]+$/
 
+export type OrderListColumns = {
+  payment: PaymentMethod | null
+  products: string[]
+}
+
 /**
- * Metoda de plată pentru un set de comenzi, pentru coloana „Metodă de plată”
- * din lista de comenzi a adminului.
+ * Datele coloanelor pe care le adăugăm în lista de comenzi a adminului
+ * („Produs vândut” și „Metodă de plată”), pentru un set de comenzi.
  *
- *   GET /admin/order-payment-methods?ids=order_1,order_2
+ *   GET /admin/order-list-columns?ids=order_1,order_2
  *
  * Nu stă sub `/admin/orders/`: middleware-ul nativ pe `GET /admin/orders/:id`
- * ar prinde și `/admin/orders/payment-methods` și l-ar valida ca pe o comandă.
+ * ar prinde și `/admin/orders/list-columns` și l-ar valida ca pe o comandă.
  *
- * Lista nativă cere doar `*payment_collections`, fără sesiuni, deci providerul
- * nu se poate citi din ce are deja pagina — îl cerem separat, o dată pe pagină.
+ * Lista nativă nu cere nici liniile comenzii, nici sesiunile de plată, deci
+ * nimic din ce ne trebuie nu se poate citi din ce are deja pagina — cerem
+ * separat, o dată pe pagină.
  */
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const raw = String(req.query.ids ?? "")
@@ -35,7 +42,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   ).slice(0, MAX_IDS)
 
   if (!ids.length) {
-    return res.json({ methods: {} })
+    return res.json({ orders: {} })
   }
 
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
@@ -43,16 +50,21 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     entity: "order",
     fields: [
       "id",
+      // `items.*`, nu câmpuri una câte una: altfel `quantity` vine undefined.
+      "items.*",
       "payment_collections.payments.provider_id",
       "payment_collections.payment_sessions.provider_id",
     ],
     filters: { id: ids },
   })
 
-  const methods: Record<string, PaymentMethod | null> = {}
+  const columns: Record<string, OrderListColumns> = {}
   for (const order of orders ?? []) {
-    methods[order.id] = describeOrderPayment(order)
+    columns[order.id] = {
+      payment: describeOrderPayment(order),
+      products: listOrderProducts(order.items as any),
+    }
   }
 
-  return res.json({ methods })
+  return res.json({ orders: columns })
 }
