@@ -1,6 +1,10 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
+import {
+  ORDER_NAME_FIELDS,
+  orderCustomerName,
+} from "../../../lib/orders/customer-name"
 import { listOrderProducts } from "../../../lib/orders/order-products"
 import {
   describeOrderPayment,
@@ -13,13 +17,14 @@ const MAX_IDS = 100
 const ORDER_ID = /^order_[A-Za-z0-9]+$/
 
 export type OrderListColumns = {
+  customer: string | null
   payment: PaymentMethod | null
   products: string[]
 }
 
 /**
  * Datele coloanelor pe care le adăugăm în lista de comenzi a adminului
- * („Produs vândut” și „Metodă de plată”), pentru un set de comenzi.
+ * („Client”, „Produs vândut” și „Metodă de plată”), pentru un set de comenzi.
  *
  *   GET /admin/order-list-columns?ids=order_1,order_2
  *
@@ -50,6 +55,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     entity: "order",
     fields: [
       "id",
+      ...ORDER_NAME_FIELDS,
       // `items.*`, nu câmpuri una câte una: altfel `quantity` vine undefined.
       "items.*",
       "payment_collections.payments.provider_id",
@@ -61,6 +67,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const columns: Record<string, OrderListColumns> = {}
   for (const order of orders ?? []) {
     columns[order.id] = {
+      customer: orderCustomerName(order as any),
       payment: describeOrderPayment(order),
       products: listOrderProducts(order.items as any),
     }
