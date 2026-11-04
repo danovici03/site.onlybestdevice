@@ -66,7 +66,7 @@ export default function ReturPage() {
             step="Pasul 1"
             title="Completează declarația online de retur și adaugă formularul în colet."
             cta={
-              <LocalizedClientLink href="/account/orders" className={stepCtaClass}>
+              <LocalizedClientLink href="/retur/cerere" className={stepCtaClass}>
                 <ClipboardText size={18} weight="bold" />
                 Cerere de retur
               </LocalizedClientLink>
@@ -104,7 +104,11 @@ export default function ReturPage() {
       <ul>
         <li>
           Ca să returnezi produsele vândute de {COMPANY.dominio}, te rugăm să
-          accesezi și să completezi <strong>cererea de retur</strong>.
+          accesezi și să completezi{" "}
+          <LocalizedClientLink href="/retur/cerere">
+            <strong>cererea de retur</strong>
+          </LocalizedClientLink>{" "}
+          — merge și fără cont, cu numărul comenzii și emailul.
         </li>
         <li>
           Este necesar să chemi curierul să ridice produsul pe care vrei să îl

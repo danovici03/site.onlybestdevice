@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 
 import { retrieveOrder } from "@lib/data/orders"
+import { getReturnableQuantities } from "@lib/data/returns"
 import ReturnRequestForm from "@modules/account/components/return-request"
 
 const RETURN_WINDOW_DAYS = 14
@@ -36,5 +37,13 @@ export default async function ReturnPage(props: Props) {
     redirect(`/${countryCode}/account/orders/details/${order.id}`)
   }
 
-  return <ReturnRequestForm order={order} countryCode={countryCode} />
+  const returnable = await getReturnableQuantities(order.id)
+
+  return (
+    <ReturnRequestForm
+      order={order}
+      countryCode={countryCode}
+      returnable={returnable}
+    />
+  )
 }

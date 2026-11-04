@@ -28,10 +28,16 @@ const ReasonOptions = Object.entries(t.returns.reasons) as Array<
 const ReturnRequestForm = ({
   order,
   countryCode,
+  returnable,
 }: {
   order: HttpTypes.StoreOrder
   countryCode: string
+  // Cât se mai poate returna pe fiecare linie (comandat minus cererile active).
+  // null = n-am putut afla; backend-ul validează oricum.
+  returnable?: Record<string, number> | null
 }) => {
+  const maxFor = (item: { id: string; quantity: number }) =>
+    returnable?.[item.id] ?? item.quantity
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -41,7 +47,7 @@ const ReturnRequestForm = ({
   const initialItems: Record<string, SelectedItem> = {}
   for (const item of order.items ?? []) {
     initialItems[item.id] = {
-      quantity: item.quantity,
+      quantity: Math.max(1, maxFor(item)),
       reason: ReasonOptions[0][0],
       selected: false,
     }
@@ -76,7 +82,9 @@ const ReturnRequestForm = ({
         setError(
           result.message === "return_window_expired"
             ? t.returns.windowExpired
-            : t.common.error,
+            : result.message === "already_requested"
+              ? t.returns.alreadyRequested
+              : t.common.error,
         )
         return
       }
@@ -143,6 +151,7 @@ const ReturnRequestForm = ({
                         type="checkbox"
                         className="w-4 h-4 rounded border-brand-dark/30 text-brand-dark focus:ring-brand-accent"
                         checked={it.selected}
+                        disabled={maxFor(item) === 0}
                         onChange={(e) =>
                           update(item.id, { selected: e.target.checked })
                         }
@@ -178,7 +187,9 @@ const ReturnRequestForm = ({
                         </p>
                       )}
                       <p className="text-xs text-brand-dark/60 mt-1">
-                        Comandate: {item.quantity}
+                        {maxFor(item) === 0
+                          ? t.returns.nothingLeft
+                          : `Comandate: ${item.quantity}`}
                       </p>
                     </div>
                   </div>
@@ -192,14 +203,14 @@ const ReturnRequestForm = ({
                         <input
                           type="number"
                           min={1}
-                          max={item.quantity}
+                          max={maxFor(item)}
                           value={it.quantity}
                           onChange={(e) =>
                             update(item.id, {
                               quantity: Math.max(
                                 1,
                                 Math.min(
-                                  item.quantity,
+                                  maxFor(item),
                                   Number(e.target.value) || 1,
                                 ),
                               ),

@@ -222,6 +222,14 @@ export const account = {
     windowExpired:
       "Perioada de retur de 14 zile a expirat. Contactează serviciul clienți pentru cazuri speciale.",
     submitted: "Cerere trimisă. Te contactăm în maximum 48 de ore.",
+    alreadyRequested:
+      "Pentru unul dintre produse există deja o cerere de retur. O găsești în pagina „Retururi”.",
+    orderNotFound:
+      "Nu am găsit nicio comandă cu acest număr și acest email. Verifică datele din emailul de confirmare a comenzii.",
+    tooManyAttempts: "Prea multe încercări. Încearcă din nou peste câteva minute.",
+    orderCanceled: "Comanda a fost anulată, deci nu se poate trimite o cerere de retur pentru ea.",
+    missingFields: "Completează numărul comenzii și emailul.",
+    nothingLeft: "Există deja o cerere de retur pentru acest produs.",
   },
 
   // Order confirmed (thank-you page after checkout)

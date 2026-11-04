@@ -547,7 +547,7 @@ const returnRequestedAdmin: Renderer = ({
   const itemsHtml = (request?.items ?? [])
     .map((it: any) => {
       const orderItem = order?.items?.find((i: any) => i.id === it.item_id)
-      const title = orderItem?.product_title || orderItem?.title || it.item_id
+      const title = it.title || orderItem?.product_title || orderItem?.title || it.item_id
       return `<li style="margin-bottom:6px;">
           <strong>${escape(title)}</strong> × ${it.quantity}
           ${it.reason ? ` — <span style="color:${COLOR.muted};">${escape(it.reason)}</span>` : ""}
@@ -555,17 +555,23 @@ const returnRequestedAdmin: Renderer = ({
         </li>`
     })
     .join("")
-  const adminLink = admin_url ? `${admin_url}/app/orders/${order.id}` : null
+  const adminLink = admin_url ? `${admin_url}/app/return-requests` : null
+  const clientLine = [request?.customer_name, request?.email || order.email]
+    .filter(Boolean)
+    .map((v: string) => escape(v))
+    .join(" · ")
   const body = `
     <p style="margin:0 0 12px;">Cerere nouă de retur pentru comanda <strong>#${escape(display)}</strong>.</p>
     <ul style="font-size:14px;line-height:1.7;padding-left:20px;margin:0 0 16px;">
-      <li>Client: ${escape(order.email)}</li>
-      <li>Cerere trimisă la: ${escape(new Date(request.requested_at).toLocaleString("ro-RO"))}</li>
+      <li>Client: ${clientLine}</li>
+      ${request?.phone ? `<li>Telefon: ${escape(request.phone)}</li>` : ""}
+      <li>Trimisă din: ${request?.source === "guest" ? "formularul public (fără cont)" : "contul clientului"}</li>
+      <li>Cerere trimisă la: ${escape(new Date(request.requested_at).toLocaleString("ro-RO", { timeZone: "Europe/Bucharest" }))}</li>
     </ul>
     <h3 style="margin:16px 0 8px;font-family:${FONT_HEADING};font-size:18px;font-weight:400;color:${COLOR.dark};">Produse cerute pentru retur</h3>
     <ul style="font-size:14px;padding-left:20px;margin:0 0 16px;">${itemsHtml}</ul>
     ${request.note ? `<p style="background:${COLOR.light};padding:14px 16px;border-radius:12px;font-size:13px;margin:16px 0;"><strong>Mesajul clientului:</strong><br>${escape(request.note)}</p>` : ""}
-    ${adminLink ? button(adminLink, "Deschide comanda în admin") : ""}
+    ${adminLink ? button(adminLink, "Deschide cererile de retur") : ""}
     <p style="margin:16px 0 0;font-size:13px;color:${COLOR.muted};">Procesează returul în admin în maximum 48 de ore și contactează clientul pentru ridicarea coletului.</p>`
   return {
     subject: `[${BRAND}] Cerere de retur — Comanda #${display}`,
@@ -584,11 +590,11 @@ const returnRequestedCustomer: Renderer = ({
   storefront_url,
 }) => {
   const display = order?.display_id ?? order?.id ?? ""
-  const orderUrl = `${resolveStorefrontUrl(storefront_url)}/${locale()}/account/orders/details/${order.id}`
+  const orderUrl = returnRequestUrl(storefront_url, request, order)
   const itemsHtml = (request?.items ?? [])
     .map((it: any) => {
       const orderItem = order?.items?.find((i: any) => i.id === it.item_id)
-      const title = orderItem?.product_title || orderItem?.title || it.item_id
+      const title = it.title || orderItem?.product_title || orderItem?.title || it.item_id
       return `<li style="margin-bottom:6px;"><strong>${escape(title)}</strong> × ${it.quantity}${it.reason ? ` — <span style="color:${COLOR.muted};">${escape(it.reason)}</span>` : ""}</li>`
     })
     .join("")
@@ -604,13 +610,80 @@ const returnRequestedCustomer: Renderer = ({
       <li>După ce primim produsele, verificăm starea lor.</li>
       <li>Îți returnăm banii pe aceeași metodă de plată, în maximum 14 zile de la primirea returului.</li>
     </ol>
-    ${button(orderUrl, "Vezi comanda")}
+    ${button(orderUrl, request?.source === "guest" ? "Condițiile de retur" : "Vezi cererile tale de retur")}
     <p style="margin:16px 0 0;font-size:13px;color:${COLOR.muted};">Pentru orice întrebare scrie-ne la <a href="mailto:${SUPPORT_EMAIL}" style="color:${COLOR.accent};">${SUPPORT_EMAIL}</a>.</p>`
   return {
     subject: `Cerere de retur înregistrată — Comanda #${display}`,
     html: layout({
       heading: "Cererea ta de retur a fost înregistrată",
       preheader: `Procesăm returul pentru comanda #${display}.`,
+      bodyHtml: body,
+      storefrontUrl: storefront_url,
+    }),
+  }
+}
+
+/**
+ * Unde trimitem clientul din emailurile de retur: cine are cont vede cererile
+ * în cont; vizitatorul n-are unde să se logheze, deci primește pagina de retur.
+ */
+const returnRequestUrl = (storefront_url: any, request: any, order: any) => {
+  const base = `${resolveStorefrontUrl(storefront_url)}/${locale()}`
+  return request?.source === "guest" || !order?.customer_id
+    ? `${base}/retur`
+    : `${base}/account/returns`
+}
+
+const RETURN_STATUS_COPY: Record<string, { label: string; text: string }> = {
+  requested: {
+    label: "În așteptare",
+    text: "Cererea ta de retur este din nou în lucru.",
+  },
+  received: {
+    label: "Colet primit",
+    text: "Am primit coletul de retur. Verificăm produsele și revenim cu rambursarea.",
+  },
+  refunded: {
+    label: "Rambursat",
+    text: "Am returnat banii pentru produsele din cerere. În funcție de bancă, suma poate apărea în cont în câteva zile lucrătoare.",
+  },
+  denied: {
+    label: "Refuzată",
+    text: "Din păcate, cererea ta de retur nu a putut fi aprobată.",
+  },
+}
+
+const returnStatusChangedCustomer: Renderer = ({
+  order,
+  request,
+  message,
+  storefront_url,
+}) => {
+  const display = request?.display_id ?? order?.display_id ?? ""
+  const copy = RETURN_STATUS_COPY[request?.status] ?? RETURN_STATUS_COPY.requested
+  const firstName = order?.shipping_address?.first_name
+  const itemsHtml = (request?.items ?? [])
+    .map(
+      (it: any) =>
+        `<li style="margin-bottom:6px;"><strong>${escape(it.title || it.item_id)}</strong> × ${it.quantity}</li>`,
+    )
+    .join("")
+  const body = `
+    ${greeting(firstName)}
+    <p style="margin:0 0 12px;">avem o actualizare pentru cererea de retur la <strong>comanda #${escape(String(display))}</strong>:</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;">
+      <tr><td style="border-radius:9999px;background:${COLOR.light};border:1px solid ${COLOR.border};padding:10px 20px;font-family:${FONT_BODY};font-size:15px;font-weight:600;color:${COLOR.dark};">${escape(copy.label)}</td></tr>
+    </table>
+    <p style="margin:0 0 12px;">${escape(copy.text)}</p>
+    ${message ? `<p style="background:${COLOR.light};padding:14px 16px;border-radius:12px;font-size:13px;margin:16px 0;">${escape(String(message))}</p>` : ""}
+    <ul style="font-size:14px;padding-left:20px;margin:0 0 16px;">${itemsHtml}</ul>
+    ${button(returnRequestUrl(storefront_url, request, order), request?.source === "guest" ? "Condițiile de retur" : "Vezi cererile tale de retur")}
+    <p style="margin:16px 0 0;font-size:13px;color:${COLOR.muted};">Pentru orice întrebare scrie-ne la <a href="mailto:${SUPPORT_EMAIL}" style="color:${COLOR.accent};">${SUPPORT_EMAIL}</a>.</p>`
+  return {
+    subject: `Retur comanda #${display}: ${copy.label} — ${BRAND}`,
+    html: layout({
+      heading: `Retur — comanda #${display}`,
+      preheader: `Status nou: ${copy.label}.`,
       bodyHtml: body,
       storefrontUrl: storefront_url,
     }),
@@ -969,6 +1042,7 @@ export const TEMPLATES = {
   "password-reset": passwordReset,
   "return-requested-admin": returnRequestedAdmin,
   "return-requested-customer": returnRequestedCustomer,
+  "return-status-changed-customer": returnStatusChangedCustomer,
   "order-canceled-customer": orderCanceledCustomer,
   "order-status-changed": orderStatusChanged,
   "order-bank-transfer": orderBankTransfer,

@@ -18,6 +18,7 @@ const STATIC_PATHS = [
   "/credit-online",
   "/livrare",
   "/retur",
+  "/retur/cerere",
   "/garantie",
   "/service",
   "/contact",

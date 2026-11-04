@@ -1,13 +1,11 @@
-import {
-  ContainerRegistrationKeys,
-  Modules,
-} from "@medusajs/framework/utils"
-import type {
-  SubscriberArgs,
-  SubscriberConfig,
-} from "@medusajs/framework"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 
-// Emitted by our custom POST /store/orders/:id/return-request route.
+import { RETURN_REQUEST_MODULE } from "../modules/return-request"
+import type ReturnRequestModuleService from "../modules/return-request/service"
+
+// Emis de rutele de cerere retur (din cont și pentru vizitatori). Cererea stă
+// în modulul `return_request`; aici trimitem emailurile către magazin și client.
 export default async function returnRequestedHandler({
   event,
   container,
@@ -15,6 +13,17 @@ export default async function returnRequestedHandler({
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const notification = container.resolve(Modules.NOTIFICATION)
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const service: ReturnRequestModuleService = container.resolve(
+    RETURN_REQUEST_MODULE,
+  )
+
+  const request = (await service
+    .retrieveReturnRequest(event.data.request_id)
+    .catch(() => null)) as any
+  if (!request) {
+    logger.warn(`return.requested: request ${event.data.request_id} not found`)
+    return
+  }
 
   const { data: orders } = await query.graph({
     entity: "order",
@@ -22,36 +31,21 @@ export default async function returnRequestedHandler({
       "id",
       "display_id",
       "email",
-      "metadata",
+      "customer_id",
       "items.id",
       "items.product_title",
-      "items.product_handle",
       "items.title",
       "items.variant_title",
       "items.thumbnail",
-      // `items.*`, nu `items.quantity`: cantitatea liniei de comandă stă în
-      // `order_item`, iar query.graph o mapează doar la `*` — altfel e undefined.
       "items.*",
       "shipping_address.first_name",
       "shipping_address.last_name",
     ],
-    filters: { id: event.data.order_id },
+    filters: { id: request.order_id },
   })
-
   const order = orders?.[0]
   if (!order) {
-    logger.warn(`return.requested: order ${event.data.order_id} not found`)
-    return
-  }
-
-  const requests =
-    (order.metadata?.return_requests as Array<Record<string, any>> | undefined) ??
-    []
-  const request = requests.find((r) => r.id === event.data.request_id)
-  if (!request) {
-    logger.warn(
-      `return.requested: request ${event.data.request_id} not on order metadata`,
-    )
+    logger.warn(`return.requested: order ${request.order_id} not found`)
     return
   }
 
@@ -59,6 +53,7 @@ export default async function returnRequestedHandler({
   const adminUrl = process.env.MEDUSA_BACKEND_URL || process.env.ADMIN_URL
   const storefrontUrl = process.env.STOREFRONT_URL
   const adminTo = process.env.ADMIN_ORDER_NOTIFICATION_EMAIL
+  const to = request.email || order.email
 
   if (adminTo) {
     sends.push(
@@ -75,18 +70,14 @@ export default async function returnRequestedHandler({
     )
   }
 
-  if (order.email) {
+  if (to) {
     sends.push(
       notification.createNotifications({
-        to: order.email,
+        to,
         channel: "email",
         template: "return-requested-customer",
         data: { order, request, storefront_url: storefrontUrl },
       }),
-    )
-  } else {
-    logger.warn(
-      `return.requested: order ${order.id} has no customer email — skipping customer notification`,
     )
   }
 

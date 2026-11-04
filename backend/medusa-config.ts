@@ -64,6 +64,9 @@ const modules: any[] = [
   {
     resolve: './src/modules/product-filter',
   },
+  {
+    resolve: './src/modules/return-request',
+  },
 ]
 
 const paymentProviders: any[] = [
