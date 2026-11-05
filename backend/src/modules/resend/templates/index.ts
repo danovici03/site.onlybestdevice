@@ -393,6 +393,33 @@ const buyerFiscalNote = (order: Record<string, any>): string => {
   return `<p style="margin:16px 0 0;font-size:13px;color:${COLOR.muted};">Factura se emite pe <strong>${escape(name)}</strong>, ${escape(formatBuyerCui(fiscal.cui, fiscal.vatPayer))}${fiscal.regCom ? `, Reg. Com. ${escape(fiscal.regCom)}` : ""}. Dacă datele nu sunt corecte, răspunde la acest email.</p>`
 }
 
+// Notificarea armonizată UE despre garanția legală (Reg. (UE) 2025/1960).
+// Ghidul Comisiei cere s-o includem și în emailul de confirmare: e suportul
+// durabil al informațiilor date clientului înainte de comandă. Imaginea e
+// fișierul oficial, servit de storefront din public/images — același cu cel
+// din fereastra de pe pagina de produs. Nu se modifică (șablon fix, color).
+// Mulți clienți de email blochează imaginile: linkul de sub ea și alt-ul
+// duc la aceeași informație și fără poză.
+const LEGAL_GUARANTEE_NOTICE_PATH = "/images/garantia-legala-ue-ro.png"
+const LEGAL_GUARANTEE_EU_URL =
+  "https://europa.eu/youreurope/citizens/consumers/shopping/guarantees/index_ro.htm"
+
+const legalGuaranteeNotice = (storefrontUrl?: string) => {
+  const src = `${resolveStorefrontUrl(storefrontUrl)}${LEGAL_GUARANTEE_NOTICE_PATH}`
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:32px 0 0;border-top:1px solid ${COLOR.border};">
+      <tr><td style="padding:24px 0 0;">
+        <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:${COLOR.muted};font-weight:600;">Garanția legală de conformitate</p>
+        <a href="${escape(LEGAL_GUARANTEE_EU_URL)}" style="text-decoration:none;">
+          <img src="${escape(src)}" width="536" alt="Garanția legală: protecția oferită de garanția legală minimă de doi ani pentru bunurile vândute în Uniunea Europeană. Vânzătorii sunt răspunzători pentru orice neconformitate existentă la livrare și constatată în perioada de garanție legală și trebuie să ofere repararea sau înlocuirea gratuită, iar în unele cazuri o reducere de preț sau rambursarea integrală." style="display:block;width:100%;max-width:536px;height:auto;border:0;outline:none;text-decoration:none;">
+        </a>
+        <p style="margin:12px 0 0;font-size:13px;text-align:center;">
+          <a href="${escape(LEGAL_GUARANTEE_EU_URL)}" style="color:#0b4ea2;font-weight:600;text-decoration:underline;">Informații UE despre garanția legală</a>
+        </p>
+      </td></tr>
+    </table>`
+}
+
 const orderPlacedCustomer: Renderer = ({ order, storefront_url }) => {
   const display = order.display_id ?? order.id
   const orderUrl = `${resolveStorefrontUrl(storefront_url)}/${locale()}/order/${order.id}/confirmed`
@@ -419,7 +446,8 @@ const orderPlacedCustomer: Renderer = ({ order, storefront_url }) => {
     )}
     ${button(orderUrl, "Vezi comanda")}
     ${buyerFiscalNote(order)}
-    <p style="margin:16px 0 0;color:${COLOR.muted};">${pickup ? "Îți scriem din nou imediat ce comanda te așteaptă în magazin." : "Îți scriem din nou imediat ce comanda pleacă spre tine."}</p>`
+    <p style="margin:16px 0 0;color:${COLOR.muted};">${pickup ? "Îți scriem din nou imediat ce comanda te așteaptă în magazin." : "Îți scriem din nou imediat ce comanda pleacă spre tine."}</p>
+    ${legalGuaranteeNotice(storefront_url)}`
   return {
     subject: `Confirmare comandă #${display} — ${BRAND}`,
     html: layout({

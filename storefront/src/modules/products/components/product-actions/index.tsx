@@ -30,6 +30,7 @@ import {
 import { warrantyOptionsFor } from "@lib/util/warranty"
 import ExtendedWarranty from "@modules/products/components/extended-warranty"
 import Installments from "@modules/products/components/installments"
+import LegalGuaranteeNotice from "@modules/products/components/legal-guarantee-notice"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import ProductUpgrades, {
   UpgradeSelection,
@@ -624,6 +625,10 @@ export default function ProductActions({
             </li>
           ))}
         </ul>
+
+        {/* Notificarea UE obligatorie (Reg. 2025/1960) — imediat sub
+            „Garanție 24 luni”, ca să fie vizibilă înainte de cumpărare. */}
+        <LegalGuaranteeNotice />
 
         {selectedPrice?.calculated_price_number ? (
           <Installments

@@ -172,4 +172,21 @@ describe("emailurile de comandă plasată", () => {
     expect(html).toContain("010101 București")
     expect(html).not.toContain("jud. București")
   })
+
+  // Notificarea UE (Reg. 2025/1960): ghidul Comisiei o cere și în emailul de
+  // confirmare. Doar la client — adminul n-are nevoie de ea.
+  it("include notificarea UE despre garanția legală doar în emailul clientului", () => {
+    const customer = render("order-placed-customer", {
+      order: baseOrder,
+      storefront_url: "https://www.onlybestdevice.ro/",
+    })
+    expect(customer).toContain(
+      'src="https://www.onlybestdevice.ro/images/garantia-legala-ue-ro.png"'
+    )
+    expect(customer).toContain("Informații UE despre garanția legală")
+    expect(customer).toContain("europa.eu/youreurope")
+
+    const admin = render("order-placed-admin", { order: baseOrder })
+    expect(admin).not.toContain("garantia-legala-ue-ro.png")
+  })
 })
