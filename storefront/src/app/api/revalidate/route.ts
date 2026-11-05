@@ -25,6 +25,8 @@ const KNOWN_TAGS = new Set([
   // Lista metodelor de plată e cache-uită cu force-cache; revalidează după
   // activarea/dezactivarea unui provider pe regiune.
   "payment_providers",
+  // Modelele de la „Vinde telefonul” — după prețurile schimbate din admin.
+  "buyback",
 ])
 
 // Tags prefixed with one of these keys are scoped per-entity (e.g.

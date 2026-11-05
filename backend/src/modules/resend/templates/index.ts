@@ -1072,6 +1072,182 @@ const tbiSubmitAlertAdmin: Renderer = ({
   }
 }
 
+
+// ── Preluare telefoane (buyback) ─────────────────────────────────────────────
+
+const buybackUrl = (storefront_url: any, order: any) =>
+  `${resolveStorefrontUrl(storefront_url)}/${locale()}/vinde-telefonul/preluare/${encodeURIComponent(order?.access_token ?? "")}`
+
+const buybackPayout = (order: any, amount: number) =>
+  order?.payout_method === "voucher"
+    ? `<strong>${money(amount)}</strong> ca voucher pe ${BRAND}`
+    : `<strong>${money(amount)}</strong> prin transfer bancar`
+
+const buybackAmount = (order: any) =>
+  order?.payout_method === "voucher"
+    ? (order?.final_amount ?? order?.revised_voucher_price ?? order?.quoted_voucher_price)
+    : (order?.final_amount ?? order?.revised_price ?? order?.quoted_price)
+
+const buybackDevice = (order: any) =>
+  [order?.device_name, order?.storage?.replace(/(\d)(GB|TB)$/, "$1 $2"), order?.color]
+    .filter(Boolean)
+    .map(escape)
+    .join(" · ")
+
+const buybackSendInstructions = (order: any) => {
+  if (order?.delivery_method === "store") {
+    const p = pickupDetails()
+    return `<p style="margin:0 0 12px;">Adu telefonul în magazin${p.address ? `: <strong>${escape(p.address)}</strong>` : ""}${p.hours ? ` (${escape(p.hours)})` : ""}. Spune că vii pentru preluarea <strong>#${escape(order.display_id)}</strong>.</p>`
+  }
+  const a = order?.address ?? {}
+  return `<p style="margin:0 0 12px;">Te contactăm în cel mult o zi lucrătoare ca să stabilim ridicarea cu curierul (transportul îl plătim noi) de la adresa: <strong>${escape([a.street, a.city, a.county].filter(Boolean).join(", "))}</strong>.</p>`
+}
+
+const buybackChecklist = `
+  <h3 style="margin:24px 0 8px;font-family:${FONT_HEADING};font-size:18px;font-weight:400;color:${COLOR.dark};">Înainte să ne dai telefonul</h3>
+  <ol style="font-size:14px;padding-left:20px;margin:0 0 16px;line-height:1.7;">
+    <li>Fă o copie de siguranță a datelor.</li>
+    <li>Dezactivează „Găsește-mi iPhone-ul” / contul Google sau Samsung — un telefon blocat pe cont nu poate fi preluat.</li>
+    <li>Resetează-l la setările din fabrică și scoate cartela SIM și cardul de memorie.</li>
+    <li>Ambalează-l bine (cutia originală sau folie cu bule). Încărcătorul nu e necesar.</li>
+  </ol>`
+
+const buybackSubmittedCustomer: Renderer = ({ order, storefront_url }) => {
+  const body = `
+    ${greeting(order?.first_name)}
+    <p style="margin:0 0 12px;">am înregistrat preluarea <strong>#${escape(order.display_id)}</strong> pentru <strong>${buybackDevice(order)}</strong>.</p>
+    <p style="margin:0 0 12px;">Oferta acceptată: ${buybackPayout(order, buybackAmount(order))}.</p>
+    ${buybackSendInstructions(order)}
+    ${buybackChecklist}
+    <h3 style="margin:24px 0 8px;font-family:${FONT_HEADING};font-size:18px;font-weight:400;color:${COLOR.dark};">Ce urmează</h3>
+    <p style="margin:0 0 12px;">După ce primim telefonul, un tehnician îl verifică. Dacă starea corespunde descrierii, îți trimitem ${order.payout_method === "voucher" ? "voucherul" : "banii"}. Dacă diferă, îți facem o ofertă nouă, pe care o poți accepta sau refuza.</p>
+    ${button(buybackUrl(storefront_url, order), "Urmărește preluarea")}`
+  return {
+    subject: `Preluarea #${order.display_id} a fost înregistrată — ${BRAND}`,
+    html: layout({
+      heading: "Am înregistrat preluarea",
+      preheader: `${order.device_name} — ${money(buybackAmount(order))}`,
+      bodyHtml: body,
+      storefrontUrl: storefront_url,
+    }),
+  }
+}
+
+const buybackSubmittedAdmin: Renderer = ({ order, admin_url, storefront_url }) => {
+  const a = order?.address
+  const body = `
+    <p style="margin:0 0 12px;">Preluare nouă <strong>#${escape(order.display_id)}</strong>: ${buybackDevice(order)}.</p>
+    <ul style="font-size:14px;line-height:1.7;padding-left:20px;margin:0 0 16px;">
+      <li>Client: ${escape(`${order.first_name} ${order.last_name}`)} · ${escape(order.email)} · ${escape(order.phone)}</li>
+      <li>Plată: ${buybackPayout(order, buybackAmount(order))}</li>
+      <li>Predare: ${order.delivery_method === "store" ? "în magazin" : `curier de la ${escape([a?.street, a?.city, a?.county].filter(Boolean).join(", "))}`}</li>
+    </ul>
+    ${order.customer_note ? `<p style="background:${COLOR.light};padding:14px 16px;border-radius:12px;font-size:13px;margin:16px 0;"><strong>Mesajul clientului:</strong><br>${escape(order.customer_note)}</p>` : ""}
+    ${admin_url ? button(`${admin_url}/app/buyback`, "Deschide preluările") : ""}`
+  return {
+    subject: `[${BRAND}] Preluare nouă #${order.display_id} — ${order.device_name}`,
+    html: layout({ heading: `Preluare #${order.display_id}`, bodyHtml: body, storefrontUrl: storefront_url }),
+  }
+}
+
+const BUYBACK_STATUS_COPY: Record<string, { subject: string; heading: string; text: (o: any) => string }> = {
+  received: {
+    subject: "Am primit telefonul",
+    heading: "Am primit telefonul",
+    text: () => "Telefonul a ajuns la noi și intră în verificare. Revenim în 1–2 zile lucrătoare.",
+  },
+  revised: {
+    subject: "Ofertă nouă după verificare",
+    heading: "Avem o ofertă nouă pentru telefonul tău",
+    text: (o) =>
+      `La verificare, starea telefonului diferă de cea descrisă în evaluare. Oferta nouă: ${buybackPayout(o, o.payout_method === "voucher" ? o.revised_voucher_price : o.revised_price)} (inițial ${money(o.payout_method === "voucher" ? o.quoted_voucher_price : o.quoted_price)}). Intră pe pagina preluării ca s-o accepți sau s-o refuzi.`,
+  },
+  accepted: {
+    subject: "Preluarea a fost aprobată",
+    heading: "Preluarea a fost aprobată",
+    text: (o) =>
+      `Totul e în regulă. Urmează să primești ${buybackPayout(o, buybackAmount(o))}${o.payout_method === "bank" ? " în contul indicat" : ""}.`,
+  },
+  paid: {
+    subject: "Ți-am trimis banii",
+    heading: "Plata a fost efectuată",
+    text: (o) =>
+      o.payout_method === "voucher"
+        ? `Voucherul tău de <strong>${money(o.final_amount)}</strong> este: <strong style="font-size:18px;letter-spacing:0.05em;">${escape(o.voucher_code)}</strong>. Îl introduci în coș, la „Cod promoțional”. Se folosește într-o singură comandă și e valabil 12 luni.`
+        : `Am trimis <strong>${money(o.final_amount)}</strong> prin transfer bancar în contul care se termină în ${escape(String(o.iban_last4 ?? ""))}. Suma apare în cont în 1–2 zile lucrătoare.`,
+  },
+  declined: {
+    subject: "Preluarea nu a putut fi finalizată",
+    heading: "Preluarea nu a putut fi finalizată",
+    text: () => "Îți trimitem telefonul înapoi și te anunțăm când pleacă spre tine.",
+  },
+  returned: {
+    subject: "Telefonul pleacă înapoi spre tine",
+    heading: "Ți-am trimis telefonul înapoi",
+    text: (o) => (o.awb ? `Numărul de urmărire al coletului (AWB): <strong>${escape(o.awb)}</strong>.` : "Telefonul pleacă spre tine prin curier."),
+  },
+  canceled: {
+    subject: "Preluarea a fost anulată",
+    heading: "Preluarea a fost anulată",
+    text: () => "Preluarea a fost anulată. Dacă te răzgândești, poți face oricând o evaluare nouă.",
+  },
+}
+
+/**
+ * Clientului, când schimbarea de status e chiar răspunsul lui la oferta
+ * revizuită. Textele generice („Preluarea a fost aprobată", „nu a putut fi
+ * finalizată") ar descrie o decizie a magazinului, nu a lui.
+ */
+const BUYBACK_CUSTOMER_RESPONSE_COPY: Record<string, { subject: string; heading: string; text: (o: any) => string }> = {
+  accepted: {
+    subject: "Ai acceptat oferta nouă",
+    heading: "Ai acceptat oferta nouă",
+    text: (o) =>
+      `Mulțumim! Urmează să primești ${buybackPayout(o, buybackAmount(o))}${o.payout_method === "bank" ? " în contul indicat" : ""}.`,
+  },
+  declined: {
+    subject: "Ai refuzat oferta nouă",
+    heading: "Ai refuzat oferta nouă",
+    text: () => "Am înregistrat răspunsul tău. Îți trimitem telefonul înapoi și te anunțăm când pleacă spre tine.",
+  },
+}
+
+/** Magazinului: clientul a răspuns la oferta revizuită (de plătit sau de returnat). */
+const buybackCustomerResponseAdmin: Renderer = ({ order, admin_url, storefront_url }) => {
+  const accepted = order.status === "accepted"
+  const body = `
+    <p style="margin:0 0 12px;">Clientul ${escape(`${order.first_name} ${order.last_name}`)} a <strong>${accepted ? "acceptat" : "refuzat"}</strong> oferta revizuită pentru preluarea <strong>#${escape(order.display_id)}</strong>: ${buybackDevice(order)}.</p>
+    <p style="margin:0 0 12px;">${
+      accepted
+        ? `De plătit: ${buybackPayout(order, buybackAmount(order))}.`
+        : `Telefonul trebuie returnat clientului (${order.delivery_method === "store" ? "ridicare din magazin" : "prin curier"}).`
+    }</p>
+    ${admin_url ? button(`${admin_url}/app/buyback`, "Deschide preluările") : ""}`
+  return {
+    subject: `[${BRAND}] Preluarea #${order.display_id}: oferta revizuită ${accepted ? "acceptată — de plătit" : "refuzată — de returnat"}`,
+    html: layout({ heading: `Preluare #${order.display_id}`, bodyHtml: body, storefrontUrl: storefront_url }),
+  }
+}
+
+const buybackStatusCustomer: Renderer = ({ order, storefront_url, by }) => {
+  const copy =
+    (by === "customer" ? BUYBACK_CUSTOMER_RESPONSE_COPY[order?.status] : undefined) ??
+    BUYBACK_STATUS_COPY[order?.status] ??
+    BUYBACK_STATUS_COPY.received
+  const body = `
+    ${greeting(order?.first_name)}
+    <p style="margin:0 0 12px;">Preluarea <strong>#${escape(order.display_id)}</strong> — ${buybackDevice(order)}.</p>
+    <p style="margin:0 0 12px;">${copy.text(order)}</p>
+    ${order.customer_message ? `<p style="background:${COLOR.light};padding:14px 16px;border-radius:12px;font-size:13px;margin:16px 0;">${escape(order.customer_message)}</p>` : ""}
+    ${button(buybackUrl(storefront_url, order), order.status === "revised" ? "Vezi oferta nouă" : "Vezi preluarea")}`
+  const subject =
+    order.status === "paid" && order.payout_method === "voucher" ? "Voucherul tău e gata" : copy.subject
+  return {
+    subject: `${subject} — preluarea #${order.display_id}`,
+    html: layout({ heading: copy.heading, bodyHtml: body, storefrontUrl: storefront_url }),
+  }
+}
+
 export const TEMPLATES = {
   "order-placed-customer": orderPlacedCustomer,
   "order-ready-for-pickup": orderReadyForPickup,
@@ -1089,6 +1265,10 @@ export const TEMPLATES = {
   "payment-failed-customer": paymentFailedCustomer,
   "customer-welcome": customerWelcome,
   "tbi-submit-alert-admin": tbiSubmitAlertAdmin,
+  "buyback-submitted-customer": buybackSubmittedCustomer,
+  "buyback-submitted-admin": buybackSubmittedAdmin,
+  "buyback-status-customer": buybackStatusCustomer,
+  "buyback-customer-response-admin": buybackCustomerResponseAdmin,
 } as const
 
 export type TemplateName = keyof typeof TEMPLATES

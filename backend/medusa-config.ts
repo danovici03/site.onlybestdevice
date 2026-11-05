@@ -67,6 +67,9 @@ const modules: any[] = [
   {
     resolve: './src/modules/return-request',
   },
+  {
+    resolve: './src/modules/buyback',
+  },
 ]
 
 const paymentProviders: any[] = [

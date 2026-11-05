@@ -41,7 +41,7 @@ export const PHONE_CATEGORY_HANDLE =
 
 // ── Parser nume ──────────────────────────────────────────────────────────────
 
-function slugify(s: string): string {
+export function slugify(s: string): string {
   return s
     .toLowerCase()
     .normalize("NFD")
