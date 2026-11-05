@@ -100,8 +100,7 @@ export default async function BlackFridayPage(props: Props) {
           Ofertele de Black Friday
         </h2>
         <p className="bf-deals-note">
-          Garanție 24 de luni, plată cu cardul sau în rate, retur gratuit în 14
-          zile.
+          Garanție 24 de luni, plată cu cardul sau în rate, retur în 14 zile.
         </p>
 
         {categories.length > 1 && (

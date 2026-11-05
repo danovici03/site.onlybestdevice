@@ -94,8 +94,8 @@ export default function ReturPage() {
             }
           >
             Este important de reținut că este necesar să chemi curierul să ridice
-            produsul pe care vrei să îl returnezi, cu plata taxei de transport la
-            destinatar, fără costuri suplimentare.
+            produsul pe care vrei să îl returnezi. Costul transportului de retur
+            este suportat de tine.
           </StepCard>
         </div>
       }
@@ -112,8 +112,7 @@ export default function ReturPage() {
         </li>
         <li>
           Este necesar să chemi curierul să ridice produsul pe care vrei să îl
-          returnezi, cu plata taxei de transport la destinatar, fără ca tu să ai
-          alte costuri suplimentare — o poți face din pagina{" "}
+          returnezi. Costul transportului de retur este suportat de tine — o poți face din pagina{" "}
           <a href={COURIER_PICKUP_URL} target="_blank" rel="noopener noreferrer">
             cheamă un curier
           </a>
@@ -177,10 +176,9 @@ export default function ReturPage() {
 
       <h3>Cost transport retur</h3>
       <p>
-        În cele 14 zile de retur, <strong>transportul este gratuit pentru tine</strong>:
-        chemi curierul Fan la tine acasă și expediezi coletul cu plata taxei de
-        transport la destinatar, fără costuri suplimentare. Costul îl suportăm
-        noi.
+        În cele 14 zile de retur, <strong>costul transportului este suportat de
+        tine</strong>: chemi curierul Fan la tine acasă și expediezi coletul cu
+        plata transportului la expeditor.
       </p>
 
       <Callout icon={<MapPin size={20} />} title="Adresa de retur">

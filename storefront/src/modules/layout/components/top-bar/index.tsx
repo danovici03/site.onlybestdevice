@@ -32,7 +32,7 @@ const messages = [
   },
   {
     Icon: Headset,
-    text: "Verificare colet la livrare · Retur gratuit 14 zile",
+    text: "Verificare colet la livrare · Retur în 14 zile",
   },
 ]
 

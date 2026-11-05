@@ -13,7 +13,7 @@ import { getBaseURL } from "@lib/util/env"
 export const metadata: Metadata = {
   title: { absolute: "Onlybestdevice – Telefoane, laptopuri și tablete, în rate" },
   description:
-    "Onlybestdevice: telefoane, laptopuri, tablete și accesorii noi de la Apple, Samsung și alții. Garanție 24 de luni, plată cu cardul sau în rate, retur gratuit în 14 zile.",
+    "Onlybestdevice: telefoane, laptopuri, tablete și accesorii noi de la Apple, Samsung și alții. Garanție 24 de luni, plată cu cardul sau în rate, retur în 14 zile.",
   alternates: canonical(""),
 }
 

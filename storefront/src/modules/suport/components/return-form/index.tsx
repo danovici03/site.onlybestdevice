@@ -147,7 +147,7 @@ export default function ReturnForm() {
         </p>
         <p className="text-brand-dark/70 mb-6 text-sm">
           Pasul următor: cheamă curierul să ridice coletul de la tine, cu plata
-          taxei de transport la destinatar. Pune în colet numele tău, numărul
+          transportului la expeditor (costul este suportat de tine). Pune în colet numele tău, numărul
           comenzii (#{order?.display_id}) și motivul returului.
         </p>
         <a

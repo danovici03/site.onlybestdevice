@@ -83,7 +83,7 @@ const Summary = ({ cart }: SummaryProps) => {
           {
             Icon: ArrowUUpLeft,
             title: "Retur în 14 zile",
-            note: "Returnare gratuită, rambursare completă",
+            note: "Rambursare completă a produsului",
           },
           {
             Icon: ShieldCheck,

@@ -588,7 +588,7 @@ export default function ProductActions({
             {
               Icon: ArrowUUpLeft,
               title: "Retur 14 zile",
-              note: "Gratuit, bani înapoi",
+              note: "Bani înapoi integral",
             },
             {
               Icon: ShieldCheck,
