@@ -114,12 +114,6 @@ export const MEGA_MENU: MegaMenuRoot[] = [
         sale: true,
       },
       {
-        label: "Second Hand",
-        href: "/second-hand",
-        description: "Telefoane folosite, verificate, cu garanție.",
-        tag: "second-hand",
-      },
-      {
         label: "Telefoane mobile",
         href: "/categories/telefoane-mobile",
         description: "Smartphone-uri noi, sigilate, cu garanție.",
@@ -198,6 +192,12 @@ export const MEGA_MENU: MegaMenuRoot[] = [
         label: "Diverse",
         href: "/categories/diverse",
         description: "Alte produse din catalog.",
+      },
+      {
+        label: "Second Hand",
+        href: "/second-hand",
+        description: "Telefoane folosite, verificate, cu garanție.",
+        tag: "second-hand",
       },
     ],
   },
