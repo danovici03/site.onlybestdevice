@@ -178,6 +178,26 @@ export default function TermeniPage() {
         conform normelor în vigoare.
       </p>
 
+      <h3>Oferte și reduceri de preț</h3>
+      <p>
+        Ofertele și reducerile de preț afișate pe site sunt valabile în limita
+        stocului disponibil. Dacă pentru o ofertă este anunțată o perioadă, ea
+        se încheie la data anunțată sau la epuizarea stocului, oricare dintre
+        acestea survine prima.
+      </p>
+      <p>
+        La produsele cu preț redus, prețul tăiat este prețul de referință, adică
+        cel mai mic preț practicat de noi pe site pentru același produs în
+        ultimele 30 de zile înainte de aplicarea reducerii, conform OG nr.
+        99/2000. Procentul de reducere afișat se calculează față de acest preț.
+      </p>
+      <p>
+        Prețul și disponibilitatea unui produs sunt cele afișate în momentul
+        plasării comenzii. Dacă un produs comandat la ofertă nu mai este
+        disponibil, te anunțăm și poți alege anularea comenzii, cu restituirea
+        integrală a sumelor plătite.
+      </p>
+
       <h2>Livrare</h2>
       <p>
         Modalitățile, termenele și costurile de livrare sunt descrise pe pagina{" "}

@@ -55,7 +55,7 @@ const StoreTemplate = async ({
   const lead = term
     ? "Filtrează rezultatele după marcă, preț sau categorie."
     : sale
-      ? "Produsele alese de noi, la preț redus — stoc limitat."
+      ? "Produsele alese de noi, la preț redus. Ofertele sunt valabile în limita stocului."
       : secondHand
         ? "Produse folosite, verificate și testate de noi — cu garanție, grad de aspect și sănătatea bateriei afișate la fiecare."
         : "Explorează întreaga gamă Onlybestdevice — device-uri alese cu grijă pentru tine."
