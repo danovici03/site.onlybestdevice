@@ -1,3 +1,5 @@
+import { needsIdentity } from "./identity"
+
 /**
  * Doar câmpurile pe care le folosesc șabloanele. `data` se salvează în tabelul
  * de notificări al Medusei și pleacă la provider (Resend), deci CNP-ul, actul
@@ -34,5 +36,7 @@ export const toEmailOrder = (order: any) => {
   const out: Record<string, unknown> = {}
   for (const key of EMAIL_FIELDS) out[key] = order[key] ?? null
   out.iban_last4 = order.iban ? String(order.iban).slice(-4) : null
+  // Doar faptul că lipsesc datele pentru act, nu datele în sine.
+  out.identity_required = needsIdentity(order)
   return out
 }

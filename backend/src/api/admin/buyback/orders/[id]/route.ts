@@ -90,6 +90,16 @@ export async function POST(req: AuthenticatedMedusaRequest, res: MedusaResponse)
     }
 
     let issuedPromotion: string | null = null
+    if (to === "paid" && !order.cnp) {
+      return {
+        status: 400,
+        body: {
+          message:
+            "Clientul n-a completat încă CNP-ul și actul pentru borderou. Le cere pe pagina preluării; primești email când le trimite.",
+        },
+      }
+    }
+
     if (to === "paid") {
       const amount = order.final_amount ?? currentAmount(order)
       patch.final_amount = amount

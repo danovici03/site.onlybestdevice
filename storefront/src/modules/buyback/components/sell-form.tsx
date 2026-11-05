@@ -5,9 +5,9 @@ import { useParams, useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
 import { submitBuybackOrder } from "@lib/data/buyback"
-import { RO_COUNTIES } from "@lib/util/counties"
+import { matchCounty, RO_COUNTIES } from "@lib/util/counties"
+import LocateMeButton from "@modules/common/components/locate-me-button"
 
-import { isValidCnp } from "../cnp"
 import { isValidIban } from "../iban"
 
 const inputClass =
@@ -17,6 +17,9 @@ const labelClass = "mb-1.5 block text-sm font-semibold text-brand-dark"
 /**
  * Datele pentru preluare, după ce clientul a ales cum vrea banii. Suma nu
  * pleacă de aici: backend-ul o ia din oferta semnată (`quoteToken`).
+ *
+ * CNP-ul și actul nu se cer aici: abia când oferta finală e acceptată, pe
+ * pagina preluării (vezi `order-status.tsx`).
  */
 export default function SellForm({
   quoteToken,
@@ -44,9 +47,6 @@ export default function SellForm({
     iban: "",
     iban_holder: "",
     customer_note: "",
-    cnp: "",
-    id_document: "",
-    home_address: "",
     confirm: false,
   })
   const set = (patch: Partial<typeof f>) => setF((s) => ({ ...s, ...patch }))
@@ -56,14 +56,6 @@ export default function SellForm({
     setError(null)
     if (payout === "bank" && !isValidIban(f.iban)) {
       setError("IBAN-ul nu este valid. Îl găsești în aplicația băncii, la detaliile contului.")
-      return
-    }
-    if (!isValidCnp(f.cnp)) {
-      setError("CNP-ul nu este valid. Verifică cele 13 cifre din buletin.")
-      return
-    }
-    if (!/^[A-Za-z]{1,3}\s*\d{6,9}$/.test(f.id_document.trim())) {
-      setError("Scrie seria și numărul buletinului, de exemplu „RX 123456”.")
       return
     }
     if (!f.confirm) {
@@ -86,9 +78,6 @@ export default function SellForm({
         iban: payout === "bank" ? f.iban : null,
         iban_holder: payout === "bank" ? f.iban_holder.trim() || null : null,
         customer_note: f.customer_note.trim() || null,
-        cnp: f.cnp.replace(/\s+/g, ""),
-        id_document: f.id_document.trim(),
-        home_address: f.home_address.trim(),
         confirm: true,
       })
       if (!res.ok) {
@@ -127,7 +116,7 @@ export default function SellForm({
         <div className="grid gap-2 sm:grid-cols-2">
           {(
             [
-              ["courier", "Îl ridică curierul, gratuit", "Transportul îl plătim noi. Te sunăm să stabilim ridicarea."],
+              ["courier", "Îl trimit prin Fan Courier", "Comanzi tu curierul pe site-ul lor, transportul îl plătim noi la primire."],
               ["store", "Îl aduc în magazin", "Vii când îți convine, în program."],
             ] as const
           ).map(([v, l, h]) => (
@@ -148,6 +137,20 @@ export default function SellForm({
 
       {f.delivery_method === "courier" && (
         <div className="grid gap-4 sm:grid-cols-2">
+          <p className="-mb-1 text-sm text-brand-dark/60 sm:col-span-2">
+            Adresa de unde trimiți coletul. Tot aici ți-l returnăm, dacă nu ajungem la o înțelegere.
+          </p>
+          <LocateMeButton
+            className="sm:col-span-2"
+            invite={!f.city && !f.county}
+            onResolve={(l) =>
+              set({
+                city: l.name,
+                county: matchCounty(l.county) ?? f.county,
+                ...(l.postalCode ? { postal_code: l.postalCode } : {}),
+              })
+            }
+          />
           <div>
             <label className={labelClass} htmlFor="bb-county">Județ</label>
             <select id="bb-county" required className={inputClass} value={f.county} onChange={(e) => set({ county: e.target.value })}>
@@ -193,48 +196,6 @@ export default function SellForm({
         </div>
       )}
 
-      <fieldset className="grid gap-4 sm:grid-cols-2">
-        <legend className="mb-1 text-base font-bold text-brand-dark">Date pentru actul de cumpărare</legend>
-        <p className="-mt-2 text-sm text-brand-dark/60 sm:col-span-2">
-          Când cumpărăm de la o persoană fizică, legea ne cere un borderou de achiziție cu datele din buletin. Le
-          folosim doar pentru acest act; nu apar în emailuri și nici pe pagina preluării.
-        </p>
-        <div>
-          <label className={labelClass} htmlFor="bb-cnp">CNP</label>
-          <input
-            id="bb-cnp"
-            required
-            inputMode="numeric"
-            autoComplete="off"
-            maxLength={16}
-            className={`${inputClass} font-mono`}
-            value={f.cnp}
-            onChange={(e) => set({ cnp: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className={labelClass} htmlFor="bb-ci">Seria și numărul buletinului</label>
-          <input
-            id="bb-ci"
-            required
-            autoComplete="off"
-            placeholder="RX 123456"
-            className={`${inputClass} uppercase`}
-            value={f.id_document}
-            onChange={(e) => set({ id_document: e.target.value })}
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className={labelClass} htmlFor="bb-home">Adresa de domiciliu (ca în buletin)</label>
-          <input
-            id="bb-home"
-            required
-            className={inputClass}
-            value={f.home_address}
-            onChange={(e) => set({ home_address: e.target.value })}
-          />
-        </div>
-      </fieldset>
 
       <div>
         <label className={labelClass} htmlFor="bb-note">Ceva ce ar trebui să știm? (opțional)</label>

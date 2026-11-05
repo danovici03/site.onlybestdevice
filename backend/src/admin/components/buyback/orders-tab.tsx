@@ -288,8 +288,20 @@ function OrderDrawer({
               <Text size="small" className="text-ui-fg-subtle mt-2">
                 {order.delivery_method === "store"
                   ? "Aduce telefonul în magazin"
-                  : `Ridicare curier: ${[a?.street, a?.city, a?.county, a?.postal_code].filter(Boolean).join(", ")}`}
+                  : `Fan Courier, AWB făcut de client — expeditor: ${[a?.street, a?.city, a?.county, a?.postal_code].filter(Boolean).join(", ")}`}
+                {order.delivery_method === "courier" && (
+                  <>
+                    <br />
+                    AWB: {order.awb ? <code className="txt-compact-xsmall">{order.awb}</code> : "încă netrecut de client"}
+                  </>
+                )}
               </Text>
+              {!order.cnp && ["accepted", "paid"].includes(order.status) && (
+                <Text size="small" className="mt-2 text-ui-fg-error">
+                  Lipsesc datele pentru borderou (CNP, act, domiciliu). Clientul le completează pe pagina preluării;
+                  plata se poate marca după ce le trimite.
+                </Text>
+              )}
               {order.cnp && (
                 <Text size="small" className="mt-2">
                   <span className="text-ui-fg-subtle">Pentru borderou:</span>

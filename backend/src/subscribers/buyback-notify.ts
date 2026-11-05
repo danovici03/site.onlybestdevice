@@ -8,7 +8,7 @@ import { buybackService } from "../lib/buyback/orders"
  * Emailurile preluărilor: la trimitere (client + magazin), la fiecare
  * schimbare de status (client) și, când clientul răspunde la oferta
  * revizuită, și magazinului — altfel plata sau returul așteaptă până se uită
- * cineva în admin. Emise din rutele `buyback/orders`.
+ * cineva în admin. La fel când clientul trimite datele pentru borderou. Emise din rutele `buyback/orders`.
  */
 export default async function buybackNotify({
   event,
@@ -48,6 +48,18 @@ export default async function buybackNotify({
         }),
       )
     }
+  } else if (event.name === "buyback.identity_completed") {
+    // Clientul a trimis datele pentru borderou: preluarea se poate plăti.
+    if (adminTo) {
+      sends.push(
+        notification.createNotifications({
+          to: adminTo,
+          channel: "email",
+          template: "buyback-identity-admin",
+          data: { order, admin_url, storefront_url },
+        }),
+      )
+    }
   } else {
     sends.push(
       notification.createNotifications({
@@ -77,5 +89,5 @@ export default async function buybackNotify({
 }
 
 export const config: SubscriberConfig = {
-  event: ["buyback.submitted", "buyback.status_changed"],
+  event: ["buyback.submitted", "buyback.status_changed", "buyback.identity_completed"],
 }

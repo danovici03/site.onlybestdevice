@@ -1,3 +1,4 @@
+import { courierInfo } from "../../../lib/buyback/identity"
 import { SH_SERVICES_HANDLE } from "../../../lib/second-hand"
 import { WARRANTY_HANDLE } from "../../../lib/warranty-prices"
 import { bankAccount } from "../../../lib/company/bank-account"
@@ -1099,8 +1100,17 @@ const buybackSendInstructions = (order: any) => {
     const p = pickupDetails()
     return `<p style="margin:0 0 12px;">Adu telefonul în magazin${p.address ? `: <strong>${escape(p.address)}</strong>` : ""}${p.hours ? ` (${escape(p.hours)})` : ""}. Spune că vii pentru preluarea <strong>#${escape(order.display_id)}</strong>.</p>`
   }
-  const a = order?.address ?? {}
-  return `<p style="margin:0 0 12px;">Te contactăm în cel mult o zi lucrătoare ca să stabilim ridicarea cu curierul (transportul îl plătim noi) de la adresa: <strong>${escape([a.street, a.city, a.county].filter(Boolean).join(", "))}</strong>.</p>`
+  const c = courierInfo()
+  return `
+  <h3 style="margin:24px 0 8px;font-family:${FONT_HEADING};font-size:18px;font-weight:400;color:${COLOR.dark};">Trimite telefonul prin Fan Courier</h3>
+  <p style="margin:0 0 12px;">Curierul ți-l comanzi tu, direct pe site-ul Fan Courier. Transportul îl plătim noi, la primire.</p>
+  <ol style="font-size:14px;padding-left:20px;margin:0 0 16px;line-height:1.7;">
+    <li>Intră pe <a href="${escape(c.url)}" style="color:${COLOR.dark};font-weight:600;">Fan Courier</a> și comandă un curier.</li>
+    <li>La destinatar scrie: <strong>${escape(c.recipient)}</strong>${c.address ? `, ${escape(c.address)}` : ""}${c.phone ? `, telefon ${escape(c.phone)}` : ""}.</li>
+    <li>La plata transportului alege <strong>„Destinatar”</strong>. Nu pune ramburs.</li>
+    <li>În observații scrie „Preluare #${escape(order.display_id)}”.</li>
+    <li>Trece numărul AWB pe pagina preluării, ca să urmărim coletul.</li>
+  </ol>`
 }
 
 const buybackChecklist = `
@@ -1140,7 +1150,7 @@ const buybackSubmittedAdmin: Renderer = ({ order, admin_url, storefront_url }) =
     <ul style="font-size:14px;line-height:1.7;padding-left:20px;margin:0 0 16px;">
       <li>Client: ${escape(`${order.first_name} ${order.last_name}`)} · ${escape(order.email)} · ${escape(order.phone)}</li>
       <li>Plată: ${buybackPayout(order, buybackAmount(order))}</li>
-      <li>Predare: ${order.delivery_method === "store" ? "în magazin" : `curier de la ${escape([a?.street, a?.city, a?.county].filter(Boolean).join(", "))}`}</li>
+      <li>Predare: ${order.delivery_method === "store" ? "în magazin" : `Fan Courier, AWB făcut de client (expeditor: ${escape([a?.street, a?.city, a?.county].filter(Boolean).join(", "))})`}</li>
     </ul>
     ${order.customer_note ? `<p style="background:${COLOR.light};padding:14px 16px;border-radius:12px;font-size:13px;margin:16px 0;"><strong>Mesajul clientului:</strong><br>${escape(order.customer_note)}</p>` : ""}
     ${admin_url ? button(`${admin_url}/app/buyback`, "Deschide preluările") : ""}`
@@ -1149,6 +1159,12 @@ const buybackSubmittedAdmin: Renderer = ({ order, admin_url, storefront_url }) =
     html: layout({ heading: `Preluare #${order.display_id}`, bodyHtml: body, storefrontUrl: storefront_url }),
   }
 }
+
+/** La acceptare: datele pentru act se cer abia acum, pe pagina preluării. */
+const identityAsk = (o: any) =>
+  o?.identity_required
+    ? "<br><br>Ca să facem actul de cumpărare, mai avem nevoie de CNP, seria buletinului și adresa de domiciliu. Le completezi pe pagina preluării, la butonul de mai jos — plata pleacă după ce le primim."
+    : ""
 
 const BUYBACK_STATUS_COPY: Record<string, { subject: string; heading: string; text: (o: any) => string }> = {
   received: {
@@ -1166,7 +1182,7 @@ const BUYBACK_STATUS_COPY: Record<string, { subject: string; heading: string; te
     subject: "Preluarea a fost aprobată",
     heading: "Preluarea a fost aprobată",
     text: (o) =>
-      `Totul e în regulă. Urmează să primești ${buybackPayout(o, buybackAmount(o))}${o.payout_method === "bank" ? " în contul indicat" : ""}.`,
+      `Totul e în regulă. Urmează să primești ${buybackPayout(o, buybackAmount(o))}${o.payout_method === "bank" ? " în contul indicat" : ""}.${identityAsk(o)}`,
   },
   paid: {
     subject: "Ți-am trimis banii",
@@ -1203,7 +1219,7 @@ const BUYBACK_CUSTOMER_RESPONSE_COPY: Record<string, { subject: string; heading:
     subject: "Ai acceptat oferta nouă",
     heading: "Ai acceptat oferta nouă",
     text: (o) =>
-      `Mulțumim! Urmează să primești ${buybackPayout(o, buybackAmount(o))}${o.payout_method === "bank" ? " în contul indicat" : ""}.`,
+      `Mulțumim! Urmează să primești ${buybackPayout(o, buybackAmount(o))}${o.payout_method === "bank" ? " în contul indicat" : ""}.${identityAsk(o)}`,
   },
   declined: {
     subject: "Ai refuzat oferta nouă",
@@ -1229,6 +1245,18 @@ const buybackCustomerResponseAdmin: Renderer = ({ order, admin_url, storefront_u
   }
 }
 
+/** Magazinului: clientul a trimis datele pentru borderou, preluarea se poate plăti. */
+const buybackIdentityAdmin: Renderer = ({ order, admin_url, storefront_url }) => {
+  const body = `
+    <p style="margin:0 0 12px;">${escape(`${order.first_name} ${order.last_name}`)} a completat datele pentru borderou la preluarea <strong>#${escape(order.display_id)}</strong>: ${buybackDevice(order)}.</p>
+    <p style="margin:0 0 12px;">De plătit: ${buybackPayout(order, buybackAmount(order))}. Datele sunt în admin, pe preluare.</p>
+    ${admin_url ? button(`${admin_url}/app/buyback`, "Deschide preluările") : ""}`
+  return {
+    subject: `[${BRAND}] Preluarea #${order.display_id}: date borderou primite — de plătit`,
+    html: layout({ heading: `Preluare #${order.display_id}`, bodyHtml: body, storefrontUrl: storefront_url }),
+  }
+}
+
 const buybackStatusCustomer: Renderer = ({ order, storefront_url, by }) => {
   const copy =
     (by === "customer" ? BUYBACK_CUSTOMER_RESPONSE_COPY[order?.status] : undefined) ??
@@ -1239,7 +1267,7 @@ const buybackStatusCustomer: Renderer = ({ order, storefront_url, by }) => {
     <p style="margin:0 0 12px;">Preluarea <strong>#${escape(order.display_id)}</strong> — ${buybackDevice(order)}.</p>
     <p style="margin:0 0 12px;">${copy.text(order)}</p>
     ${order.customer_message ? `<p style="background:${COLOR.light};padding:14px 16px;border-radius:12px;font-size:13px;margin:16px 0;">${escape(order.customer_message)}</p>` : ""}
-    ${button(buybackUrl(storefront_url, order), order.status === "revised" ? "Vezi oferta nouă" : "Vezi preluarea")}`
+    ${button(buybackUrl(storefront_url, order), order.status === "revised" ? "Vezi oferta nouă" : order.identity_required ? "Completează datele" : "Vezi preluarea")}`
   const subject =
     order.status === "paid" && order.payout_method === "voucher" ? "Voucherul tău e gata" : copy.subject
   return {
@@ -1269,6 +1297,7 @@ export const TEMPLATES = {
   "buyback-submitted-admin": buybackSubmittedAdmin,
   "buyback-status-customer": buybackStatusCustomer,
   "buyback-customer-response-admin": buybackCustomerResponseAdmin,
+  "buyback-identity-admin": buybackIdentityAdmin,
 } as const
 
 export type TemplateName = keyof typeof TEMPLATES

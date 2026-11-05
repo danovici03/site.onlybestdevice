@@ -147,6 +147,11 @@ export type PublicBuybackOrder = {
   first_name: string
   submitted_at: string
   status_changed_at: string | null
+  /** Oferta e acceptată, dar lipsesc CNP-ul și actul pentru borderou. */
+  identity_required: boolean
+  identity_done: boolean
+  /** Pentru AWB-ul făcut de client la Fan Courier (doar la predarea prin curier). */
+  courier: { url: string; recipient: string; address: string; phone: string } | null
 }
 
 export type SubmitBuybackInput = {
@@ -161,9 +166,6 @@ export type SubmitBuybackInput = {
   iban?: string | null
   iban_holder?: string | null
   customer_note?: string | null
-  cnp: string
-  id_document: string
-  home_address: string
   confirm: true
 }
 
@@ -222,5 +224,37 @@ export async function respondBuybackOrder(
     return { ok: true, order }
   } catch (e: any) {
     return { ok: false, message: errorMessage(e, "Nu am putut salva răspunsul. Încearcă din nou.") }
+  }
+}
+
+export async function submitBuybackIdentity(
+  token: string,
+  input: { cnp: string; id_document: string; home_address: string }
+): Promise<{ ok: true; order: PublicBuybackOrder } | { ok: false; message: string }> {
+  try {
+    const { order } = await sdk.client.fetch<{ order: PublicBuybackOrder }>(
+      `/store/buyback/orders/${encodeURIComponent(token)}/identity`,
+      { method: "POST", body: input, cache: "no-store" }
+    )
+    return { ok: true, order }
+  } catch (e: any) {
+    return { ok: false, message: errorMessage(e, "Nu am putut salva datele. Încearcă din nou.") }
+  }
+}
+
+export async function submitBuybackAwb(
+  token: string,
+  awb: string
+): Promise<{ ok: true; order: PublicBuybackOrder } | { ok: false; message: string }> {
+  try {
+    const { order } = await sdk.client.fetch<{ order: PublicBuybackOrder }>(
+      `/store/buyback/orders/${encodeURIComponent(token)}/awb`,
+      { method: "POST", body: { awb }, cache: "no-store" }
+    )
+    return { ok: true, order }
+  } catch (e: any) {
+    const status = e?.status ?? e?.response?.status
+    if (status === 400) return { ok: false, message: "AWB-ul nu pare corect. Copiază-l exact de pe confirmarea Fan Courier." }
+    return { ok: false, message: errorMessage(e, "Nu am putut salva AWB-ul. Încearcă din nou.") }
   }
 }

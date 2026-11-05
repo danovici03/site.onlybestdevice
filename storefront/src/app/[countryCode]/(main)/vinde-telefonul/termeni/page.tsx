@@ -48,8 +48,9 @@ export default function BuybackTermsPage() {
       <h2>Predarea telefonului</h2>
       <ul>
         <li>
-          <strong>Prin curier:</strong> transportul către noi îl plătim noi. Te contactăm în cel mult o zi
-          lucrătoare ca să stabilim ridicarea.
+          <strong>Prin Fan Courier:</strong> îți comanzi singur curierul pe site-ul Fan Courier, cu plata
+          transportului la destinatar — transportul către noi îl plătim noi. Pașii și adresa noastră sunt pe pagina
+          preluării și în emailul de confirmare; numărul AWB îl treci pe pagina preluării.
         </li>
         <li>
           <strong>În magazin:</strong> la {COMPANY.sedeOperativa.via}, {COMPANY.sedeOperativa.citta}, în
@@ -103,7 +104,7 @@ export default function BuybackTermsPage() {
       <h2>Datele tale</h2>
       <p>
         Pentru borderoul de achiziție (cumpărare de la persoană fizică) îți cerem numele, CNP-ul, seria și numărul
-        actului de identitate și adresa de domiciliu. IBAN-ul îl folosim doar pentru plată. Păstrăm aceste date
+        actului de identitate și adresa de domiciliu — doar după ce oferta finală e acceptată. IBAN-ul îl folosim doar pentru plată. Păstrăm aceste date
         cât ne obligă legislația fiscală și contabilă. Detalii în{" "}
         <LocalizedClientLink href="/confidentialitate">politica de confidențialitate</LocalizedClientLink>.
       </p>

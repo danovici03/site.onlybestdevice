@@ -1,7 +1,6 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { z } from "zod"
 
-import { isValidCnp, normalizeCnp } from "../../../../lib/buyback/cnp"
 import { isValidIban, normalizeIban } from "../../../../lib/buyback/iban"
 import {
   buybackService,
@@ -39,14 +38,6 @@ const OrderSchema = z
     iban: z.string().max(50).nullable().optional(),
     iban_holder: z.string().trim().max(160).nullable().optional(),
     customer_note: z.string().trim().max(1000).nullable().optional(),
-    // Pentru borderoul de achiziție.
-    cnp: z.string().refine(isValidCnp, "CNP invalid"),
-    id_document: z
-      .string()
-      .trim()
-      .transform((v) => v.toUpperCase().replace(/\s+/g, " "))
-      .pipe(z.string().regex(/^[A-Z]{1,3} ?\d{6,9}$/, "Seria și numărul actului sunt invalide")),
-    home_address: text(250),
     confirm: z.literal(true),
   })
   .superRefine((b, ctx) => {
@@ -57,7 +48,7 @@ const OrderSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["address"],
-        message: "Adresa de ridicare lipsește",
+        message: "Adresa expeditorului lipsește",
       })
     }
   })
@@ -145,9 +136,6 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       iban: b.payout_method === "bank" ? normalizeIban(b.iban!) : null,
       iban_holder: b.payout_method === "bank" ? b.iban_holder || `${b.first_name} ${b.last_name}` : null,
       customer_note: b.customer_note || null,
-      cnp: normalizeCnp(b.cnp),
-      id_document: b.id_document,
-      home_address: b.home_address,
       submitted_at: now,
       status_changed_at: now,
     })

@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 const STEPS = [
   { icon: MagnifyingGlass, title: "Evaluezi online", text: "Răspunzi la câteva întrebări despre starea telefonului și primești oferta pe loc." },
-  { icon: Package, title: "Ni-l trimiți", text: "Curierul vine gratuit la tine, sau îl aduci în magazin." },
+  { icon: Package, title: "Ni-l trimiți", text: "Comanzi singur curierul Fan Courier, transportul îl plătim noi. Sau îl aduci în magazin." },
   { icon: ShieldCheck, title: "Îl verificăm", text: "Un tehnician confirmă starea. Dacă diferă, primești o ofertă nouă." },
   { icon: Bank, title: "Primești banii", text: "Prin transfer bancar sau ca voucher cu bonus pe site." },
 ]

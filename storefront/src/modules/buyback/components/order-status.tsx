@@ -7,6 +7,8 @@ import { respondBuybackOrder, type BuybackOrderStatus, type PublicBuybackOrder }
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 import { lei, storageLabel } from "../questions"
+import CourierSteps from "./courier-steps"
+import IdentityForm from "./identity-form"
 
 const STEPS: { key: string; label: string; done: BuybackOrderStatus[] }[] = [
   { key: "submitted", label: "Preluare înregistrată", done: ["submitted", "received", "revised", "accepted", "paid", "declined", "returned"] },
@@ -69,7 +71,11 @@ export default function OrderStatus({
 
       <p className="text-xs uppercase tracking-widest text-brand-dark/50">Preluarea #{order.display_id}</p>
       <h1 className="mt-2 text-3xl font-bold text-brand-dark md:text-4xl">
-        {order.status === "paid" && voucher ? "Gata! Voucherul tău e mai jos" : HEADLINE[order.status]}
+        {order.status === "paid" && voucher
+          ? "Gata! Voucherul tău e mai jos"
+          : order.identity_required
+            ? "Oferta e acceptată — mai avem nevoie de datele pentru act"
+            : HEADLINE[order.status]}
       </h1>
       <p className="mt-2 text-brand-dark/60">
         {order.device_name} · {storageLabel(order.storage)}
@@ -138,16 +144,20 @@ export default function OrderStatus({
         </div>
       )}
 
+      {order.identity_required && <IdentityForm token={token} onChange={setOrder} />}
+
+      {order.status === "submitted" && order.courier && (
+        <CourierSteps token={token} order={order} onChange={setOrder} />
+      )}
+
       {order.status === "submitted" && (
         <div className="mt-6 text-sm text-brand-dark/70">
-          {order.delivery_method === "store"
-            ? "Adu telefonul în magazin și spune numărul preluării."
-            : "Te contactăm în cel mult o zi lucrătoare pentru ridicarea cu curierul. Transportul îl plătim noi."}{" "}
+          {order.delivery_method === "store" && "Adu telefonul în magazin și spune numărul preluării. "}
           Înainte: dezactivează „Găsește-mi iPhone-ul” sau contul Google/Samsung și resetează telefonul.
         </div>
       )}
 
-      {order.awb && ["returned", "declined", "submitted"].includes(order.status) && (
+      {order.awb && ["returned", "declined"].includes(order.status) && (
         <p className="mt-4 text-sm text-brand-dark/70">
           AWB: <span className="font-mono font-semibold">{order.awb}</span>
         </p>

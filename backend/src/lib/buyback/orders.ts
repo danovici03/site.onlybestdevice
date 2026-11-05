@@ -7,6 +7,7 @@ import type { BUYBACK_ORDER_STATUSES } from "../../modules/buyback/models/buybac
 import type { Answers } from "./catalog"
 import { buybackService, loadRules } from "./data"
 import { formatIban } from "./iban"
+import { courierInfo, needsIdentity } from "./identity"
 import { computeQuote, resolveRule, voucherAmount } from "./pricing"
 
 export type BuybackOrderStatus = (typeof BUYBACK_ORDER_STATUSES)[number]
@@ -181,7 +182,7 @@ export async function issueVoucher(scope: { resolve: (k: string) => any }, order
 
 export async function emitBuybackEvent(
   scope: { resolve: (k: string) => any },
-  name: "buyback.submitted" | "buyback.status_changed",
+  name: "buyback.submitted" | "buyback.status_changed" | "buyback.identity_completed",
   /** `by: "customer"` = răspunsul clientului la oferta revizuită (anunțăm și magazinul). */
   data: { id: string; by?: "admin" | "customer" },
 ) {
@@ -217,6 +218,11 @@ export function publicOrder(o: any) {
     first_name: o.first_name,
     submitted_at: o.submitted_at,
     status_changed_at: o.status_changed_at,
+    /** Oferta e acceptată, dar fără CNP/act nu putem face borderoul (și plata). */
+    identity_required: needsIdentity(o),
+    identity_done: Boolean(o.cnp),
+    /** Pentru AWB-ul făcut de client: unde trimite și de unde comandă curierul. */
+    courier: o.delivery_method === "courier" ? courierInfo() : null,
   }
 }
 
