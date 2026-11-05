@@ -1,6 +1,6 @@
 "use client"
 
-import { addToCart, addWarrantyToCart } from "@lib/data/cart"
+import { addAddonToCart, addToCart, addWarrantyToCart } from "@lib/data/cart"
 import { useSession } from "@lib/context/session-context"
 import { useIntersection } from "@lib/hooks/use-in-view"
 import { getProductPrice } from "@lib/util/get-product-price"
@@ -29,6 +29,8 @@ import {
 } from "@lib/util/installments"
 import { warrantyOptionsFor } from "@lib/util/warranty"
 import ExtendedWarranty from "@modules/products/components/extended-warranty"
+import SecondHandAddons from "@modules/products/components/second-hand-addons"
+import { addonOptionsFor, secondHandDetails } from "@lib/util/second-hand"
 import Installments from "@modules/products/components/installments"
 import LegalGuaranteeNotice from "@modules/products/components/legal-guarantee-notice"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
@@ -45,6 +47,8 @@ type ProductActionsProps = {
   region: HttpTypes.StoreRegion
   upgrades?: HttpTypes.StoreProduct[]
   warranty?: HttpTypes.StoreProduct
+  /** Serviciile Second Hand (baterie nouă, folie); doar pe produsele SH. */
+  services?: HttpTypes.StoreProduct
   disabled?: boolean
   /** Providerul TBI e activ pe regiune — vezi product-actions-wrapper. */
   tbiAvailable?: boolean
@@ -63,6 +67,7 @@ export default function ProductActions({
   product,
   upgrades = [],
   warranty,
+  services,
   disabled,
   tbiAvailable = false,
 }: ProductActionsProps) {
@@ -79,6 +84,7 @@ export default function ProductActions({
   const [warrantyVariantId, setWarrantyVariantId] = useState<string | null>(
     null
   )
+  const [addonVariantIds, setAddonVariantIds] = useState<string[]>([])
   const [addError, setAddError] = useState<string | null>(null)
   const countryCode = useParams().countryCode as string
 
@@ -275,6 +281,14 @@ export default function ProductActions({
     [product, warranty]
   )
 
+  const addonOptions = useMemo(
+    () => addonOptionsFor(product, services),
+    [product, services]
+  )
+  const shWarrantyMonths = secondHandDetails(
+    product.metadata as Record<string, unknown> | null
+  ).warrantyMonths
+
   const actionsRef = useRef<HTMLDivElement>(null)
   const inView = useIntersection(actionsRef, "0px")
 
@@ -308,8 +322,19 @@ export default function ProductActions({
           countryCode,
         })
       }
+      // Serviciile SH (baterie nouă, folie montată) se leagă de produs la fel
+      // ca garanția; prețul îl decide serverul.
+      if (addonVariantIds.length) {
+        await addAddonToCart({
+          variantIds: addonVariantIds,
+          targetProductId: product.id!,
+          quantity,
+          countryCode,
+        })
+      }
       setUpgradeSelections([])
       setWarrantyVariantId(null)
+      setAddonVariantIds([])
       // Coșul nu mai vine din layout, deci nimic nu se reîmprospătează singur.
       // Tot de aici pornește și deschiderea panoului de coș: panoul reacționează
       // la creșterea numărului de produse din `SessionProvider`.
@@ -497,6 +522,17 @@ export default function ProductActions({
         {/* Garanția extinsă e un simplu selector — varianta aleasă intră în coș
             odată cu clickul pe „Adaugă în coș”. Deci stă deasupra butonului,
             ca și accesoriile; sub buton ar fi bifată prea târziu. */}
+        <SecondHandAddons
+          options={addonOptions}
+          selectedVariantIds={addonVariantIds}
+          onToggle={(id) =>
+            setAddonVariantIds((prev) =>
+              prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]
+            )
+          }
+          disabled={!!disabled || isAdding}
+        />
+
         <ExtendedWarranty
           options={warrantyOptions}
           selectedVariantId={warrantyVariantId}
@@ -592,7 +628,9 @@ export default function ProductActions({
             },
             {
               Icon: ShieldCheck,
-              title: "Garanție 24 luni",
+              title: shWarrantyMonths
+                ? `Garanție ${shWarrantyMonths} luni`
+                : "Garanție 24 luni",
               note: "Inclusă în preț",
             },
             {

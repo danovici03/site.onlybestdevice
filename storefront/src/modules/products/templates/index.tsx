@@ -9,6 +9,7 @@ import ProductReviews from "@modules/products/components/product-reviews"
 import ProductTabs from "@modules/products/components/product-tabs"
 import RelatedProducts from "@modules/products/components/related-products"
 import ProductInfo from "@modules/products/templates/product-info"
+import SecondHandDetails from "@modules/products/components/second-hand-details"
 import { notFound } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
 import type { ReviewStatsDTO } from "@lib/data/reviews"
@@ -22,6 +23,8 @@ type ProductTemplateProps = {
   countryCode: string
   upgrades?: HttpTypes.StoreProduct[]
   warranty?: HttpTypes.StoreProduct
+  /** Serviciile Second Hand; doar pe produsele SH. */
+  services?: HttpTypes.StoreProduct
   reviewStats?: ReviewStatsDTO
   crumbs?: ProductCrumb[]
 }
@@ -32,6 +35,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
   countryCode,
   upgrades = [],
   warranty,
+  services,
   reviewStats,
   crumbs,
 }) => {
@@ -58,6 +62,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
                 reviewStats={reviewStats}
                 crumbs={crumbs}
               />
+              <SecondHandDetails product={product} />
               <PhoneVariantSelect product={product} />
               <Suspense
                 fallback={
@@ -67,6 +72,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
                     region={region}
                     upgrades={upgrades}
                     warranty={warranty}
+                    services={services}
                   />
                 }
               >
@@ -75,6 +81,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
                   region={region}
                   upgrades={upgrades}
                   warranty={warranty}
+                  services={services}
                 />
               </Suspense>
             </div>

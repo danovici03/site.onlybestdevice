@@ -4,6 +4,7 @@ import {
   updateLineItemInCartWorkflow,
 } from "@medusajs/medusa/core-flows"
 
+import { ADDON_FOR, SH_SERVICES_HANDLE } from "./second-hand"
 import { WARRANTY_HANDLE } from "./warranty-prices"
 
 /** Cheia din metadata liniei de garanție; aliniată cu storefront-ul. */
@@ -11,6 +12,7 @@ const WARRANTY_FOR = "warranty_for"
 
 type CartLine = {
   id: string
+  variant_id?: string | null
   product_id: string | null
   product_handle: string | null
   quantity: number
@@ -51,6 +53,7 @@ export const syncWarrantyLines = async (
       "id",
       "items.id",
       "items.product_id",
+      "items.variant_id",
       "items.product_handle",
       "items.quantity",
       "items.metadata",
@@ -61,10 +64,15 @@ export const syncWarrantyLines = async (
 
   const items: CartLine[] = ((carts as any[])[0]?.items ?? []).filter(Boolean)
   const isWarranty = (i: CartLine) => i.product_handle === WARRANTY_HANDLE
+  // Serviciile Second Hand (baterie nouă, folie montată) urmează aceleași
+  // reguli ca garanția: cantitate = bucățile produsului deservit, ies odată cu
+  // el. Diferența: pot sta mai multe pe același produs (baterie ȘI folie), deci
+  // dublura se judecă pe (produs, serviciu), nu doar pe produs.
+  const isAddon = (i: CartLine) => i.product_handle === SH_SERVICES_HANDLE
 
   const quantityByProduct = new Map<string, number>()
   for (const item of items) {
-    if (isWarranty(item) || !item.product_id) continue
+    if (isWarranty(item) || isAddon(item) || !item.product_id) continue
     quantityByProduct.set(
       item.product_id,
       (quantityByProduct.get(item.product_id) ?? 0) + Number(item.quantity)
@@ -97,6 +105,29 @@ export const syncWarrantyLines = async (
       continue
     }
     seen.add(target)
+    if (Number(line.quantity) !== wanted) {
+      toUpdate.push({ id: line.id, quantity: wanted })
+    }
+  }
+
+  const addons = items
+    .filter(isAddon)
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+  const seenAddon = new Set<string>()
+  for (const line of addons) {
+    const target = line.metadata?.[ADDON_FOR]
+    // Fără produs legat, serviciul n-are sens singur: iese din coș.
+    const wanted =
+      typeof target === "string" ? quantityByProduct.get(target) ?? 0 : 0
+    const key = `${target}:${line.variant_id}`
+    if (wanted === 0 || seenAddon.has(key)) {
+      toDelete.push(line.id)
+      continue
+    }
+    seenAddon.add(key)
     if (Number(line.quantity) !== wanted) {
       toUpdate.push({ id: line.id, quantity: wanted })
     }

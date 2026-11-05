@@ -6,6 +6,8 @@ import { listProducts } from "@lib/data/products"
 import { getRegion, listRegions } from "@lib/data/regions"
 import { listProductReviews } from "@lib/data/reviews"
 import { getWarrantyProduct } from "@lib/data/warranty"
+import { getSecondHandServices } from "@lib/data/second-hand"
+import { isSecondHandProduct } from "@lib/util/second-hand"
 import { canonical } from "@lib/util/canonical"
 import { canOfferWarrantyFor } from "@lib/util/warranty"
 import { descriptionText } from "@lib/util/description-text"
@@ -120,7 +122,7 @@ export default async function ProductPage(props: Props) {
     return list.filter((h): h is string => typeof h === "string" && h.length > 0)
   })()
 
-  const [upgrades, reviewStats, warranty, filters] = await Promise.all([
+  const [upgrades, reviewStats, warranty, filters, services] = await Promise.all([
     upgradeHandles.length
       ? listProducts({
           countryCode: params.countryCode,
@@ -143,6 +145,10 @@ export default async function ProductPage(props: Props) {
       ? getWarrantyProduct({ countryCode: params.countryCode })
       : Promise.resolve(undefined),
     listProductFilters(pricedProduct.id),
+    // Baterie nouă / folie montată — doar pe produsele bifate „Second Hand”.
+    isSecondHandProduct(pricedProduct)
+      ? getSecondHandServices({ countryCode: params.countryCode })
+      : Promise.resolve(undefined),
   ])
 
   // Breadcrumb: categorie → marcă, din ierarhia completă de categorii (produsul
@@ -245,6 +251,7 @@ export default async function ProductPage(props: Props) {
         countryCode={params.countryCode}
         upgrades={upgrades}
         warranty={warranty}
+        services={services}
         reviewStats={reviewStats}
         crumbs={crumbs}
       />

@@ -5,7 +5,6 @@ import {
   ReceiptPercent,
   ShieldCheck,
   Star,
-  Tag,
 } from "@medusajs/icons"
 import { Container, Heading, TooltipProvider } from "@medusajs/ui"
 import { ComponentProps, ReactNode } from "react"
@@ -87,19 +86,6 @@ const FLAGS: Flag[] = [
     // pe produsele reale. Bifat, produsul și-ar oferi singur garanție pe pagina
     // lui (încă accesibilă după handle, deși e ascuns din catalog).
     available: (product) => product.handle !== WARRANTY_HANDLE,
-  },
-  {
-    tag: "outlet",
-    icon: <Tag />,
-    title: "Outlet / produs expus",
-    // Badge-ul spune scurt ce spunea paragraful lung: nimic de pe site nu
-    // citește încă tagul.
-    badge: "intern",
-    hint: "Produs expus în magazin sau folosit demonstrativ.",
-    details:
-      "Tehnic, aplică sau scoate tagul outlet de pe produs. Atenție: deocamdată site-ul nu afișează nimic pe baza acestui tag — rămâne o etichetă internă până adăugăm badge-ul și regulile de garanție pentru produsele expuse.",
-    onMessage: "Produs marcat ca Outlet",
-    offMessage: "Produs scos din Outlet",
   },
 ]
 

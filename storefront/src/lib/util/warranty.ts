@@ -2,6 +2,7 @@ import { HttpTypes } from "@medusajs/types"
 
 import { getPricesForVariant } from "./get-product-price"
 import { convertToLocale } from "./money"
+import { ADDON_FOR, ADDON_FOR_TITLE, isAddonLine } from "./second-hand"
 
 /** Produsul de serviciu din Medusa, ascuns din catalog. */
 export const WARRANTY_HANDLE = "garantie-extinsa"
@@ -205,10 +206,22 @@ export function isWarrantyLine(item: AnyLine): boolean {
   )
 }
 
-/** Produsul pe care îl acoperă o linie de garanție, dacă e legată de unul. */
+/**
+ * O linie atașată altui produs din coș: garanția extinsă sau un serviciu Second
+ * Hand (baterie nouă, folie montată). Se afișează la fel — fără poză, fără
+ * link, imediat sub produsul deservit, cu „pentru …".
+ */
+export function isAttachedLine(item: AnyLine): boolean {
+  return isWarrantyLine(item) || isAddonLine(item)
+}
+
+const attachedTarget = (item: AnyLine): unknown =>
+  item.metadata?.[isWarrantyLine(item) ? WARRANTY_FOR : ADDON_FOR]
+
+/** Produsul pe care îl deservește o linie atașată, dacă e legată de unul. */
 export function warrantyTargetTitle(item: AnyLine): string | null {
   const raw = (item.metadata as Record<string, unknown> | undefined)?.[
-    WARRANTY_FOR_TITLE
+    isWarrantyLine(item) ? WARRANTY_FOR_TITLE : ADDON_FOR_TITLE
   ]
   return typeof raw === "string" && raw.length > 0 ? raw : null
 }
@@ -224,16 +237,16 @@ export function warrantyTargetTitle(item: AnyLine): string | null {
  * produs a fost scos din coș cad la final.
  */
 export function groupWarrantyLines<T extends AnyLine>(items: T[]): T[] {
-  const warranties = items.filter(isWarrantyLine)
+  const warranties = items.filter(isAttachedLine)
   if (!warranties.length) return items
 
   const placed = new Set<T>()
   const out: T[] = []
   for (const item of items) {
-    if (isWarrantyLine(item)) continue
+    if (isAttachedLine(item)) continue
     out.push(item)
     for (const w of warranties) {
-      if (!placed.has(w) && item.product_id && w.metadata?.[WARRANTY_FOR] === item.product_id) {
+      if (!placed.has(w) && item.product_id && attachedTarget(w) === item.product_id) {
         out.push(w)
         placed.add(w)
       }
@@ -279,7 +292,7 @@ export function shouldOfferWarranty(
   item: Line,
   cart?: HttpTypes.StoreCart | null
 ): boolean {
-  if (isWarrantyLine(item)) return false
+  if (isAttachedLine(item)) return false
   // Fără produs identificabil n-am putea lega garanția de nimic, iar o linie
   // nelegată ar ascunde apoi ofertele pentru tot coșul.
   if (!item.product_id) return false

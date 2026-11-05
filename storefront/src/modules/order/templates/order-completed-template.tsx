@@ -13,7 +13,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import OnboardingCta from "@modules/order/components/onboarding-cta"
 import {
   groupWarrantyLines,
-  isWarrantyLine,
+  isAttachedLine,
   warrantyTargetTitle,
 } from "@lib/util/warranty"
 import { paymentCapturedAt, paymentLabelFor } from "@lib/util/payment-label"
@@ -200,7 +200,7 @@ export default async function OrderCompletedTemplate({
                 >
                   {/* Garanția e o opțiune a produsului de deasupra: fără poză,
                       doar spațiul ei, ca rândul să pară legat de el. */}
-                  {isWarrantyLine(item) ? (
+                  {isAttachedLine(item) ? (
                     <div className="w-16 shrink-0" aria-hidden />
                   ) : (
                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-brand-light shrink-0">

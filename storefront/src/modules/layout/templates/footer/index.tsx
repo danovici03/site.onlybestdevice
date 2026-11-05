@@ -16,6 +16,7 @@ import ManagePreferencesLink from "@modules/layout/components/cookie-consent/man
 const SHOP_LINKS = [
   { label: "Toate produsele", href: "/store" },
   { label: "Oferte", href: "/oferte" },
+  { label: "Second Hand", href: "/second-hand" },
   { label: "Telefoane mobile", href: "/categories/telefoane-mobile" },
   { label: "Tablete", href: "/categories/tablete" },
   { label: "Laptopuri", href: "/categories/laptop" },

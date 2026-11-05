@@ -1,3 +1,4 @@
+import { SH_SERVICES_HANDLE } from "../../../lib/second-hand"
 import { WARRANTY_HANDLE } from "../../../lib/warranty-prices"
 import { bankAccount } from "../../../lib/company/bank-account"
 import {
@@ -163,16 +164,25 @@ const thumbnailImg = (item: any) => {
 const isWarrantyItem = (i: any) =>
   (i.product_handle || i.variant?.product?.handle) === WARRANTY_HANDLE
 
+/** Serviciile Second Hand (baterie nouă, folie) se afișează ca garanția. */
+const isAddonItem = (i: any) =>
+  (i.product_handle || i.variant?.product?.handle) === SH_SERVICES_HANDLE
+
+const isAttachedItem = (i: any) => isWarrantyItem(i) || isAddonItem(i)
+
+const attachedTarget = (i: any) =>
+  isWarrantyItem(i) ? i.metadata?.warranty_for : i.metadata?.addon_for
+
 const groupWarrantyItems = (items: any[]) => {
-  const warranties = items.filter(isWarrantyItem)
+  const warranties = items.filter(isAttachedItem)
   if (!warranties.length) return items
   const placed = new Set<any>()
   const out: any[] = []
   for (const item of items) {
-    if (isWarrantyItem(item)) continue
+    if (isAttachedItem(item)) continue
     out.push(item)
     for (const w of warranties) {
-      if (!placed.has(w) && item.product_id && w.metadata?.warranty_for === item.product_id) {
+      if (!placed.has(w) && item.product_id && attachedTarget(w) === item.product_id) {
         out.push(w)
         placed.add(w)
       }
@@ -188,16 +198,17 @@ const renderOrderItems = (
   if (!items?.length) return ""
   const rows = groupWarrantyItems(items)
     .map((i) => {
-      const warranty = isWarrantyItem(i)
+      const warranty = isAttachedItem(i)
       const href = warranty ? null : productUrlFor(i, storefrontUrl)
       const thumb = warranty ? "" : thumbnailImg(i)
       const thumbCell = href
         ? `<a href="${escape(href)}" style="display:block;text-decoration:none;">${thumb}</a>`
         : thumb
+      const coveredRaw = isWarrantyItem(i)
+        ? i.metadata?.warranty_for_title
+        : i.metadata?.addon_for_title
       const coveredTitle =
-        warranty && typeof i.metadata?.warranty_for_title === "string"
-          ? i.metadata.warranty_for_title
-          : null
+        warranty && typeof coveredRaw === "string" ? coveredRaw : null
       const title = escape(i.product_title || i.title || "")
       const titleEl = href
         ? `<a href="${escape(href)}" style="color:${COLOR.dark};text-decoration:none;font-weight:600;">${title}</a>`

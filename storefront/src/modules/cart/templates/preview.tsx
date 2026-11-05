@@ -3,7 +3,7 @@
 import repeat from "@lib/util/repeat"
 import {
   groupWarrantyLines,
-  isWarrantyLine,
+  isAttachedLine,
   shouldOfferWarranty,
 } from "@lib/util/warranty"
 import { HttpTypes } from "@medusajs/types"
@@ -44,7 +44,7 @@ const ItemsPreviewTemplate = ({ cart, warranty }: ItemsTemplateProps) => {
                         item={item}
                         type="preview"
                         currencyCode={cart.currency_code}
-                        removable={isWarrantyLine(item)}
+                        removable={isAttachedLine(item)}
                       />
                       {/* Propunerea stă pe rândul ei, pe toată lățimea
                           rezumatului — coloana de titlu e prea îngustă și ar

@@ -7,6 +7,7 @@ import {
 import { z } from "zod"
 
 import { snapshotBeforeDelete } from "../../../lib/products/restore"
+import { SH_SERVICES_HANDLE } from "../../../lib/second-hand"
 import { WARRANTY_HANDLE } from "../../../lib/warranty-prices"
 
 /**
@@ -72,7 +73,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     .select("id", "handle")
     .whereIn("id", [...new Set(parsed.data.ids)])
     .whereNull("deleted_at")
-  const ids = rows.filter((r) => r.handle !== WARRANTY_HANDLE).map((r) => r.id)
+  const ids = rows.filter((r) => r.handle !== WARRANTY_HANDLE && r.handle !== SH_SERVICES_HANDLE).map((r) => r.id)
   const skipped = parsed.data.ids.length - ids.length
 
   if (category_id) {

@@ -18,6 +18,8 @@ export type MegaMenuItem = {
    * din șirul de categorii, altfel se pierde printre ele.
    */
   highlight?: boolean
+  /** Lista nu e o categorie, ci produsele cu tagul dat (ex. `second-hand`). */
+  tag?: string
   /**
    * Intrarea nu e o categorie Medusa, ci lista de oferte: produsele ei se
    * rezolvă după bifa „La ofertă", nu după handle-ul din `href`. Fără marcaj,
@@ -110,6 +112,12 @@ export const MEGA_MENU: MegaMenuRoot[] = [
         description: "Reducerile active, actualizate săptămânal.",
         highlight: true,
         sale: true,
+      },
+      {
+        label: "Second Hand",
+        href: "/second-hand",
+        description: "Telefoane folosite, verificate, cu garanție.",
+        tag: "second-hand",
       },
       {
         label: "Telefoane mobile",

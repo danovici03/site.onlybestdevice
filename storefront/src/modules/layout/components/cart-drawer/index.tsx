@@ -14,7 +14,7 @@ import { lineItemThumbnail } from "@lib/util/line-item-thumbnail"
 import { convertToLocale } from "@lib/util/money"
 import {
   groupWarrantyLines,
-  isWarrantyLine,
+  isAttachedLine,
   warrantyTargetTitle,
 } from "@lib/util/warranty"
 import { COURIER_TARIFF_FROM } from "@lib/util/shipping-tariff"
@@ -259,7 +259,7 @@ const DrawerItem = ({ item, currencyCode, onNavigate }: DrawerItemProps) => {
   const [deleting, setDeleting] = useState(false)
   const warrantyFor = warrantyTargetTitle(item)
   // Opțiune a produsului de deasupra, nu produs: fără poză și fără link.
-  const isWarranty = isWarrantyLine(item)
+  const isWarranty = isAttachedLine(item)
 
   // Acțiunile de server nu mai re-randează layout-ul cu un coș nou, pentru că
   // acesta nu mai citește coșul. Fiecare modificare trebuie să ceară explicit

@@ -226,6 +226,56 @@ export async function addWarrantyToCart({
 }
 
 /**
+ * Adaugă un serviciu Second Hand (baterie nouă, folie montată) pentru un
+ * produs anume. Același model ca `addWarrantyToCart`: prețul îl decide
+ * serverul, din produsul deservit.
+ */
+export async function addAddonToCart({
+  variantIds,
+  targetProductId,
+  quantity,
+  countryCode,
+}: {
+  /** Toate serviciile alese, trimise într-un singur apel. */
+  variantIds: string[]
+  targetProductId: string
+  quantity: number
+  countryCode: string
+}) {
+  if (!variantIds.length || !targetProductId) {
+    throw new Error("Missing variant or product ID when adding service")
+  }
+
+  const cart = await getOrSetCart(countryCode)
+  if (!cart) {
+    throw new Error("Error retrieving or creating cart")
+  }
+
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  await sdk.client
+    .fetch(`/store/carts/${cart.id}/addon`, {
+      method: "POST",
+      body: {
+        variant_ids: variantIds,
+        target_product_id: targetProductId,
+        quantity,
+      },
+      headers,
+    })
+    .then(async () => {
+      const cartCacheTag = await getCacheTag("carts")
+      revalidateTag(cartCacheTag)
+
+      const fulfillmentCacheTag = await getCacheTag("fulfillment")
+      revalidateTag(fulfillmentCacheTag)
+    })
+    .catch(medusaError)
+}
+
+/**
  * Realiniază garanțiile extinse cu produsele acoperite: aceeași cantitate,
  * scoase odată cu produsul. Regula stă în backend (`syncWarrantyLines`); aici
  * doar o declanșăm după orice schimbare care o poate strica. O eroare nu

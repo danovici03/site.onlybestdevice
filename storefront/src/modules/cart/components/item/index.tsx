@@ -13,7 +13,7 @@ import Spinner from "@modules/common/icons/spinner"
 import Thumbnail from "@modules/products/components/thumbnail"
 import WarrantyOffer from "@modules/cart/components/warranty-offer"
 import { lineItemThumbnail } from "@lib/util/line-item-thumbnail"
-import { isWarrantyLine, warrantyTargetTitle } from "@lib/util/warranty"
+import { isAttachedLine, warrantyTargetTitle } from "@lib/util/warranty"
 import { Minus, Plus, Trash } from "@phosphor-icons/react/dist/ssr"
 import { useState } from "react"
 
@@ -47,7 +47,7 @@ const Item = ({
   const warrantyFor = warrantyTargetTitle(item)
   // Garanția e o opțiune a produsului de deasupra, nu un produs: fără poză și
   // fără link (pagina produsului de serviciu e ascunsă din catalog).
-  const isWarranty = isWarrantyLine(item)
+  const isWarranty = isAttachedLine(item)
 
   const maxQuantity = 10
 

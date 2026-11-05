@@ -12,7 +12,7 @@ import {
 import { account as t } from "@lib/i18n/account.it"
 import {
   groupWarrantyLines,
-  isWarrantyLine,
+  isAttachedLine,
   warrantyTargetTitle,
 } from "@lib/util/warranty"
 import { COURIER_PICKUP_URL } from "@lib/util/shipping-tariff"
@@ -248,7 +248,7 @@ export default function ReturnForm() {
                   disabled={disabled}
                   onChange={(e) => update(item.id, { selected: e.target.checked })}
                 />
-                {isWarrantyLine(item) ? (
+                {isAttachedLine(item) ? (
                   <div className="w-14 shrink-0" aria-hidden />
                 ) : (
                   <div className="w-14 h-14 rounded-xl overflow-hidden bg-brand-light shrink-0">

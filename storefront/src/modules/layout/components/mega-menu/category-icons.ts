@@ -13,6 +13,7 @@ import {
   Tag,
   Clock,
   House,
+  Recycle,
 } from "@phosphor-icons/react/dist/ssr"
 
 // Iconița fiecărei categorii, după href. Ținută separat pentru că o folosesc
@@ -20,6 +21,7 @@ import {
 // simbol în cele două locuri, meniul nu mai pare același meniu.
 export const CATEGORY_ICONS: Record<string, React.ElementType> = {
   "/oferte": Tag,
+  "/second-hand": Recycle,
   "/categories/telefoane-mobile": DeviceMobile,
   "/categories/tablete": DeviceTablet,
   "/categories/incarcatoare-accesorii": Plug,

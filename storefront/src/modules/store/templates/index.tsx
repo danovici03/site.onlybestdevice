@@ -6,6 +6,8 @@ import RefinementBar from "@modules/store/components/refinement-bar"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import type { SelectedFilters } from "@lib/util/product-filters"
 
+import { SECOND_HAND_TAG } from "@lib/util/second-hand"
+
 import PaginatedProducts from "./paginated-products"
 
 const StoreTemplate = async ({
@@ -15,6 +17,7 @@ const StoreTemplate = async ({
   filters,
   q,
   sale,
+  secondHand,
 }: {
   sortBy?: SortOptions
   page?: string
@@ -24,18 +27,28 @@ const StoreTemplate = async ({
   q?: string
   /** Prezent pe /oferte: doar produsele bifate „La ofertă" în admin. */
   sale?: boolean
+  /** Prezent pe /second-hand: doar produsele bifate „Second Hand”. */
+  secondHand?: boolean
 }) => {
   const pageNumber = page ? parseInt(page) : 1
   const sort = sortBy || "created_at"
   const term = q?.trim()
 
-  const eyebrow = term ? "Rezultate pentru" : sale ? "Oferte" : "Catalog"
+  const eyebrow = term
+    ? "Rezultate pentru"
+    : sale
+      ? "Oferte"
+      : secondHand
+        ? "Second Hand"
+        : "Catalog"
   // Pe căutare titlul e doar termenul: „Rezultate pentru …" ca titlu era o
   // frază lungă care se rupea pe două rânduri și împingea bara de sortare.
   const heading = term ? (
     <>„{term}”</>
   ) : sale ? (
     "Ofertele săptămânii"
+  ) : secondHand ? (
+    "Telefoane second hand"
   ) : (
     "Toate produsele"
   )
@@ -43,7 +56,9 @@ const StoreTemplate = async ({
     ? "Filtrează rezultatele după marcă, preț sau categorie."
     : sale
       ? "Produsele alese de noi, la preț redus — stoc limitat."
-      : "Explorează întreaga gamă Onlybestdevice — device-uri alese cu grijă pentru tine."
+      : secondHand
+        ? "Produse folosite, verificate și testate de noi — cu garanție, grad de aspect și sănătatea bateriei afișate la fiecare."
+        : "Explorează întreaga gamă Onlybestdevice — device-uri alese cu grijă pentru tine."
 
   return (
     <section
@@ -85,6 +100,7 @@ const StoreTemplate = async ({
           facetParentId={null}
           q={term}
           sale={sale}
+          tag={secondHand ? SECOND_HAND_TAG : undefined}
         />
       </Suspense>
     </section>

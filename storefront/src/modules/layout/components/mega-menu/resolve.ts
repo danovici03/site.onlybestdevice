@@ -84,6 +84,18 @@ export async function resolveMegaMenuData(
             return [item.href, { count, products: toMenuProducts(products) }]
           }
 
+          // „Second Hand" la fel: lista vine din bifa din admin (tag).
+          if (item.tag) {
+            const { products, count } = await listCatalog({
+              countryCode,
+              selected: emptySelectedFilters(),
+              tag: item.tag,
+              limit: PRODUCTS_PER_CATEGORY,
+              listTag: false,
+            })
+            return [item.href, { count, products: toMenuProducts(products) }]
+          }
+
           const handle = item.href.replace(/^\/categories\//, "")
           const categoryId = handleToId.get(handle) ?? slugToId.get(handle)
 

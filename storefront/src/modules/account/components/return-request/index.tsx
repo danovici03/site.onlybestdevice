@@ -7,7 +7,7 @@ import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import {
   groupWarrantyLines,
-  isWarrantyLine,
+  isAttachedLine,
   warrantyTargetTitle,
 } from "@lib/util/warranty"
 import Thumbnail from "@modules/products/components/thumbnail"
@@ -159,7 +159,7 @@ const ReturnRequestForm = ({
                       />
                     </label>
                     {/* Garanția e o opțiune, nu un produs: fără poză. */}
-                    {isWarrantyLine(item) ? (
+                    {isAttachedLine(item) ? (
                       <div className="w-16 shrink-0" aria-hidden />
                     ) : (
                       <div className="w-16 h-16 rounded-xl overflow-hidden bg-brand-light shrink-0">

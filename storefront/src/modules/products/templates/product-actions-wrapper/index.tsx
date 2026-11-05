@@ -11,11 +11,13 @@ export default async function ProductActionsWrapper({
   region,
   upgrades,
   warranty,
+  services,
 }: {
   id: string
   region: HttpTypes.StoreRegion
   upgrades?: HttpTypes.StoreProduct[]
   warranty?: HttpTypes.StoreProduct
+  services?: HttpTypes.StoreProduct
 }) {
   const [product, paymentMethods] = await Promise.all([
     listProducts({
@@ -37,6 +39,7 @@ export default async function ProductActionsWrapper({
       region={region}
       upgrades={upgrades}
       warranty={warranty}
+      services={services}
       tbiAvailable={(paymentMethods ?? []).some((pm) =>
         pm.id.startsWith("pp_tbi")
       )}

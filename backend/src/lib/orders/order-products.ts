@@ -1,3 +1,4 @@
+import { SH_SERVICES_HANDLE } from "../second-hand"
 import { WARRANTY_HANDLE } from "../warranty-prices"
 
 type OrderLine = {
@@ -25,7 +26,9 @@ export const listOrderProducts = (
 ): string[] => {
   const lines = (items ?? []).filter((item): item is OrderLine => !!item)
   const products = lines.filter(
-    (line) => line.product_handle !== WARRANTY_HANDLE
+    (line) =>
+      line.product_handle !== WARRANTY_HANDLE &&
+      line.product_handle !== SH_SERVICES_HANDLE
   )
   return (products.length ? products : lines).map(lineLabel)
 }

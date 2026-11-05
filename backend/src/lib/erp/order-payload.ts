@@ -1,5 +1,6 @@
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
+import { ADDON_FOR, ADDON_FOR_TITLE, SH_SERVICES_HANDLE } from "../second-hand"
 import { WARRANTY_HANDLE } from "../warranty-prices"
 import {
   SHIPPED_STATUSES,
@@ -76,6 +77,15 @@ export type ErpLineItem = {
   warranty_for_product_id: string | null
   warranty_for_variant_id: string | null
   warranty_for_title: string | null
+  /**
+   * Linia e un serviciu Second Hand (baterie nouă / folie montată, produsul
+   * `servicii-second-hand`), nu marfă: n-are stoc, e o lucrare pe telefonul din
+   * linia `addon_for_line_id`, făcută înainte de livrare.
+   */
+  is_service_addon: boolean
+  addon_for_line_id: string | null
+  addon_for_product_id: string | null
+  addon_for_title: string | null
 }
 
 export type ErpCanonicalStatus =
@@ -275,6 +285,36 @@ const warrantyFields = (item: any, items: any[]) => {
   }
 }
 
+const isAddonItem = (item: any) => item?.product_handle === SH_SERVICES_HANDLE
+
+/** Câmpurile de serviciu Second Hand ale unei linii; nule pe restul. */
+const addonFields = (item: any, items: any[]) => {
+  if (!isAddonItem(item)) {
+    return {
+      is_service_addon: false,
+      addon_for_line_id: null,
+      addon_for_product_id: null,
+      addon_for_title: null,
+    }
+  }
+  const target =
+    typeof item.metadata?.[ADDON_FOR] === "string" ? item.metadata[ADDON_FOR] : null
+  const covered = target
+    ? items.find(
+        (i) => !isAddonItem(i) && !isWarrantyItem(i) && i.product_id === target
+      )
+    : undefined
+  return {
+    is_service_addon: true,
+    addon_for_line_id: covered?.id ?? null,
+    addon_for_product_id: target,
+    addon_for_title:
+      typeof item.metadata?.[ADDON_FOR_TITLE] === "string"
+        ? item.metadata[ADDON_FOR_TITLE]
+        : (covered?.product_title ?? null),
+  }
+}
+
 export const buildLineItems = (order: any): ErpLineItem[] =>
   (order?.items ?? []).map((item: any) => ({
     id: item.id,
@@ -291,6 +331,7 @@ export const buildLineItems = (order: any): ErpLineItem[] =>
     tax_total: num(item.tax_total),
     total: num(item.total),
     ...warrantyFields(item, order?.items ?? []),
+    ...addonFields(item, order?.items ?? []),
   }))
 
 export const toErpPayload = (order: any): ErpOrderPayload => ({

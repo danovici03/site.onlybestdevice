@@ -21,6 +21,7 @@ export default async function PaginatedProducts({
   facetParentId,
   q,
   sale,
+  tag,
 }: {
   sortBy?: SortOptions
   page: number
@@ -32,6 +33,8 @@ export default async function PaginatedProducts({
   q?: string
   /** Prezent pe /oferte: doar produsele bifate „La ofertă" în admin. */
   sale?: boolean
+  /** Doar produsele cu tagul dat (ex. `second-hand`). */
+  tag?: string
   /**
    * Categoria ale cărei sub-categorii sunt oferite ca fațetă. Lipsă (sau null)
    * = categoriile de top, cum e pe /store.
@@ -54,6 +57,7 @@ export default async function PaginatedProducts({
     selected,
     q,
     sale,
+    tag,
     sortBy: sortBy ?? "created_at",
     page,
     limit: PRODUCT_LIMIT,

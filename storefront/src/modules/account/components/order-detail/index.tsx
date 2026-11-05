@@ -5,7 +5,7 @@ import { clx } from "@medusajs/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import {
   groupWarrantyLines,
-  isWarrantyLine,
+  isAttachedLine,
   warrantyTargetTitle,
 } from "@lib/util/warranty"
 import { paymentLabelFor } from "@lib/util/payment-label"
@@ -162,7 +162,7 @@ const OrderDetail = ({ order }: { order: HttpTypes.StoreOrder }) => {
             {groupWarrantyLines(order.items ?? []).map((item) => (
               <li key={item.id} className="flex items-center gap-4 px-2 py-4">
                 {/* Garanția e o opțiune a produsului de deasupra: fără poză. */}
-                {isWarrantyLine(item) ? (
+                {isAttachedLine(item) ? (
                   <div className="w-16 shrink-0" aria-hidden />
                 ) : (
                   <div className="w-16 h-16 rounded-xl overflow-hidden bg-brand-light shrink-0">

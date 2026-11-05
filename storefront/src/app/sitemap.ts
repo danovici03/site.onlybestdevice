@@ -14,6 +14,7 @@ const STATIC_PATHS = [
   "",
   "/store",
   "/oferte",
+  "/second-hand",
   "/black-friday",
   "/credit-online",
   "/livrare",
