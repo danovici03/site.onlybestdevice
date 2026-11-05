@@ -28,7 +28,6 @@ import {
   supportsInstallments,
 } from "@lib/util/installments"
 import { warrantyOptionsFor } from "@lib/util/warranty"
-import { isSaleProduct } from "@lib/util/sale"
 import ExtendedWarranty from "@modules/products/components/extended-warranty"
 import SecondHandAddons from "@modules/products/components/second-hand-addons"
 import { addonOptionsFor, secondHandDetails } from "@lib/util/second-hand"
@@ -257,10 +256,6 @@ export default function ProductActions({
   })
   const selectedPrice = selectedVariant ? variantPrice : cheapestPrice
   const onSale = selectedPrice?.price_type === "sale"
-  // Ofertele sunt valabile în limita stocului (OG 99/2000 art. 33; Legea
-  // 363/2007, publicitate momeală): mențiunea apare la orice reducere și la
-  // produsele bifate „La ofertă", chiar dacă n-au preț tăiat.
-  const isOffer = onSale || isSaleProduct(product)
 
   // Rata cea mai mică posibilă, indiferent de finanțator, pentru rezumatul de
   // lângă preț. Aceeași sursă ca în calculatorul de mai jos (care se deschide
@@ -407,12 +402,6 @@ export default function ProductActions({
                     </>
                   )}
                 </div>
-
-                {isOffer && (
-                  <span className="text-xs text-brand-dark/50">
-                    În limita stocului
-                  </span>
-                )}
 
                 {/* Disponibilitatea, sub preț. La `isBackorder` tăcem: mai jos
                     există caseta „La comandă” cu termenul real de livrare. */}
